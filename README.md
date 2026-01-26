@@ -31,70 +31,142 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 
 ## Features
 
-- [ ] Create/join jam rooms with room codes
-- [ ] Synchronized play/pause/seek across all participants
-- [ ] Shared queue management
-- [ ] Host controls (room creator can promote others)
-- [ ] Low-latency sync (<500ms drift tolerance)
-- [ ] Support for FLAC and other formats Navidrome supports
+- [x] Create/join jam rooms with room codes
+- [x] Synchronized play/pause/seek across all participants
+- [x] Shared queue management
+- [x] Host controls (room creator has full control)
+- [x] Low-latency sync (<500ms drift tolerance)
+- [x] Support for FLAC and all formats Navidrome supports
+- [x] Music search integrated with Navidrome library
+- [x] User presence tracking
 
 ## Tech Stack
 
 - **Navidrome**: Go-based music server (existing)
-- **Sync Server**: Node.js + Socket.io or Go + WebSocket
-- **Client**: React (Navidrome's existing UI framework)
-- **Protocol**: WebSocket for real-time communication
+- **Sync Server**: Node.js + Express + Socket.io
+- **Client**: React + Vite
+- **Protocol**: WebSocket for real-time communication, Subsonic API for music streaming
 
 ## Installation
 
-> Coming soon
+### Prerequisites
+
+1. **Navidrome** - Install and configure Navidrome
+   ```bash
+   # See: https://www.navidrome.org/docs/installation/
+   ```
+
+2. **Node.js 18+** - Required for sync server and client
+
+### Quick Start
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/zhiganov/navidrome-jam.git
+   cd navidrome-jam
+   ```
+
+2. Install server dependencies:
+   ```bash
+   cd server
+   npm install
+   cp .env.example .env
+   # Edit .env if needed
+   ```
+
+3. Install client dependencies:
+   ```bash
+   cd ../client
+   npm install
+   cp .env.example .env
+   # Edit .env to point to your Navidrome instance
+   ```
+
+4. Start the sync server:
+   ```bash
+   cd ../server
+   npm run dev
+   ```
+
+5. In a new terminal, start the client:
+   ```bash
+   cd client
+   npm run dev
+   ```
+
+6. Open http://localhost:5173 in your browser
+
+See [QUICKSTART.md](./QUICKSTART.md) for detailed testing instructions.
 
 ## Development
 
-### Prerequisites
+### Project Structure
 
-- Navidrome instance running
-- Node.js 18+ or Go 1.21+
-- Your music library accessible to Navidrome
+```
+navidrome-jam/
+├── server/           # WebSocket sync server (Node.js + Socket.io)
+│   ├── src/
+│   │   ├── index.js         # Main server
+│   │   └── roomManager.js   # Room state management
+│   └── test-client.html     # HTML test client
+├── client/           # React web client
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── services/        # API clients
+│   │   └── App.jsx          # Main app
+│   └── public/
+├── docs/             # Documentation
+└── QUICKSTART.md     # Quick start guide
+```
 
-### Running Locally
+### Running Tests
 
+Test the sync server with the HTML test client:
 ```bash
-# Clone the repo
-git clone https://github.com/zhiganov/navidrome-jam.git
-cd navidrome-jam
-
-# Install dependencies (TBD)
-npm install
-
-# Start the sync server
+cd server
 npm run dev
+# Open test-client.html in two browser windows
+```
 
-# Build the client extension
-cd client && npm run build
+Test with the full stack:
+```bash
+# Terminal 1: Sync server
+cd server && npm run dev
+
+# Terminal 2: Web client
+cd client && npm run dev
+
+# Open http://localhost:5173 in two browsers
 ```
 
 ## Roadmap
 
-### Phase 1: Proof of Concept
+### Phase 1: Proof of Concept ✅
 - [x] Create repository
 - [x] Research Navidrome API/architecture
 - [x] Build minimal sync server
 - [x] Create basic test client
 
-### Phase 2: Core Features
+### Phase 2: Core Features ✅
 - [x] Room creation/joining
 - [x] Playback synchronization (WebSocket-based)
 - [x] Queue management
 - [x] User presence tracking
-- [ ] Integrate with Navidrome authentication
-- [ ] Build production web client UI
+- [x] Integrate with Navidrome authentication
+- [x] Build production web client UI
+- [x] Music search functionality
+- [x] Drift correction algorithm
 
-### Phase 3: Polish
-- [ ] UI integration with Navidrome
-- [ ] Mobile support
+### Phase 3: Polish (In Progress)
+- [ ] Mobile-responsive improvements
+- [ ] Persistent rooms (database storage)
+- [ ] Rate limiting and security
+- [ ] Advanced queue features (reorder, remove)
+- [ ] Album/artist browsing
 - [ ] Voice chat integration?
 - [ ] Discord bot for queue control
+- [ ] Docker deployment
+- [ ] Automated tests
 
 ## Contributing
 
