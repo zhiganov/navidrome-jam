@@ -121,13 +121,18 @@ cd client && npm run dev
 2. Room selection - Create/join rooms
 3. Jam session - Player, search, queue, users
 
-State management via React hooks (no Redux/Zustand). Global singleton instances of `NavidromeClient` and `JamClient`.
+State management via React hooks (no Redux/Zustand). Client instances provided via React Context (`NavidromeContext`, `JamContext`) for proper hot-reload cleanup.
+
+**`contexts/NavidromeContext.jsx`** and **`contexts/JamContext.jsx`** - React Context providers:
+- Create client instances on mount, cleanup on unmount
+- Prevents duplicate listeners during hot-reload
+- Use `useNavidrome()` and `useJam()` hooks to access clients
 
 **`services/navidrome.js`** - Navidrome Subsonic API client:
 - Token-based authentication with MD5 hashing (CryptoJS)
-- Session persistence via localStorage
+- Session persistence via localStorage with **async validation on restore** (ping check)
 - URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
-- Methods: `authenticate()`, `search()`, `getStreamUrl()`, `getCoverArtUrl()`
+- Methods: `authenticate()`, `restoreSession()`, `search()`, `getStreamUrl()`, `getCoverArtUrl()`
 
 **`services/jamClient.js`** - WebSocket client wrapper:
 - Socket.io connection management
@@ -137,6 +142,8 @@ State management via React hooks (no Redux/Zustand). Global singleton instances 
 
 **`components/SyncedAudioPlayer.jsx`** - Core sync logic:
 - HTML5 Audio element wrapped in React
+- Volume control with localStorage persistence
+- Seek bar (host-only) with sync event emission
 - **Drift correction algorithm** (critical):
   ```javascript
   const latency = Date.now() - state.timestamp;
@@ -146,8 +153,13 @@ State management via React hooks (no Redux/Zustand). Global singleton instances 
     audio.currentTime = expectedPosition;
   }
   ```
-- Heartbeat system: Sends position every 2s for presence tracking
+- Heartbeat system: Sends position every 2s for presence tracking (restarts on reconnect via `isConnected` prop)
 - Audio streams directly from Navidrome via `getStreamUrl()`
+
+**`components/ErrorBoundary.jsx`** - React error boundary:
+- Catches component errors and displays fallback UI
+- "Try Again" and "Reload Page" recovery options
+- Development mode shows error details
 
 ### Synchronization Protocol
 
@@ -270,15 +282,26 @@ Currently manual testing only. Test checklist:
 - [ ] Network interruption and reconnect
 - [ ] Last user leaving deletes room
 
+## Security Features
+
+The project includes several security measures (see `SECURITY.md` for details):
+
+- **Input validation**: Room IDs, usernames, and all user input are validated and sanitized
+- **Rate limiting**: Room creation limited to 5 per minute per IP (`express-rate-limit`)
+- **XSS prevention**: HTML tags and special characters stripped from user input
+- **Session validation**: Restored sessions are validated with Navidrome ping before use
+- **Token-based auth**: Credentials stored as MD5 tokens, not plaintext passwords
+
 ## Future Development Areas
 
-From roadmap (Phase 3):
+From roadmap (Phase 4):
 - **Persistent rooms**: Add Redis/database for room state persistence
 - **Queue reordering**: Drag-and-drop in queue UI
-- **Rate limiting**: Prevent room creation spam
 - **Mobile responsive**: Improve touch/mobile UX
 - **Album browsing**: Navigate by album/artist, not just search
 - **Automated tests**: Jest for server, Vitest + Testing Library for client
+- **Docker deployment**: Containerized setup for easy self-hosting
+- **Voice chat integration**: WebRTC-based voice chat during sessions
 
 ## Troubleshooting
 
