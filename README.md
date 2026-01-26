@@ -47,7 +47,34 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - **Client**: React + Vite
 - **Protocol**: WebSocket for real-time communication, Subsonic API for music streaming
 
-## Installation
+## Deployment
+
+Choose your deployment method:
+
+### 🚀 Option 1: Vercel + Railway (Recommended)
+
+**Fastest deployment, ~$0-5/month**
+
+1. **Deploy Server**: [Railway.app](https://railway.app) → Deploy from GitHub
+2. **Deploy Client**: [Vercel.com](https://vercel.com) → Import project
+3. **Custom Domain**: Add `jam.zhgnv.com` in Vercel settings
+
+📖 [5-Minute Quickstart Guide](./VERCEL_QUICKSTART.md)
+📖 [Full Vercel Deployment Guide](./VERCEL_DEPLOYMENT.md)
+
+### 🖥️ Option 2: VPS (Self-Hosted)
+
+**Full control, ~$5-10/month**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zhiganov/navidrome-jam/main/install.sh | bash
+```
+
+📖 [VPS Deployment Guide](./DEPLOYMENT.md)
+
+---
+
+## Local Development
 
 ### Prerequisites
 
