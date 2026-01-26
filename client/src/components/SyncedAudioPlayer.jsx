@@ -9,9 +9,12 @@ export default function SyncedAudioPlayer({
   isHost,
   isConnected,
   onPlaybackUpdate,
-  onEnded
+  onEnded,
+  audioRef: externalAudioRef
 }) {
-  const audioRef = useRef(null);
+  const internalAudioRef = useRef(null);
+  // Use external ref if provided, otherwise use internal ref
+  const audioRef = externalAudioRef || internalAudioRef;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);

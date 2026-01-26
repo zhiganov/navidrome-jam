@@ -127,13 +127,23 @@ class NavidromeClient {
         this.salt = salt;
         return true;
       } else {
-        // Credentials are invalid, clear storage
+        // Credentials are invalid (auth failed), clear storage
+        console.warn('Stored credentials are invalid, clearing');
         this.clearStoredCredentials();
         return false;
       }
     } catch (error) {
       console.error('Failed to validate stored credentials:', error);
-      // On network error, clear stored credentials to be safe
+      // On network error, don't clear credentials - server might be temporarily down
+      // Restore session optimistically, user will see error if they try to use it
+      if (error.name === 'TypeError' || error.message?.includes('fetch')) {
+        console.warn('Network error during session validation, restoring optimistically');
+        this.username = username;
+        this.token = token;
+        this.salt = salt;
+        return true;
+      }
+      // For other errors, clear credentials to be safe
       this.clearStoredCredentials();
       return false;
     }

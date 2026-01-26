@@ -133,6 +133,22 @@ io.on('connection', (socket) => {
   // Join a room
   socket.on('join-room', ({ roomId, userId, username }) => {
     try {
+      // Validate roomId
+      const roomIdValidation = validateRoomId(roomId);
+      if (!roomIdValidation.valid) {
+        socket.emit('error', { message: roomIdValidation.error });
+        return;
+      }
+
+      // Validate userId (alphanumeric with hyphens, max 50 chars)
+      if (!userId || typeof userId !== 'string' || userId.length > 50 || !/^[a-zA-Z0-9-]+$/.test(userId)) {
+        socket.emit('error', { message: 'Invalid user ID' });
+        return;
+      }
+
+      // Sanitize username
+      const sanitizedUsername = sanitizeString(username, 50) || 'Anonymous';
+
       const room = roomManager.getRoom(roomId);
       if (!room) {
         socket.emit('error', { message: 'Room not found' });
@@ -153,7 +169,7 @@ io.on('connection', (socket) => {
       const user = roomManager.addUser(roomId, {
         id: userId,
         socketId: socket.id,
-        username: username || 'Anonymous',
+        username: sanitizedUsername,
         joinedAt: Date.now()
       });
 
@@ -251,12 +267,64 @@ io.on('connection', (socket) => {
         return;
       }
 
-      roomManager.updateQueue(roomId, queue);
-      io.to(roomId).emit('queue-updated', { queue });
+      // Validate and sanitize queue
+      if (!Array.isArray(queue)) {
+        socket.emit('error', { message: 'Invalid queue format' });
+        return;
+      }
+
+      // Limit queue size to prevent abuse
+      if (queue.length > 100) {
+        socket.emit('error', { message: 'Queue too large (max 100 items)' });
+        return;
+      }
+
+      // Sanitize each queue item
+      const sanitizedQueue = queue.map(item => ({
+        id: typeof item.id === 'string' ? item.id.substring(0, 100) : '',
+        title: sanitizeString(item.title, 200),
+        artist: sanitizeString(item.artist, 100),
+        album: sanitizeString(item.album, 200)
+      })).filter(item => item.id); // Remove items without valid ID
+
+      roomManager.updateQueue(roomId, sanitizedQueue);
+      io.to(roomId).emit('queue-updated', { queue: sanitizedQueue });
       console.log(`Room ${roomId}: Queue updated`);
     } catch (error) {
       console.error('Error updating queue:', error);
       socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Leave room explicitly (without disconnecting)
+  socket.on('leave-room', () => {
+    if (currentRoomId && currentUserId) {
+      try {
+        const room = roomManager.getRoom(currentRoomId);
+        const wasHost = room?.hostId === currentUserId;
+
+        socket.leave(currentRoomId);
+        roomManager.removeUser(currentRoomId, currentUserId);
+
+        const updatedRoom = roomManager.getRoom(currentRoomId);
+
+        if (updatedRoom) {
+          // Notify others in the room
+          io.to(currentRoomId).emit('user-left', {
+            userId: currentUserId,
+            room: updatedRoom,
+            newHost: wasHost ? updatedRoom.hostId : null
+          });
+        } else {
+          console.log(`Room ${currentRoomId} deleted (empty)`);
+        }
+
+        console.log(`User ${currentUserId} left room ${currentRoomId}`);
+        currentRoomId = null;
+        currentUserId = null;
+      } catch (error) {
+        console.error('Error leaving room:', error);
+      }
     }
   });
 

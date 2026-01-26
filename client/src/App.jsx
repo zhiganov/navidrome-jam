@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavidrome } from './contexts/NavidromeContext';
 import { useJam } from './contexts/JamContext';
 import SyncedAudioPlayer from './components/SyncedAudioPlayer';
@@ -8,6 +8,7 @@ function App() {
   // Get client instances from context
   const navidrome = useNavidrome();
   const jamClient = useJam();
+  const audioRef = useRef(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [username, setUsername] = useState('');
@@ -239,7 +240,7 @@ function App() {
     jamClient.updateQueue(newQueue);
   };
 
-  const handleTrackEnded = () => {
+  const handleTrackEnded = useCallback(() => {
     // Only host can auto-play next track
     if (!isHost) return;
 
@@ -261,9 +262,12 @@ function App() {
     // Play the next track
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  };
+  }, [isHost, queue, jamClient]);
 
   const handleLeaveRoom = () => {
+    // Notify server that we're leaving the room
+    jamClient.leaveRoom();
+
     // Clear current room state to return to room selection screen
     setCurrentRoom(null);
     setCurrentTrack(null);
@@ -271,15 +275,13 @@ function App() {
     setSearchResults(null);
     setIsHost(false);
 
-    // Note: We don't need to explicitly disconnect - the server will detect
-    // the disconnection when the user joins a new room or refreshes
     console.log('Left room');
   };
 
   const handlePlayPause = () => {
     if (!isHost) return;
 
-    const audio = document.querySelector('audio');
+    const audio = audioRef.current;
     if (!audio) return;
 
     if (audio.paused) {
@@ -427,6 +429,7 @@ function App() {
               isHost={isHost}
               isConnected={isConnected}
               onEnded={handleTrackEnded}
+              audioRef={audioRef}
             />
           )}
 

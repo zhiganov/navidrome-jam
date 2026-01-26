@@ -15,7 +15,7 @@ class JamClient {
   getUserId() {
     let userId = localStorage.getItem('jam_user_id');
     if (!userId) {
-      userId = 'user-' + Math.random().toString(36).substr(2, 16);
+      userId = 'user-' + Math.random().toString(36).substring(2, 18);
       localStorage.setItem('jam_user_id', userId);
     }
     return userId;
@@ -124,6 +124,18 @@ class JamClient {
       userId: this.userId,
       username
     });
+  }
+
+  /**
+   * Leave current room (without disconnecting)
+   */
+  leaveRoom() {
+    if (!this.socket || !this.socket.connected) {
+      return;
+    }
+
+    this.socket.emit('leave-room');
+    this.currentRoomId = null;
   }
 
   /**
