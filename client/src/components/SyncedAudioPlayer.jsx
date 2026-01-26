@@ -6,6 +6,8 @@ const HEARTBEAT_INTERVAL = 2000; // ms
 export default function SyncedAudioPlayer({
   streamUrl,
   jamClient,
+  isHost,
+  isConnected,
   onPlaybackUpdate,
   onEnded
 }) {
@@ -13,12 +15,28 @@ export default function SyncedAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(() => {
+    // Load saved volume from localStorage, default to 1.0 (100%)
+    const savedVolume = localStorage.getItem('audio_volume');
+    return savedVolume ? parseFloat(savedVolume) : 1.0;
+  });
   const heartbeatIntervalRef = useRef(null);
+
+  // Set initial volume on audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+    }
+  }, [volume]);
 
   // Initialize audio element
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Set initial volume
+    audio.volume = volume;
 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
@@ -91,7 +109,10 @@ export default function SyncedAudioPlayer({
 
   // Send heartbeat to server
   useEffect(() => {
-    if (!jamClient || !jamClient.isConnected()) return;
+    // Only start heartbeat when connected
+    if (!jamClient || !isConnected) return;
+
+    console.log('Starting heartbeat interval');
 
     const sendHeartbeat = () => {
       const audio = audioRef.current;
@@ -103,11 +124,12 @@ export default function SyncedAudioPlayer({
     heartbeatIntervalRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
     return () => {
+      console.log('Stopping heartbeat interval');
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
     };
-  }, [jamClient]);
+  }, [jamClient, isConnected]);
 
   return (
     <div className="synced-audio-player">
@@ -132,13 +154,44 @@ export default function SyncedAudioPlayer({
         max={duration || 0}
         value={currentTime}
         onChange={(e) => {
+          const newPosition = parseFloat(e.target.value);
           const audio = audioRef.current;
+
           if (audio) {
-            audio.currentTime = parseFloat(e.target.value);
+            audio.currentTime = newPosition;
+
+            // If host, emit seek event to sync with other users
+            if (isHost && jamClient) {
+              jamClient.seek(newPosition);
+            }
           }
         }}
         className="seek-bar"
+        disabled={!isHost}
+        title={isHost ? 'Drag to seek' : 'Only host can seek'}
       />
+
+      <div className="volume-control">
+        <label htmlFor="volume-slider">
+          🔊 Volume: {Math.round(volume * 100)}%
+        </label>
+        <input
+          id="volume-slider"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={(e) => {
+            const newVolume = parseFloat(e.target.value);
+            setVolume(newVolume);
+            // Save to localStorage for persistence
+            localStorage.setItem('audio_volume', newVolume.toString());
+          }}
+          className="volume-slider"
+          title={`Volume: ${Math.round(volume * 100)}%`}
+        />
+      </div>
     </div>
   );
 }

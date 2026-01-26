@@ -1,5 +1,17 @@
 import CryptoJS from 'crypto-js';
 
+/**
+ * Navidrome Subsonic API Client
+ *
+ * SECURITY CONSIDERATIONS:
+ * - Authentication tokens are stored in localStorage for session persistence
+ * - localStorage is vulnerable to XSS attacks, but this is an acceptable trade-off:
+ *   1. Users authenticate with their personal Navidrome instance
+ *   2. httpOnly cookies would require server-side session management
+ *   3. Music player apps have lower security requirements than financial apps
+ * - Stored credentials are validated on restore to detect tampering/expiry
+ * - Users should ensure their Navidrome instance is served over HTTPS
+ */
 class NavidromeClient {
   constructor(baseUrl) {
     this.baseUrl = baseUrl;
@@ -75,21 +87,65 @@ class NavidromeClient {
   }
 
   /**
-   * Restore session from localStorage
+   * Restore session from localStorage and validate with Navidrome
+   *
+   * SECURITY NOTE: Credentials are stored in localStorage which is vulnerable to XSS attacks.
+   * This is an acceptable trade-off for this application because:
+   * 1. Users authenticate with their personal Navidrome instance (not a shared service)
+   * 2. The alternative (httpOnly cookies) requires server-side session management
+   * 3. This is a music player, not a banking app - risk profile is lower
+   * 4. We validate stored credentials on restore to detect tampering/expiry
+   *
+   * Mitigation: Always validate stored credentials before use.
    */
-  restoreSession() {
+  async restoreSession() {
     const username = localStorage.getItem('navidrome_username');
     const token = localStorage.getItem('navidrome_token');
     const salt = localStorage.getItem('navidrome_salt');
 
-    if (username && token && salt) {
-      this.username = username;
-      this.token = token;
-      this.salt = salt;
-      return true;
+    if (!username || !token || !salt) {
+      return false;
     }
 
-    return false;
+    // Validate credentials with Navidrome ping
+    try {
+      const url = new URL(`${this.baseUrl}/rest/ping`);
+      url.searchParams.append('u', username);
+      url.searchParams.append('t', token);
+      url.searchParams.append('s', salt);
+      url.searchParams.append('v', '1.16.1');
+      url.searchParams.append('c', 'navidrome-jam');
+      url.searchParams.append('f', 'json');
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data['subsonic-response'].status === 'ok') {
+        // Credentials are valid, restore session
+        this.username = username;
+        this.token = token;
+        this.salt = salt;
+        return true;
+      } else {
+        // Credentials are invalid, clear storage
+        this.clearStoredCredentials();
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to validate stored credentials:', error);
+      // On network error, clear stored credentials to be safe
+      this.clearStoredCredentials();
+      return false;
+    }
+  }
+
+  /**
+   * Clear stored credentials from localStorage
+   */
+  clearStoredCredentials() {
+    localStorage.removeItem('navidrome_username');
+    localStorage.removeItem('navidrome_token');
+    localStorage.removeItem('navidrome_salt');
   }
 
   /**
@@ -99,9 +155,7 @@ class NavidromeClient {
     this.username = null;
     this.token = null;
     this.salt = null;
-    localStorage.removeItem('navidrome_username');
-    localStorage.removeItem('navidrome_token');
-    localStorage.removeItem('navidrome_salt');
+    this.clearStoredCredentials();
   }
 
   /**

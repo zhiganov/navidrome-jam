@@ -1,79 +1,109 @@
 import { useState, useEffect } from 'react';
-import NavidromeClient from './services/navidrome';
-import JamClient from './services/jamClient';
+import { useNavidrome } from './contexts/NavidromeContext';
+import { useJam } from './contexts/JamContext';
 import SyncedAudioPlayer from './components/SyncedAudioPlayer';
 import './App.css';
 
-const navidromeUrl = import.meta.env.VITE_NAVIDROME_URL || 'http://localhost:4533';
-const jamServerUrl = import.meta.env.VITE_JAM_SERVER_URL || 'http://localhost:3001';
-
-const navidrome = new NavidromeClient(navidromeUrl);
-const jamClient = new JamClient(jamServerUrl);
-
 function App() {
+  // Get client instances from context
+  const navidrome = useNavidrome();
+  const jamClient = useJam();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [currentRoom, setCurrentRoom] = useState(null);
   const [roomInput, setRoomInput] = useState('');
   const [roomError, setRoomError] = useState('');
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
 
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isHost, setIsHost] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
   // Restore session on mount
   useEffect(() => {
-    if (navidrome.restoreSession()) {
-      setIsAuthenticated(true);
-      setUsername(navidrome.username);
-      connectToJamServer();
-    }
+    const restoreSession = async () => {
+      try {
+        const restored = await navidrome.restoreSession();
+        if (restored) {
+          setIsAuthenticated(true);
+          setUsername(navidrome.username);
+          connectToJamServer();
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        // Session restore failed, user will need to login
+      }
+    };
+
+    restoreSession();
   }, []);
 
   // Setup Jam client event listeners
   useEffect(() => {
-    jamClient.on('room-state', (room) => {
+    // Define handler functions so we can properly clean them up
+    const handleRoomState = (room) => {
       setCurrentRoom(room);
       setIsHost(room.hostId === jamClient.userId);
       setQueue(room.queue || []);
+      setIsJoiningRoom(false); // Room joined successfully
+      setIsCreatingRoom(false); // Room created successfully
 
       if (room.playbackState.trackId) {
         loadTrack(room.playbackState.trackId);
       }
-    });
+    };
 
-    jamClient.on('user-joined', ({ room }) => {
+    const handleUserJoined = ({ room }) => {
       setCurrentRoom(room);
-    });
+    };
 
-    jamClient.on('user-left', ({ room, newHost }) => {
+    const handleUserLeft = ({ room, newHost }) => {
       setCurrentRoom(room);
       if (newHost === jamClient.userId) {
         setIsHost(true);
         alert('You are now the host!');
       }
-    });
+    };
 
-    jamClient.on('queue-updated', (newQueue) => {
+    const handleQueueUpdated = (newQueue) => {
       setQueue(newQueue);
-    });
+    };
 
-    jamClient.on('error', (message) => {
+    const handleError = (message) => {
       setRoomError(message);
-    });
+    };
 
-    jamClient.on('disconnected', () => {
+    const handleDisconnected = () => {
       setIsConnected(false);
       setCurrentRoom(null);
-    });
+    };
 
+    // Register event listeners
+    jamClient.on('room-state', handleRoomState);
+    jamClient.on('user-joined', handleUserJoined);
+    jamClient.on('user-left', handleUserLeft);
+    jamClient.on('queue-updated', handleQueueUpdated);
+    jamClient.on('error', handleError);
+    jamClient.on('disconnected', handleDisconnected);
+
+    // Cleanup: remove all event listeners
     return () => {
+      jamClient.off('room-state', handleRoomState);
+      jamClient.off('user-joined', handleUserJoined);
+      jamClient.off('user-left', handleUserLeft);
+      jamClient.off('queue-updated', handleQueueUpdated);
+      jamClient.off('error', handleError);
+      jamClient.off('disconnected', handleDisconnected);
       jamClient.disconnect();
     };
   }, []);
@@ -90,6 +120,7 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
+    setIsLoggingIn(true);
 
     try {
       await navidrome.authenticate(username, password);
@@ -98,6 +129,8 @@ function App() {
       await connectToJamServer();
     } catch (error) {
       setLoginError(error.message);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -111,12 +144,17 @@ function App() {
   };
 
   const handleCreateRoom = async () => {
+    setIsCreatingRoom(true);
+    setRoomError('');
+
     try {
       const room = await jamClient.createRoom(null, username);
       setRoomInput(room.id);
       jamClient.joinRoom(room.id, username);
     } catch (error) {
       setRoomError(error.message);
+    } finally {
+      setIsCreatingRoom(false);
     }
   };
 
@@ -126,11 +164,15 @@ function App() {
       return;
     }
 
+    setIsJoiningRoom(true);
+    setRoomError('');
+
     try {
       jamClient.joinRoom(roomInput.toUpperCase(), username);
-      setRoomError('');
+      // Note: isJoiningRoom will be reset when room-state event is received
     } catch (error) {
       setRoomError(error.message);
+      setIsJoiningRoom(false);
     }
   };
 
@@ -138,15 +180,21 @@ function App() {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
+    setIsSearching(true);
+
     try {
       const results = await navidrome.search(searchQuery);
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
     }
   };
 
   const loadTrack = async (songId) => {
+    setIsLoadingTrack(true);
+
     try {
       const result = await navidrome.getSong(songId);
       const song = result.song;
@@ -160,6 +208,8 @@ function App() {
       });
     } catch (error) {
       console.error('Error loading track:', error);
+    } finally {
+      setIsLoadingTrack(false);
     }
   };
 
@@ -189,6 +239,43 @@ function App() {
     jamClient.updateQueue(newQueue);
   };
 
+  const handleTrackEnded = () => {
+    // Only host can auto-play next track
+    if (!isHost) return;
+
+    // Check if there are items in the queue
+    if (queue.length === 0) {
+      console.log('Queue is empty, playback stopped');
+      return;
+    }
+
+    // Get next track from queue
+    const nextTrack = queue[0];
+    const newQueue = queue.slice(1); // Remove first item
+
+    console.log(`Auto-playing next track: ${nextTrack.title}`);
+
+    // Update queue on server
+    jamClient.updateQueue(newQueue);
+
+    // Play the next track
+    jamClient.play(nextTrack.id, 0);
+    loadTrack(nextTrack.id);
+  };
+
+  const handleLeaveRoom = () => {
+    // Clear current room state to return to room selection screen
+    setCurrentRoom(null);
+    setCurrentTrack(null);
+    setQueue([]);
+    setSearchResults(null);
+    setIsHost(false);
+
+    // Note: We don't need to explicitly disconnect - the server will detect
+    // the disconnection when the user joins a new room or refreshes
+    console.log('Left room');
+  };
+
   const handlePlayPause = () => {
     if (!isHost) return;
 
@@ -215,6 +302,7 @@ function App() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              disabled={isLoggingIn}
             />
             <input
               type="password"
@@ -222,12 +310,15 @@ function App() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={isLoggingIn}
             />
-            <button type="submit">Login to Navidrome</button>
+            <button type="submit" disabled={isLoggingIn}>
+              {isLoggingIn ? 'Logging in...' : 'Login to Navidrome'}
+            </button>
           </form>
           {loginError && <div className="error">{loginError}</div>}
           <div className="server-info">
-            Server: {navidromeUrl}
+            Server: {navidrome.baseUrl}
           </div>
         </div>
       </div>
@@ -251,13 +342,20 @@ function App() {
                 value={roomInput}
                 onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
                 maxLength={6}
+                disabled={isJoiningRoom || isCreatingRoom}
               />
-              <button onClick={handleJoinRoom} disabled={!isConnected}>
-                Join Room
+              <button
+                onClick={handleJoinRoom}
+                disabled={!isConnected || isJoiningRoom || isCreatingRoom}
+              >
+                {isJoiningRoom ? 'Joining...' : 'Join Room'}
               </button>
             </div>
-            <button onClick={handleCreateRoom} disabled={!isConnected}>
-              Create New Room
+            <button
+              onClick={handleCreateRoom}
+              disabled={!isConnected || isCreatingRoom || isJoiningRoom}
+            >
+              {isCreatingRoom ? 'Creating...' : 'Create New Room'}
             </button>
           </div>
 
@@ -282,6 +380,9 @@ function App() {
           <span>{isHost ? '👑 Host' : '🎧 Listener'}</span>
           <span>{username}</span>
         </div>
+        <button onClick={handleLeaveRoom} className="leave-room-btn">
+          Leave Room
+        </button>
       </header>
 
       <div className="main-content">
@@ -300,6 +401,12 @@ function App() {
 
         {/* Center: Player and Search */}
         <main className="player-panel">
+          {isLoadingTrack && !currentTrack && (
+            <div className="loading-track">
+              <p>Loading track...</p>
+            </div>
+          )}
+
           {currentTrack && (
             <div className="now-playing">
               {currentTrack.coverArt && (
@@ -317,6 +424,9 @@ function App() {
             <SyncedAudioPlayer
               streamUrl={currentTrack.streamUrl}
               jamClient={jamClient}
+              isHost={isHost}
+              isConnected={isConnected}
+              onEnded={handleTrackEnded}
             />
           )}
 
@@ -336,8 +446,11 @@ function App() {
                 placeholder="Search songs, albums, artists..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={isSearching}
               />
-              <button type="submit">Search</button>
+              <button type="submit" disabled={isSearching}>
+                {isSearching ? 'Searching...' : 'Search'}
+              </button>
             </form>
 
             {searchResults && (

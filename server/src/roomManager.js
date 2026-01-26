@@ -57,7 +57,7 @@ export class RoomManager {
   }
 
   /**
-   * Add user to room
+   * Add user to room (or update if already exists)
    */
   addUser(roomId, user) {
     const room = this.rooms.get(roomId);
@@ -65,11 +65,27 @@ export class RoomManager {
       throw new Error('Room not found');
     }
 
+    // Check if user already exists in the room
+    const existingUserIndex = room.users.findIndex(u => u.id === user.id);
+
+    if (existingUserIndex !== -1) {
+      // User already exists - update their entry (e.g., new socketId from reconnect/refresh)
+      room.users[existingUserIndex] = {
+        ...room.users[existingUserIndex],
+        ...user,
+        position: room.users[existingUserIndex].position, // Keep their position
+        lastHeartbeat: Date.now()
+      };
+      console.log(`Updated existing user in room ${roomId}: ${user.username}`);
+      return user;
+    }
+
     // First user becomes host
     if (room.users.length === 0) {
       room.hostId = user.id;
     }
 
+    // New user - add to room
     room.users.push({
       ...user,
       position: 0,

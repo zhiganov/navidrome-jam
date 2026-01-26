@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { RoomManager } from './roomManager.js';
 
 dotenv.config();
@@ -21,6 +22,47 @@ app.use(express.json());
 
 const roomManager = new RoomManager();
 
+// Validation helpers
+function validateRoomId(roomId) {
+  if (!roomId) return { valid: true }; // null/undefined is ok (will be generated)
+
+  if (typeof roomId !== 'string') {
+    return { valid: false, error: 'roomId must be a string' };
+  }
+
+  if (roomId.length > 6) {
+    return { valid: false, error: 'roomId must be at most 6 characters' };
+  }
+
+  if (!/^[a-zA-Z0-9]+$/.test(roomId)) {
+    return { valid: false, error: 'roomId must be alphanumeric' };
+  }
+
+  return { valid: true };
+}
+
+function sanitizeString(str, maxLength = 50) {
+  if (!str || typeof str !== 'string') {
+    return '';
+  }
+
+  // Strip HTML tags and limit length
+  return str
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>\"']/g, '') // Remove potentially dangerous characters
+    .trim()
+    .substring(0, maxLength);
+}
+
+// Rate limiting for room creation (max 5 rooms per IP per minute)
+const createRoomLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  message: { error: 'Too many room creation attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -31,18 +73,54 @@ app.get('/health', (req, res) => {
 });
 
 // REST endpoints for room management
-app.post('/api/rooms', (req, res) => {
-  const { roomId, hostName } = req.body;
-  const room = roomManager.createRoom(roomId || null, hostName);
-  res.json({ room });
+app.post('/api/rooms', createRoomLimiter, (req, res) => {
+  try {
+    const { roomId, hostName } = req.body;
+
+    // Validate roomId
+    const roomIdValidation = validateRoomId(roomId);
+    if (!roomIdValidation.valid) {
+      return res.status(400).json({ error: roomIdValidation.error });
+    }
+
+    // Sanitize hostName to prevent XSS
+    const sanitizedHostName = sanitizeString(hostName, 50) || 'Host';
+
+    // Create room
+    const room = roomManager.createRoom(roomId || null, sanitizedHostName);
+
+    res.status(201).json({ room });
+  } catch (error) {
+    console.error('Error creating room:', error);
+
+    if (error.message === 'Room already exists') {
+      return res.status(409).json({ error: 'Room already exists' });
+    }
+
+    res.status(500).json({ error: 'Failed to create room' });
+  }
 });
 
 app.get('/api/rooms/:roomId', (req, res) => {
-  const room = roomManager.getRoom(req.params.roomId);
-  if (!room) {
-    return res.status(404).json({ error: 'Room not found' });
+  try {
+    const { roomId } = req.params;
+
+    // Validate roomId format
+    const roomIdValidation = validateRoomId(roomId);
+    if (!roomIdValidation.valid) {
+      return res.status(400).json({ error: roomIdValidation.error });
+    }
+
+    const room = roomManager.getRoom(roomId);
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    res.json({ room });
+  } catch (error) {
+    console.error('Error fetching room:', error);
+    res.status(500).json({ error: 'Failed to fetch room' });
   }
-  res.json({ room });
 });
 
 // WebSocket connection handling
@@ -226,3 +304,9 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Navidrome Jam sync server running on port ${PORT}`);
 });
+
+// Schedule periodic cleanup of stale rooms (every 60 seconds)
+// Removes rooms where all users have been inactive for 5+ minutes
+setInterval(() => {
+  roomManager.cleanupStaleRooms();
+}, 60000);

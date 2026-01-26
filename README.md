@@ -31,14 +31,29 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 
 ## Features
 
+### Core Functionality
 - [x] Create/join jam rooms with room codes
 - [x] Synchronized play/pause/seek across all participants
-- [x] Shared queue management
+- [x] Shared queue management with auto-play
 - [x] Host controls (room creator has full control)
 - [x] Low-latency sync (<500ms drift tolerance)
 - [x] Support for FLAC and all formats Navidrome supports
 - [x] Music search integrated with Navidrome library
-- [x] User presence tracking
+- [x] User presence tracking with heartbeat system
+
+### User Experience
+- [x] Volume control with persistent preferences
+- [x] Leave room functionality
+- [x] Loading states for all async operations
+- [x] Error boundary for graceful error handling
+- [x] Session validation and auto-recovery
+
+### Security & Reliability
+- [x] Input validation and sanitization (XSS prevention)
+- [x] Rate limiting on room creation (5 per minute per IP)
+- [x] Authentication token validation
+- [x] Automatic stale room cleanup
+- [x] Duplicate user prevention on reconnect
 
 ## Tech Stack
 
@@ -125,6 +140,16 @@ curl -fsSL https://raw.githubusercontent.com/zhiganov/navidrome-jam/main/install
 
 See [QUICKSTART.md](./QUICKSTART.md) for detailed testing instructions.
 
+## Security
+
+This project implements several security measures:
+- Input validation and sanitization to prevent XSS attacks
+- Rate limiting to prevent abuse
+- Token-based authentication with Navidrome
+- Session validation on restore
+
+For detailed security considerations, see [SECURITY.md](./SECURITY.md).
+
 ## Development
 
 ### Project Structure
@@ -133,17 +158,25 @@ See [QUICKSTART.md](./QUICKSTART.md) for detailed testing instructions.
 navidrome-jam/
 ├── server/           # WebSocket sync server (Node.js + Socket.io)
 │   ├── src/
-│   │   ├── index.js         # Main server
-│   │   └── roomManager.js   # Room state management
+│   │   ├── index.js         # Main server with validation & rate limiting
+│   │   └── roomManager.js   # Room state management & cleanup
 │   └── test-client.html     # HTML test client
 ├── client/           # React web client
 │   ├── src/
 │   │   ├── components/      # React components
+│   │   │   ├── SyncedAudioPlayer.jsx  # Audio player with volume control
+│   │   │   └── ErrorBoundary.jsx      # Error handling wrapper
+│   │   ├── contexts/        # React contexts
+│   │   │   ├── NavidromeContext.jsx   # Navidrome client provider
+│   │   │   └── JamContext.jsx         # Jam client provider
 │   │   ├── services/        # API clients
-│   │   └── App.jsx          # Main app
+│   │   │   ├── navidrome.js          # Navidrome Subsonic API client
+│   │   │   └── jamClient.js          # WebSocket client wrapper
+│   │   └── App.jsx          # Main app with loading states
 │   └── public/
 ├── docs/             # Documentation
-└── QUICKSTART.md     # Quick start guide
+├── QUICKSTART.md     # Quick start guide
+└── SECURITY.md       # Security considerations
 ```
 
 ### Running Tests
@@ -184,16 +217,28 @@ cd client && npm run dev
 - [x] Music search functionality
 - [x] Drift correction algorithm
 
-### Phase 3: Polish (In Progress)
+### Phase 3: Polish ✅
+- [x] Rate limiting and security hardening
+- [x] Input validation and XSS prevention
+- [x] Queue auto-play functionality
+- [x] Volume control with persistence
+- [x] Error boundaries and graceful error handling
+- [x] Loading states for better UX
+- [x] Session validation and recovery
+- [x] React context refactoring (hot-reload safe)
+- [x] Proper event listener cleanup
+- [x] Leave room functionality
+
+### Phase 4: Future Enhancements
 - [ ] Mobile-responsive improvements
 - [ ] Persistent rooms (database storage)
-- [ ] Rate limiting and security
-- [ ] Advanced queue features (reorder, remove)
-- [ ] Album/artist browsing
+- [ ] Advanced queue features (drag-to-reorder, remove)
+- [ ] Album/artist browsing UI
 - [ ] Voice chat integration?
 - [ ] Discord bot for queue control
 - [ ] Docker deployment
-- [ ] Automated tests
+- [ ] Automated tests (Jest, Vitest)
+- [ ] Admin dashboard
 
 ## Contributing
 
