@@ -1,0 +1,26 @@
+{
+  "name": "navidrome-jam-server",
+  "version": "0.1.0",
+  "description": "WebSocket sync server for Navidrome Jam sessions",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "navidrome",
+    "music",
+    "sync",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  }
+}

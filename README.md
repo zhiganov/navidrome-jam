@@ -78,15 +78,17 @@ cd client && npm run build
 
 ### Phase 1: Proof of Concept
 - [x] Create repository
-- [ ] Research Navidrome API/architecture
-- [ ] Build minimal sync server
-- [ ] Create basic test client
+- [x] Research Navidrome API/architecture
+- [x] Build minimal sync server
+- [x] Create basic test client
 
 ### Phase 2: Core Features
-- [ ] Room creation/joining
-- [ ] Playback synchronization
-- [ ] Queue management
-- [ ] User presence
+- [x] Room creation/joining
+- [x] Playback synchronization (WebSocket-based)
+- [x] Queue management
+- [x] User presence tracking
+- [ ] Integrate with Navidrome authentication
+- [ ] Build production web client UI
 
 ### Phase 3: Polish
 - [ ] UI integration with Navidrome

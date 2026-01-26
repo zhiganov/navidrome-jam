@@ -1,0 +1,228 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { RoomManager } from './roomManager.js';
+
+dotenv.config();
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+app.use(cors());
+app.use(express.json());
+
+const roomManager = new RoomManager();
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    rooms: roomManager.getRoomCount(),
+    connections: io.sockets.sockets.size
+  });
+});
+
+// REST endpoints for room management
+app.post('/api/rooms', (req, res) => {
+  const { roomId, hostName } = req.body;
+  const room = roomManager.createRoom(roomId || null, hostName);
+  res.json({ room });
+});
+
+app.get('/api/rooms/:roomId', (req, res) => {
+  const room = roomManager.getRoom(req.params.roomId);
+  if (!room) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+  res.json({ room });
+});
+
+// WebSocket connection handling
+io.on('connection', (socket) => {
+  console.log(`Client connected: ${socket.id}`);
+
+  let currentRoomId = null;
+  let currentUserId = null;
+
+  // Join a room
+  socket.on('join-room', ({ roomId, userId, username }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room) {
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+
+      // Leave previous room if any
+      if (currentRoomId) {
+        socket.leave(currentRoomId);
+        roomManager.removeUser(currentRoomId, currentUserId);
+      }
+
+      // Join new room
+      socket.join(roomId);
+      currentRoomId = roomId;
+      currentUserId = userId;
+
+      const user = roomManager.addUser(roomId, {
+        id: userId,
+        socketId: socket.id,
+        username: username || 'Anonymous',
+        joinedAt: Date.now()
+      });
+
+      // Send current room state to the joining user
+      socket.emit('room-state', { room: roomManager.getRoom(roomId) });
+
+      // Notify others in the room
+      socket.to(roomId).emit('user-joined', {
+        user,
+        room: roomManager.getRoom(roomId)
+      });
+
+      console.log(`User ${username} (${userId}) joined room ${roomId}`);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Play command (host only)
+  socket.on('play', ({ roomId, trackId, position = 0 }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+        return;
+      }
+
+      const state = roomManager.updatePlaybackState(roomId, {
+        trackId,
+        position,
+        playing: true,
+        timestamp: Date.now()
+      });
+
+      io.to(roomId).emit('sync', state);
+      console.log(`Room ${roomId}: Playing track ${trackId} at ${position}s`);
+    } catch (error) {
+      console.error('Error playing track:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Pause command (host only)
+  socket.on('pause', ({ roomId, position }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+        return;
+      }
+
+      const state = roomManager.updatePlaybackState(roomId, {
+        position,
+        playing: false,
+        timestamp: Date.now()
+      });
+
+      io.to(roomId).emit('sync', state);
+      console.log(`Room ${roomId}: Paused at ${position}s`);
+    } catch (error) {
+      console.error('Error pausing:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Seek command (host only)
+  socket.on('seek', ({ roomId, position }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+        return;
+      }
+
+      const state = roomManager.updatePlaybackState(roomId, {
+        position,
+        timestamp: Date.now()
+      });
+
+      io.to(roomId).emit('sync', state);
+      console.log(`Room ${roomId}: Seeked to ${position}s`);
+    } catch (error) {
+      console.error('Error seeking:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Queue management (host only)
+  socket.on('update-queue', ({ roomId, queue }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can update queue' });
+        return;
+      }
+
+      roomManager.updateQueue(roomId, queue);
+      io.to(roomId).emit('queue-updated', { queue });
+      console.log(`Room ${roomId}: Queue updated`);
+    } catch (error) {
+      console.error('Error updating queue:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Heartbeat for presence tracking
+  socket.on('heartbeat', ({ roomId, position }) => {
+    try {
+      roomManager.updateUserPosition(roomId, currentUserId, position);
+    } catch (error) {
+      // Silent fail - heartbeats are not critical
+    }
+  });
+
+  // Disconnect handling
+  socket.on('disconnect', () => {
+    console.log(`Client disconnected: ${socket.id}`);
+
+    if (currentRoomId && currentUserId) {
+      try {
+        const room = roomManager.getRoom(currentRoomId);
+        const wasHost = room?.hostId === currentUserId;
+
+        roomManager.removeUser(currentRoomId, currentUserId);
+
+        const updatedRoom = roomManager.getRoom(currentRoomId);
+
+        if (updatedRoom) {
+          // Notify others in the room
+          io.to(currentRoomId).emit('user-left', {
+            userId: currentUserId,
+            room: updatedRoom,
+            newHost: wasHost ? updatedRoom.hostId : null
+          });
+        } else {
+          // Room was deleted (no users left)
+          console.log(`Room ${currentRoomId} deleted (empty)`);
+        }
+      } catch (error) {
+        console.error('Error handling disconnect:', error);
+      }
+    }
+  });
+});
+
+const PORT = process.env.PORT || 3001;
+httpServer.listen(PORT, () => {
+  console.log(`Navidrome Jam sync server running on port ${PORT}`);
+});
