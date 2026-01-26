@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: navidrome-jam-server
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: CLIENT_URL
+        sync: false
+      - key: NAVIDROME_URL
+        sync: false
