@@ -147,7 +147,7 @@ export default function SyncedAudioPlayer({
           {formatTime(currentTime)} / {formatTime(duration)}
         </div>
         <div className="status">
-          {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
+          {isPlaying ? '> Playing' : '|| Paused'}
         </div>
       </div>
 
@@ -176,7 +176,7 @@ export default function SyncedAudioPlayer({
 
       <div className="volume-control">
         <label htmlFor="volume-slider">
-          🔊 Volume: {Math.round(volume * 100)}%
+          Vol: {Math.round(volume * 100)}%
         </label>
         <input
           id="volume-slider"

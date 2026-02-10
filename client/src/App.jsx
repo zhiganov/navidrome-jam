@@ -46,7 +46,6 @@ function App() {
         }
       } catch (error) {
         console.error('Failed to restore session:', error);
-        // Session restore failed, user will need to login
       }
     };
 
@@ -55,13 +54,12 @@ function App() {
 
   // Setup Jam client event listeners
   useEffect(() => {
-    // Define handler functions so we can properly clean them up
     const handleRoomState = (room) => {
       setCurrentRoom(room);
       setIsHost(room.hostId === jamClient.userId);
       setQueue(room.queue || []);
-      setIsJoiningRoom(false); // Room joined successfully
-      setIsCreatingRoom(false); // Room created successfully
+      setIsJoiningRoom(false);
+      setIsCreatingRoom(false);
 
       if (room.playbackState.trackId) {
         loadTrack(room.playbackState.trackId);
@@ -93,7 +91,6 @@ function App() {
       setCurrentRoom(null);
     };
 
-    // Register event listeners
     jamClient.on('room-state', handleRoomState);
     jamClient.on('user-joined', handleUserJoined);
     jamClient.on('user-left', handleUserLeft);
@@ -101,7 +98,6 @@ function App() {
     jamClient.on('error', handleError);
     jamClient.on('disconnected', handleDisconnected);
 
-    // Cleanup: remove all event listeners
     return () => {
       jamClient.off('room-state', handleRoomState);
       jamClient.off('user-joined', handleUserJoined);
@@ -193,7 +189,6 @@ function App() {
 
     try {
       jamClient.joinRoom(roomInput.toUpperCase(), username);
-      // Note: isJoiningRoom will be reset when room-state event is received
     } catch (error) {
       setRoomError(error.message);
       setIsJoiningRoom(false);
@@ -264,34 +259,26 @@ function App() {
   };
 
   const handleTrackEnded = useCallback(() => {
-    // Only host can auto-play next track
     if (!isHost) return;
 
-    // Check if there are items in the queue
     if (queue.length === 0) {
       console.log('Queue is empty, playback stopped');
       return;
     }
 
-    // Get next track from queue
     const nextTrack = queue[0];
-    const newQueue = queue.slice(1); // Remove first item
+    const newQueue = queue.slice(1);
 
     console.log(`Auto-playing next track: ${nextTrack.title}`);
 
-    // Update queue on server
     jamClient.updateQueue(newQueue);
-
-    // Play the next track
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
   }, [isHost, queue, jamClient]);
 
   const handleLeaveRoom = () => {
-    // Notify server that we're leaving the room
     jamClient.leaveRoom();
 
-    // Clear current room state to return to room selection screen
     setCurrentRoom(null);
     setCurrentTrack(null);
     setQueue([]);
@@ -318,86 +305,138 @@ function App() {
   if (!isAuthenticated) {
     return (
       <div className="app login-screen">
-        <div className="login-container">
-          <h1>🎵 Navidrome Jam</h1>
-
-          <div className="auth-tabs">
-            <button
-              className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('login'); setLoginError(''); }}
-            >
-              Login
-            </button>
-            <button
-              className={`auth-tab ${authMode === 'signup' ? 'active' : ''}`}
-              onClick={() => { setAuthMode('signup'); setLoginError(''); }}
-            >
-              Sign Up
-            </button>
+        <div className="login-container win98-window">
+          <div className="win98-titlebar">
+            <span className="win98-titlebar-text">Navidrome Jam - Welcome</span>
+            <div className="win98-titlebar-buttons">
+              <button className="win98-titlebar-btn">_</button>
+              <button className="win98-titlebar-btn">X</button>
+            </div>
           </div>
+          <div className="win98-body">
+            <h1>Navidrome Jam</h1>
+            <div className="login-subtitle">~ The Music Lounge ~</div>
 
-          {registerSuccess && <div className="success">{registerSuccess}</div>}
+            <hr className="retro-divider" />
 
-          {authMode === 'login' ? (
-            <form onSubmit={handleLogin}>
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={isLoggingIn}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoggingIn}
-              />
-              <button type="submit" disabled={isLoggingIn}>
-                {isLoggingIn ? 'Logging in...' : 'Login to Navidrome'}
+            {registerSuccess && <div className="success">{registerSuccess}</div>}
+
+            <div className="auth-tabs">
+              <button
+                className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
+                onClick={() => { setAuthMode('login'); setLoginError(''); }}
+              >
+                Login
               </button>
-            </form>
-          ) : (
-            <form onSubmit={handleRegister}>
-              <input
-                type="text"
-                placeholder="Choose a username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={isRegistering}
-                minLength={3}
-                maxLength={50}
-              />
-              <input
-                type="password"
-                placeholder="Choose a password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isRegistering}
-                minLength={6}
-              />
-              <input
-                type="text"
-                placeholder="Invite code"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                required
-                disabled={isRegistering}
-              />
-              <button type="submit" disabled={isRegistering}>
-                {isRegistering ? 'Creating account...' : 'Create Account'}
+              <button
+                className={`auth-tab ${authMode === 'signup' ? 'active' : ''}`}
+                onClick={() => { setAuthMode('signup'); setLoginError(''); }}
+              >
+                Sign Up
               </button>
-            </form>
-          )}
+            </div>
 
-          {loginError && <div className="error">{loginError}</div>}
-          <div className="server-info">
-            Server: {navidrome.baseUrl}
+            <div className="auth-tab-content">
+              {authMode === 'login' ? (
+                <form onSubmit={handleLogin}>
+                  <div className="form-row">
+                    <label>User:</label>
+                    <input
+                      type="text"
+                      className="win98-input"
+                      placeholder="Username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      disabled={isLoggingIn}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <label>Pass:</label>
+                    <input
+                      type="password"
+                      className="win98-input"
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={isLoggingIn}
+                    />
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="win98-btn" disabled={isLoggingIn}>
+                      {isLoggingIn ? 'Logging in...' : 'OK'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleRegister}>
+                  <div className="form-row">
+                    <label>User:</label>
+                    <input
+                      type="text"
+                      className="win98-input"
+                      placeholder="Choose a username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      disabled={isRegistering}
+                      minLength={3}
+                      maxLength={50}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <label>Pass:</label>
+                    <input
+                      type="password"
+                      className="win98-input"
+                      placeholder="Choose a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={isRegistering}
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <label>Invite:</label>
+                    <input
+                      type="text"
+                      className="win98-input"
+                      placeholder="Invite code"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value)}
+                      required
+                      disabled={isRegistering}
+                    />
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="win98-btn" disabled={isRegistering}>
+                      {isRegistering ? 'Creating...' : 'Register'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {loginError && <div className="error">{loginError}</div>}
+
+            <div className="server-info">
+              Server: {navidrome.baseUrl}
+            </div>
+          </div>
+        </div>
+
+        <div className="geocities-footer">
+          <div className="under-construction">
+            * * * Best viewed in Netscape Navigator 4.0 at 800x600 * * *
+          </div>
+          <div className="visitor-counter">
+            <span className="counter-digit">0</span>
+            <span className="counter-digit">0</span>
+            <span className="counter-digit">4</span>
+            <span className="counter-digit">2</span>
+            <span className="counter-digit">0</span>
           </div>
         </div>
       </div>
@@ -408,42 +447,68 @@ function App() {
   if (!currentRoom) {
     return (
       <div className="app room-screen">
-        <div className="room-container">
-          <h1>🎵 Navidrome Jam</h1>
-          <p>Welcome, {username}!</p>
+        <div className="room-container win98-window">
+          <div className="win98-titlebar">
+            <span className="win98-titlebar-text">Navidrome Jam - Room Select</span>
+            <div className="win98-titlebar-buttons">
+              <button className="win98-titlebar-btn">_</button>
+              <button className="win98-titlebar-btn">X</button>
+            </div>
+          </div>
+          <div className="win98-body">
+            <h1>Navidrome Jam</h1>
+            <p>Welcome, {username}!</p>
 
-          <div className="room-controls">
-            <h2>Join or Create a Room</h2>
-            <div className="room-input-group">
-              <input
-                type="text"
-                placeholder="Room Code"
-                value={roomInput}
-                onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
-                maxLength={6}
-                disabled={isJoiningRoom || isCreatingRoom}
-              />
-              <button
-                onClick={handleJoinRoom}
-                disabled={!isConnected || isJoiningRoom || isCreatingRoom}
-              >
-                {isJoiningRoom ? 'Joining...' : 'Join Room'}
+            <hr className="retro-divider" />
+
+            <div className="room-controls">
+              <fieldset className="win98-fieldset">
+                <legend>Join or Create a Room</legend>
+                <div className="room-input-group">
+                  <input
+                    type="text"
+                    className="win98-input"
+                    placeholder="ROOM CODE"
+                    value={roomInput}
+                    onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
+                    maxLength={6}
+                    disabled={isJoiningRoom || isCreatingRoom}
+                  />
+                  <button
+                    className="win98-btn"
+                    onClick={handleJoinRoom}
+                    disabled={!isConnected || isJoiningRoom || isCreatingRoom}
+                  >
+                    {isJoiningRoom ? 'Joining...' : 'Join'}
+                  </button>
+                </div>
+                <button
+                  className="win98-btn"
+                  onClick={handleCreateRoom}
+                  disabled={!isConnected || isCreatingRoom || isJoiningRoom}
+                >
+                  {isCreatingRoom ? 'Creating...' : 'Create New Room'}
+                </button>
+              </fieldset>
+            </div>
+
+            {roomError && <div className="error">{roomError}</div>}
+            {!isConnected && <div className="warning">Connecting to Jam server...</div>}
+
+            <div className="form-actions">
+              <button onClick={handleLogout} className="win98-btn logout-btn">
+                Logout
               </button>
             </div>
-            <button
-              onClick={handleCreateRoom}
-              disabled={!isConnected || isCreatingRoom || isJoiningRoom}
-            >
-              {isCreatingRoom ? 'Creating...' : 'Create New Room'}
-            </button>
           </div>
+        </div>
 
-          {roomError && <div className="error">{roomError}</div>}
-          {!isConnected && <div className="warning">Connecting to Jam server...</div>}
-
-          <button onClick={handleLogout} className="logout-btn">
-            Logout
-          </button>
+        <div className="geocities-footer">
+          <div className="marquee-container">
+            <span className="marquee-text">
+              ~*~ Welcome to the Navidrome Jam Music Lounge! Listen together with friends! ~*~
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -453,13 +518,13 @@ function App() {
   return (
     <div className="app jam-screen">
       <header>
-        <h1>🎵 Navidrome Jam</h1>
+        <h1>Navidrome Jam</h1>
         <div className="header-info">
           <span>Room: {currentRoom.id}</span>
-          <span>{isHost ? '👑 Host' : '🎧 Listener'}</span>
+          <span>{isHost ? 'HOST' : 'LISTENER'}</span>
           <span>{username}</span>
         </div>
-        <button onClick={handleLeaveRoom} className="leave-room-btn">
+        <button onClick={handleLeaveRoom} className="win98-btn leave-room-btn">
           Leave Room
         </button>
       </header>
@@ -467,117 +532,145 @@ function App() {
       <div className="main-content">
         {/* Left sidebar: Users */}
         <aside className="users-panel">
-          <h3>In this room ({currentRoom.users?.length || 0})</h3>
-          <ul className="users-list">
-            {currentRoom.users?.map((user) => (
-              <li key={user.id} className={user.id === currentRoom.hostId ? 'host' : ''}>
-                <span>{user.username}</span>
-                {user.id === currentRoom.hostId && <span className="badge">HOST</span>}
-              </li>
-            ))}
-          </ul>
+          <div className="panel-titlebar">
+            Users ({currentRoom.users?.length || 0})
+          </div>
+          <div className="panel-body">
+            <ul className="users-list">
+              {currentRoom.users?.map((user) => (
+                <li key={user.id} className={user.id === currentRoom.hostId ? 'host' : ''}>
+                  <span>{user.username}</span>
+                  {user.id === currentRoom.hostId && <span className="badge">HOST</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
         </aside>
 
         {/* Center: Player and Search */}
         <main className="player-panel">
-          {isLoadingTrack && !currentTrack && (
-            <div className="loading-track">
-              <p>Loading track...</p>
-            </div>
-          )}
-
-          {currentTrack && (
-            <div className="now-playing">
-              {currentTrack.coverArt && (
-                <img src={currentTrack.coverArt} alt="Album art" className="cover-art" />
-              )}
-              <div className="track-info">
-                <h2>{currentTrack.title}</h2>
-                <p>{currentTrack.artist}</p>
-                <p className="album">{currentTrack.album}</p>
-              </div>
-            </div>
-          )}
-
-          {currentTrack && (
-            <SyncedAudioPlayer
-              streamUrl={currentTrack.streamUrl}
-              jamClient={jamClient}
-              isHost={isHost}
-              isConnected={isConnected}
-              onEnded={handleTrackEnded}
-              audioRef={audioRef}
-            />
-          )}
-
-          {isHost && (
-            <div className="host-controls">
-              <button onClick={handlePlayPause}>
-                {currentTrack ? 'Play/Pause' : 'No track loaded'}
-              </button>
-            </div>
-          )}
-
-          <div className="search-panel">
-            <h3>Search Music</h3>
-            <form onSubmit={handleSearch}>
-              <input
-                type="text"
-                placeholder="Search songs, albums, artists..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                disabled={isSearching}
-              />
-              <button type="submit" disabled={isSearching}>
-                {isSearching ? 'Searching...' : 'Search'}
-              </button>
-            </form>
-
-            {searchResults && (
-              <div className="search-results">
-                {searchResults.searchResult3?.song?.length > 0 && (
-                  <div className="results-section">
-                    <h4>Songs</h4>
-                    <ul>
-                      {searchResults.searchResult3.song.map((song) => (
-                        <li key={song.id} className="song-item">
-                          <div className="song-info">
-                            <strong>{song.title}</strong>
-                            <span>{song.artist}</span>
-                          </div>
-                          <div className="song-actions">
-                            {isHost && (
-                              <>
-                                <button onClick={() => handlePlayTrack(song)}>Play</button>
-                                <button onClick={() => handleAddToQueue(song)}>Add to Queue</button>
-                              </>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+          <div className="panel-titlebar">
+            Now Playing
+          </div>
+          <div className="panel-body">
+            {isLoadingTrack && !currentTrack && (
+              <div className="loading-track">
+                <p>Loading track...</p>
               </div>
             )}
+
+            {currentTrack && (
+              <div className="now-playing">
+                {currentTrack.coverArt && (
+                  <img src={currentTrack.coverArt} alt="Album art" className="cover-art" />
+                )}
+                <div className="track-info">
+                  <h2>{currentTrack.title}</h2>
+                  <p>{currentTrack.artist}</p>
+                  <p className="album">{currentTrack.album}</p>
+                </div>
+              </div>
+            )}
+
+            {currentTrack && (
+              <SyncedAudioPlayer
+                streamUrl={currentTrack.streamUrl}
+                jamClient={jamClient}
+                isHost={isHost}
+                isConnected={isConnected}
+                onEnded={handleTrackEnded}
+                audioRef={audioRef}
+              />
+            )}
+
+            {isHost && (
+              <div className="host-controls">
+                <button className="win98-btn" onClick={handlePlayPause}>
+                  {currentTrack ? '|| Play/Pause' : 'No track loaded'}
+                </button>
+              </div>
+            )}
+
+            <hr className="retro-divider" />
+
+            <div className="search-panel">
+              <h3>Search Music</h3>
+              <form onSubmit={handleSearch}>
+                <input
+                  type="text"
+                  className="win98-input"
+                  placeholder="Search songs, albums, artists..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={isSearching}
+                />
+                <button type="submit" className="win98-btn" disabled={isSearching}>
+                  {isSearching ? 'Searching...' : 'Search'}
+                </button>
+              </form>
+
+              {searchResults && (
+                <div className="search-results">
+                  {searchResults.searchResult3?.song?.length > 0 && (
+                    <div className="results-section">
+                      <h4>Songs</h4>
+                      <ul>
+                        {searchResults.searchResult3.song.map((song) => (
+                          <li key={song.id} className="song-item">
+                            <div className="song-info">
+                              <strong>{song.title}</strong>
+                              <span>{song.artist}</span>
+                            </div>
+                            <div className="song-actions">
+                              {isHost && (
+                                <>
+                                  <button onClick={() => handlePlayTrack(song)}>Play</button>
+                                  <button onClick={() => handleAddToQueue(song)}>Queue+</button>
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </main>
 
         {/* Right sidebar: Queue */}
         <aside className="queue-panel">
-          <h3>Queue ({queue.length})</h3>
-          <ul className="queue-list">
-            {queue.map((track, index) => (
-              <li key={index}>
-                <div className="queue-track">
-                  <strong>{track.title}</strong>
-                  <span>{track.artist}</span>
-                </div>
-              </li>
-            ))}
-            {queue.length === 0 && <li className="empty">Queue is empty</li>}
-          </ul>
+          <div className="panel-titlebar">
+            Queue ({queue.length})
+          </div>
+          <div className="panel-body">
+            <ul className="queue-list">
+              {queue.map((track, index) => (
+                <li key={index}>
+                  <div className="queue-track">
+                    <strong>{track.title}</strong>
+                    <span>{track.artist}</span>
+                  </div>
+                </li>
+              ))}
+              {queue.length === 0 && <li className="empty">Queue is empty</li>}
+            </ul>
+          </div>
         </aside>
+      </div>
+
+      <div className="status-bar">
+        <div className="status-bar-section">
+          {currentTrack ? `Playing: ${currentTrack.title} - ${currentTrack.artist}` : 'Ready'}
+        </div>
+        <div className="status-bar-section">
+          {isConnected ? 'Connected' : 'Disconnected'}
+        </div>
+        <div className="status-bar-section">
+          {isHost ? 'HOST' : 'LISTENER'}
+        </div>
       </div>
     </div>
   );
