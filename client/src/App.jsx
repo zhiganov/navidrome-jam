@@ -329,13 +329,22 @@ function App() {
       return;
     }
 
-    const newQueue = [...queue, {
+    const item = {
       id: song.id,
       title: song.title,
       artist: song.artist,
       album: song.album
-    }];
+    };
 
+    // If nothing is playing, auto-play immediately
+    if (!currentTrack) {
+      jamClient.updateQueue(queue);
+      jamClient.play(song.id, 0);
+      loadTrack(song.id);
+      return;
+    }
+
+    const newQueue = [...queue, item];
     jamClient.updateQueue(newQueue);
   };
 
@@ -381,6 +390,28 @@ function App() {
       jamClient.pause(audio.currentTime);
     }
   };
+
+  const handleNextTrack = useCallback(() => {
+    if (!isHost || queue.length === 0) return;
+
+    const nextTrack = queue[0];
+    const newQueue = queue.slice(1);
+
+    jamClient.updateQueue(newQueue);
+    jamClient.play(nextTrack.id, 0);
+    loadTrack(nextTrack.id);
+  }, [isHost, queue, jamClient]);
+
+  const handlePrevTrack = useCallback(() => {
+    if (!isHost || !currentTrack) return;
+
+    // Restart current track from beginning
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = 0;
+      jamClient.play(currentTrack.id, 0);
+    }
+  }, [isHost, currentTrack, jamClient]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -666,8 +697,28 @@ function App() {
 
             {isHost && (
               <div className="host-controls">
-                <button className="win98-btn" onClick={handlePlayPause}>
-                  {currentTrack ? '|| Play/Pause' : 'No track loaded'}
+                <button
+                  className="win98-btn transport-btn"
+                  onClick={handlePrevTrack}
+                  disabled={!currentTrack}
+                  title="Restart track"
+                >
+                  |&lt;&lt;
+                </button>
+                <button
+                  className="win98-btn transport-btn transport-play"
+                  onClick={handlePlayPause}
+                  disabled={!currentTrack}
+                >
+                  {currentTrack ? (audioRef.current && !audioRef.current.paused ? '||' : '>>') : '--'}
+                </button>
+                <button
+                  className="win98-btn transport-btn"
+                  onClick={handleNextTrack}
+                  disabled={!currentTrack || queue.length === 0}
+                  title="Next track"
+                >
+                  &gt;&gt;|
                 </button>
               </div>
             )}
@@ -888,8 +939,16 @@ function App() {
                                 artist: song.artist,
                                 album: song.album
                               }));
-                              const newQueue = [...queue, ...newItems];
-                              jamClient.updateQueue(newQueue);
+
+                              if (!currentTrack && newItems.length > 0) {
+                                // Nothing playing — start the first track, queue the rest
+                                const [first, ...rest] = newItems;
+                                jamClient.updateQueue([...queue, ...rest]);
+                                jamClient.play(first.id, 0);
+                                loadTrack(first.id);
+                              } else {
+                                jamClient.updateQueue([...queue, ...newItems]);
+                              }
                             }}
                           >
                             Queue All

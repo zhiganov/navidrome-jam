@@ -799,26 +799,27 @@ body {
   cursor: pointer;
 }
 
-/* Host Controls */
+/* Host Controls — Transport buttons */
 .host-controls {
   margin-bottom: 8px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
 }
 
-.host-controls button {
-  background: var(--win-bg);
-  border: 2px solid;
-  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
-  padding: 6px 24px;
-  font-family: 'Tahoma', 'Verdana', sans-serif;
-  font-size: 11px;
-  cursor: pointer;
-  color: var(--text-dark);
+.transport-btn {
+  min-width: 48px !important;
+  padding: 4px 12px !important;
+  font-family: 'VT323', monospace !important;
+  font-size: 16px !important;
   font-weight: bold;
+  letter-spacing: -1px;
 }
 
-.host-controls button:active {
-  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+.transport-play {
+  min-width: 64px !important;
+  padding: 4px 20px !important;
+  font-size: 18px !important;
 }
 
 /* Search Panel */
