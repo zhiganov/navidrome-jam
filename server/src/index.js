@@ -241,18 +241,25 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   }
 });
 
-// Admin: invite code status
-app.get('/api/admin/codes', (req, res) => {
+// Admin auth helper
+function checkAdminAuth(req, res) {
   const adminPass = process.env.NAVIDROME_ADMIN_PASS;
   if (!adminPass) {
-    return res.status(503).json({ error: 'Admin not configured' });
+    res.status(503).json({ error: 'Admin not configured' });
+    return false;
   }
-
   const auth = req.headers.authorization;
   const queryKey = req.query.key;
   if (queryKey !== adminPass && (!auth || auth !== `Bearer ${adminPass}`)) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
   }
+  return true;
+}
+
+// Admin: invite code status (JSON API)
+app.get('/api/admin/codes', (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
 
   const codes = [...validInviteCodes].map(code => ({
     code,
@@ -262,6 +269,504 @@ app.get('/api/admin/codes', (req, res) => {
 
   res.json({ codes, total: codes.length, available: codes.filter(c => c.status === 'available').length });
 });
+
+// Admin: generate new invite codes
+app.post('/api/admin/generate-codes', (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  const count = Math.min(Math.max(parseInt(req.body.count) || 5, 1), 20);
+  const newCodes = [];
+
+  for (let i = 0; i < count; i++) {
+    let code;
+    do {
+      code = 'JAM-' + Array.from({ length: 4 }, () =>
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 36)]
+      ).join('');
+    } while (validInviteCodes.has(code));
+
+    validInviteCodes.add(code);
+    newCodes.push(code);
+  }
+
+  console.log(`Admin generated ${count} new invite codes: ${newCodes.join(', ')}`);
+  res.json({ generated: newCodes, total: validInviteCodes.size });
+});
+
+// Admin: remove a code
+app.delete('/api/admin/codes/:code', (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  const code = req.params.code;
+  if (!validInviteCodes.has(code)) {
+    return res.status(404).json({ error: 'Code not found' });
+  }
+
+  validInviteCodes.delete(code);
+  usedInviteCodes.delete(code);
+  res.json({ deleted: code, total: validInviteCodes.size });
+});
+
+// Admin dashboard page
+app.get('/admin', (req, res) => {
+  const adminPass = process.env.NAVIDROME_ADMIN_PASS;
+  if (!adminPass) {
+    return res.status(503).send('Admin not configured');
+  }
+  const queryKey = req.query.key;
+  if (queryKey !== adminPass) {
+    return res.status(401).send(`
+      <html><body style="background:#000033;color:#fff;font-family:Tahoma,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+        <div style="text-align:center">
+          <h2 style="color:#ff0000">Access Denied</h2>
+          <p>Add <code>?key=YOUR_ADMIN_PASSWORD</code> to the URL</p>
+        </div>
+      </body></html>
+    `);
+  }
+
+  res.send(getAdminPageHTML(queryKey));
+});
+
+function getAdminPageHTML(adminKey) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navidrome Jam — Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+  * { box-sizing: border-box; }
+
+  :root {
+    --win-bg: #c0c0c0;
+    --win-dark: #808080;
+    --win-light: #ffffff;
+    --win-darkest: #000000;
+    --title-blue: #000080;
+    --title-blue-light: #1084d0;
+    --lime: #00ff00;
+    --yellow: #ffff00;
+    --cyan: #00ffff;
+    --red: #ff0000;
+    --bg-dark: #000033;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Tahoma', 'Verdana', 'MS Sans Serif', sans-serif;
+    font-size: 11px;
+    min-height: 100vh;
+    background-color: #000022;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, #ffffff44, transparent),
+      radial-gradient(1px 1px at 30% 60%, #ffffff33, transparent),
+      radial-gradient(1px 1px at 50% 10%, #ffffff55, transparent),
+      radial-gradient(1px 1px at 70% 80%, #ffffff22, transparent),
+      radial-gradient(1px 1px at 90% 40%, #ffffff44, transparent),
+      radial-gradient(1px 1px at 15% 85%, #ffffff33, transparent),
+      radial-gradient(1px 1px at 45% 45%, #ffffff55, transparent),
+      radial-gradient(1px 1px at 75% 25%, #ffffff22, transparent),
+      radial-gradient(2px 2px at 60% 70%, #aaddff66, transparent),
+      radial-gradient(2px 2px at 85% 15%, #aaddff44, transparent);
+    background-size: 200px 200px;
+    color: #000;
+    display: flex;
+    justify-content: center;
+    padding: 30px 10px;
+  }
+
+  .window {
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+    box-shadow: inset 1px 1px 0 var(--win-light), inset -1px -1px 0 var(--win-dark);
+    width: 520px;
+    max-width: 100%;
+  }
+
+  .title-bar {
+    background: linear-gradient(90deg, var(--title-blue), var(--title-blue-light));
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 3px 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'VT323', 'Tahoma', monospace;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+  }
+
+  .title-bar-icon {
+    width: 14px;
+    height: 14px;
+    background: var(--yellow);
+    border: 1px solid #888;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .window-body {
+    padding: 10px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-family: 'VT323', monospace;
+    font-size: 15px;
+  }
+
+  .stat-box {
+    background: #fff;
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    padding: 6px 10px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .stat-box .num {
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  .stat-box .num.green { color: #008000; }
+  .stat-box .num.red { color: #cc0000; }
+  .stat-box .num.blue { color: var(--title-blue); }
+  .stat-box .label { color: #666; font-size: 12px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: #fff;
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  }
+
+  th {
+    background: var(--win-bg);
+    border-bottom: 1px solid var(--win-dark);
+    padding: 4px 6px;
+    text-align: left;
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+  }
+
+  td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #ddd;
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+  }
+
+  tr:hover { background: #e8e8ff; }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 2px;
+    font-family: 'Tahoma', sans-serif;
+  }
+
+  .badge-available {
+    background: #c6efce;
+    color: #006100;
+    border: 1px solid #006100;
+  }
+
+  .badge-used {
+    background: #ffc7ce;
+    color: #9c0006;
+    border: 1px solid #9c0006;
+  }
+
+  .btn {
+    font-family: 'Tahoma', sans-serif;
+    font-size: 11px;
+    padding: 3px 12px;
+    background: var(--win-bg);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+    cursor: pointer;
+    outline-offset: -1px;
+  }
+
+  .btn:active {
+    border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+  }
+
+  .btn:disabled {
+    color: var(--win-dark);
+    cursor: default;
+  }
+
+  .btn-primary {
+    font-weight: bold;
+    outline: 1px solid #000;
+    outline-offset: -4px;
+  }
+
+  .btn-danger {
+    color: #cc0000;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-width: 1px;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar label {
+    font-size: 11px;
+  }
+
+  .toolbar select, .toolbar input[type="number"] {
+    font-family: 'Tahoma', sans-serif;
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    background: #fff;
+    width: 50px;
+  }
+
+  .env-box {
+    margin-top: 10px;
+    background: #fff;
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    padding: 6px;
+  }
+
+  .env-box summary {
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    font-size: 14px;
+    color: var(--title-blue);
+  }
+
+  .env-box pre {
+    margin: 6px 0 0;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    white-space: pre-wrap;
+    background: #ffffcc;
+    padding: 4px;
+    border: 1px solid #ccc;
+    user-select: all;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--title-blue);
+    color: #fff;
+    padding: 6px 16px;
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+    display: none;
+    z-index: 999;
+  }
+
+  .toast.show { display: block; }
+
+  .note {
+    margin-top: 8px;
+    padding: 4px 6px;
+    background: #ffffcc;
+    border: 1px solid #ccc;
+    font-size: 10px;
+    color: #666;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 20px;
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="title-bar">
+    <div class="title-bar-icon">&#9834;</div>
+    Navidrome Jam — Invite Code Admin
+  </div>
+  <div class="window-body">
+    <div class="stats">
+      <div class="stat-box"><div class="num blue" id="stat-total">-</div><div class="label">Total</div></div>
+      <div class="stat-box"><div class="num green" id="stat-avail">-</div><div class="label">Available</div></div>
+      <div class="stat-box"><div class="num red" id="stat-used">-</div><div class="label">Used</div></div>
+    </div>
+
+    <div class="toolbar">
+      <label>Generate</label>
+      <input type="number" id="gen-count" value="5" min="1" max="20">
+      <button class="btn btn-primary" id="btn-generate" onclick="generateCodes()">Generate Codes</button>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="copyEnvVar()">Copy INVITE_CODES</button>
+    </div>
+
+    <div id="codes-table">
+      <div class="loading">Loading codes...</div>
+    </div>
+
+    <details class="env-box">
+      <summary>INVITE_CODES env var (for Railway)</summary>
+      <pre id="env-var">Loading...</pre>
+      <div class="note">Copy this value and paste it into your Railway environment variables to persist codes across deploys.</div>
+    </details>
+
+    <div class="note">
+      &#9888; Codes are stored in memory. Runtime-generated codes will be lost on server restart.
+      Copy the INVITE_CODES env var above and update Railway to persist them.
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_KEY = ${JSON.stringify(adminKey)};
+const API_BASE = window.location.origin;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+async function fetchCodes() {
+  try {
+    const r = await fetch(API_BASE + '/api/admin/codes?key=' + encodeURIComponent(API_KEY));
+    if (!r.ok) throw new Error('Failed to fetch');
+    const data = await r.json();
+    renderCodes(data);
+  } catch (e) {
+    document.getElementById('codes-table').innerHTML = '<div class="loading" style="color:red">Error loading codes</div>';
+  }
+}
+
+function renderCodes(data) {
+  document.getElementById('stat-total').textContent = data.total;
+  document.getElementById('stat-avail').textContent = data.available;
+  document.getElementById('stat-used').textContent = data.total - data.available;
+
+  // Sort: available first, then used
+  const sorted = [...data.codes].sort((a, b) => {
+    if (a.status === b.status) return a.code.localeCompare(b.code);
+    return a.status === 'available' ? -1 : 1;
+  });
+
+  let html = '<table><tr><th>Code</th><th>Status</th><th>Used By</th><th></th></tr>';
+  for (const c of sorted) {
+    const badge = c.status === 'used'
+      ? '<span class="badge badge-used">USED</span>'
+      : '<span class="badge badge-available">AVAILABLE</span>';
+    html += '<tr>'
+      + '<td style="font-weight:bold">' + esc(c.code) + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td>' + (c.usedBy ? esc(c.usedBy) : '—') + '</td>'
+      + '<td><button class="btn btn-danger" onclick="deleteCode(\\''+esc(c.code)+'\\')">del</button></td>'
+      + '</tr>';
+  }
+  html += '</table>';
+  document.getElementById('codes-table').innerHTML = html;
+
+  // Update env var display
+  const allCodes = data.codes.map(c => c.code).join(',');
+  document.getElementById('env-var').textContent = allCodes;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function generateCodes() {
+  const count = parseInt(document.getElementById('gen-count').value) || 5;
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  try {
+    const r = await fetch(API_BASE + '/api/admin/generate-codes?key=' + encodeURIComponent(API_KEY), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count })
+    });
+    if (!r.ok) throw new Error('Failed');
+    const data = await r.json();
+    showToast('Generated ' + data.generated.length + ' new codes');
+    fetchCodes();
+  } catch (e) {
+    showToast('Error generating codes');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate Codes';
+  }
+}
+
+async function deleteCode(code) {
+  if (!confirm('Delete code ' + code + '?')) return;
+  try {
+    const r = await fetch(API_BASE + '/api/admin/codes/' + encodeURIComponent(code) + '?key=' + encodeURIComponent(API_KEY), {
+      method: 'DELETE'
+    });
+    if (!r.ok) throw new Error('Failed');
+    showToast('Deleted ' + code);
+    fetchCodes();
+  } catch (e) {
+    showToast('Error deleting code');
+  }
+}
+
+async function copyEnvVar() {
+  const text = document.getElementById('env-var').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Copied to clipboard!');
+  } catch {
+    // Fallback: select the text
+    const pre = document.getElementById('env-var');
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    showToast('Select and copy manually');
+  }
+}
+
+fetchCodes();
+</script>
+</body>
+</html>`;
+}
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
