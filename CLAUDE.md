@@ -162,7 +162,7 @@ Key features in App.jsx:
 - **Sync race condition handling**: `pendingSyncRef` stores sync events arriving before `SyncedAudioPlayer` mounts; applied on `loadedmetadata`
 - **Track change detection**: `handleSyncInApp` listener detects `trackId` changes in sync events and triggers `loadTrack`
 
-**Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee.
+**Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee. All theme colors defined as CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--win-darkest`, `--titlebar-*`, `--text-dark`, `--accent-*`). Transport control icons (play, pause, prev, next, repeat) are CSS-only using `box-shadow` pixel art on `::before`/`::after` pseudo-elements — no icon fonts or SVGs.
 
 State management via React hooks (no Redux/Zustand). Client instances provided via React Context (`NavidromeContext`, `JamContext`) for proper hot-reload cleanup.
 
@@ -173,7 +173,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 
 **`services/navidrome.js`** - Navidrome Subsonic API client:
 - Token-based authentication with MD5 hashing (CryptoJS): `token = MD5(password + salt)`, random salt per request
-- Session persistence via localStorage (`nd_username`, `nd_token`, `nd_salt`) with **async validation on restore** (ping check)
+- Session persistence via localStorage (`navidrome_username`, `navidrome_token`, `navidrome_salt`) with **async validation on restore** (ping check)
 - URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
 - Methods: `authenticate()`, `restoreSession()`, `search()`, `getArtists()`, `getArtist()`, `getAlbum()`, `getSong()`, `getStreamUrl()`, `getCoverArtUrl()`
 - No plaintext passwords stored — only MD5 tokens (per Subsonic spec)
@@ -269,6 +269,16 @@ This project supports multiple deployment strategies:
 - Fly.io: `Procfile` (global low-latency)
 
 **Critical for WebSocket**: The sync server requires persistent connections. Vercel Functions don't support this, hence Railway/Render/VPS for server hosting.
+
+### Deploy Commands
+
+```bash
+# Server → Railway (manual deploy from project root)
+npx @railway/cli up --detach
+
+# Client → Vercel (auto-deploys on git push to main)
+git push
+```
 
 ## Environment Configuration
 
