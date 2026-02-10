@@ -1512,6 +1512,27 @@ body {
   color: var(--link-visited);
 }
 
+.github-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 10px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--cyan) !important;
+  text-decoration: none;
+  border: 1px solid var(--cyan);
+  letter-spacing: 1px;
+}
+
+.github-badge:visited {
+  color: var(--cyan) !important;
+}
+
+.github-badge:hover {
+  background: var(--cyan);
+  color: #000033 !important;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-content {

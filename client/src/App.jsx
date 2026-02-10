@@ -615,6 +615,7 @@ function App() {
             <span className="counter-digit">2</span>
             <span className="counter-digit">0</span>
           </div>
+          <a href="https://github.com/zhiganov/navidrome-jam" target="_blank" rel="noopener" className="github-badge">&#9733; Source Code on GitHub &#9733;</a>
         </div>
       </div>
     );
@@ -686,6 +687,7 @@ function App() {
               ~*~ Welcome to the Navidrome Jam Music Lounge! Listen together with friends! ~*~
             </span>
           </div>
+          <a href="https://github.com/zhiganov/navidrome-jam" target="_blank" rel="noopener" className="github-badge">&#9733; Source Code on GitHub &#9733;</a>
         </div>
       </div>
     );
