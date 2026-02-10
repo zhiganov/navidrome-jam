@@ -113,10 +113,21 @@ cd client && npm run dev
 ### Sync Server (`server/src/`)
 
 **`index.js`** - Express + Socket.io server with event handlers:
-- REST endpoints: `/health`, `/api/rooms` (create room), `/api/register` (invite-code registration)
+- REST endpoints:
+  - `/health` — health check
+  - `GET /api/rooms` — list active rooms (public summary)
+  - `POST /api/rooms` — create room (rate-limited 5/min/IP)
+  - `GET /api/rooms/:roomId` — get room details
+  - `POST /api/register` — invite-code registration (rate-limited 3/min/IP)
+  - `GET /api/admin/codes` — list all invite codes with status (admin auth)
+  - `POST /api/admin/generate-codes` — generate new invite codes (admin auth)
+  - `DELETE /api/admin/codes/:code` — delete an invite code (admin auth)
+  - `GET /admin` — server-rendered Win98-styled admin dashboard HTML page
+- Admin auth: `checkAdminAuth(req, res)` helper — validates `Authorization: Bearer <NAVIDROME_ADMIN_PASS>` header or `?key=` query param
 - WebSocket events: `join-room`, `play`, `pause`, `seek`, `update-queue`, `heartbeat`, `promote-cohost`, `demote-cohost`
 - Authorization: Host and co-hosts can send playback/queue commands; only host can promote/demote co-hosts
 - Auto host transfer when host disconnects
+- Join-in-progress sync: Server sends `sync` event after `room-state` when joining a room with active playback
 - Invite-code registration: validates codes, authenticates as admin via Navidrome native API, creates user
 - `trust proxy` enabled for Railway reverse proxy (rate limiting)
 
@@ -131,7 +142,9 @@ cd client && npm run dev
 - Duplicate user handling: Reconnecting users update their socketId without creating duplicate entries
 - Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min, deletes empty rooms
 
-**Invite code lifecycle**: Codes loaded from `INVITE_CODES` env var into a `Set`. A separate `usedInviteCodes` Set tracks consumed codes. Codes are marked used only after successful Navidrome user creation. Both sets are in-memory — server restart resets used codes (acceptable for casual use).
+**`listRooms()`** method on `RoomManager` returns public room summaries: `{ id, hostName, userCount, currentTrack: { title, artist, playing } | null, createdAt }`.
+
+**Invite code lifecycle**: Codes loaded from `INVITE_CODES` env var into a `Set`. A separate `usedInviteCodes` Map tracks consumed codes (`code → username`). Codes are marked used only after successful Navidrome user creation. Both are in-memory — server restart resets used codes (acceptable for casual use). Admin endpoints expose code status and allow generation/deletion.
 
 **Key design pattern**: All state is ephemeral in-memory. Rooms disappear when empty. For persistence, future work would add Redis/database layer.
 
@@ -139,8 +152,15 @@ cd client && npm run dev
 
 **`App.jsx`** - Main component with three screens:
 1. Login screen - Navidrome authentication with Login/Sign Up tabs (invite-code registration)
-2. Room selection - Create/join rooms
+2. Room selection - Create/join rooms + active rooms list (polled every 10s)
 3. Jam session - Player with Winamp-style transport controls, Browse/Search tabs, queue with reordering, users panel with co-host promote/demote (3-panel layout with status bar)
+
+Key features in App.jsx:
+- **Active rooms**: `fetchActiveRooms()` polls `GET /api/rooms` every 10s on room selection screen
+- **Album auto-queue**: `handlePlayTrack(song, albumSongs)` accepts optional album context — queues remaining tracks when playing from browse view
+- **Repeat mode**: `repeatMode` state with localStorage persistence (`jam_repeat`). When enabled, `handleTrackEnded` re-appends current track to queue tail (empty queue = single-track loop)
+- **Sync race condition handling**: `pendingSyncRef` stores sync events arriving before `SyncedAudioPlayer` mounts; applied on `loadedmetadata`
+- **Track change detection**: `handleSyncInApp` listener detects `trackId` changes in sync events and triggers `loadTrack`
 
 **Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee.
 
@@ -163,7 +183,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Custom event emitter pattern for React integration (not Node EventEmitter — manual `listeners` map)
 - User ID generation: `'user-' + Math.random().toString(36).substring(2, 18)`, persisted in localStorage as `jam_user_id`
 - Room creation via REST (`POST /api/rooms`), registration via REST (`POST /api/register`), all other operations via WebSocket
-- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `promoteCoHost()`, `demoteCoHost()`, `sendHeartbeat()`, `register()`
+- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `promoteCoHost()`, `demoteCoHost()`, `sendHeartbeat()`, `register()`, `listRooms()`
 - Events emitted: `room-state`, `sync`, `user-joined`, `user-left`, `cohost-updated`, `queue-updated`, `error`, `disconnected`
 
 **`components/SyncedAudioPlayer.jsx`** - Core sync logic:
@@ -181,6 +201,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
   }
   ```
 - Heartbeat system: Sends position every 2s for presence tracking (restarts on reconnect via `isConnected` prop)
+- `pendingSyncRef` prop: Applies deferred sync state on mount (handles race condition when sync arrives before audio element is ready)
 - Audio streams directly from Navidrome via `getStreamUrl()`
 
 **`components/ErrorBoundary.jsx`** - React error boundary:
@@ -342,10 +363,11 @@ Server → 201 { message: "Account created successfully" }
 | Key | Purpose |
 |-----|---------|
 | `jam_user_id` | Persistent user ID (`user-<random>`) for WebSocket identity |
-| `nd_username` | Navidrome username for session restore |
-| `nd_token` | MD5(password + salt) for Subsonic auth |
-| `nd_salt` | Random salt used in token generation |
+| `navidrome_username` | Navidrome username for session restore |
+| `navidrome_token` | MD5(password + salt) for Subsonic auth |
+| `navidrome_salt` | Random salt used in token generation |
 | `audio_volume` | Last-used volume level (0.0–1.0) |
+| `jam_repeat` | Repeat mode (`on` / `off`) |
 
 ## Testing Strategy
 
@@ -377,6 +399,21 @@ Currently manual testing only. Test checklist:
 - [ ] Clicking artist shows their albums
 - [ ] Clicking album shows track list with Queue All button
 - [ ] Breadcrumb navigation works (Library > Artist > Album)
+
+**Active Rooms & Repeat**:
+- [ ] Room selection screen shows active rooms list
+- [ ] Active rooms list updates every 10 seconds
+- [ ] Clicking "Join" on active room enters the room
+- [ ] Repeat button toggles on/off with visual state change
+- [ ] With repeat on, finished track re-appends to queue
+- [ ] With repeat on and empty queue, single track loops
+- [ ] Playing from album browse view queues remaining album tracks
+
+**Admin Dashboard**:
+- [ ] `/admin?key=<pass>` loads Win98-styled admin page
+- [ ] Shows all invite codes with used/available status
+- [ ] Generate new codes button works
+- [ ] Delete code button works
 
 **Edge Cases**:
 - [ ] Multiple rapid play/pause commands

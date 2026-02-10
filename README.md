@@ -45,17 +45,22 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - [x] User presence tracking with heartbeat system
 
 ### User Experience
-- [x] Invite-code-based self-service registration (no admin dashboard needed)
+- [x] Invite-code-based self-service registration
 - [x] Login / Sign Up tabs with form validation
 - [x] Co-host system (host can promote/demote users)
 - [x] Queue reordering (move up/down/remove)
 - [x] Transport controls (prev/play-pause/next) with play history
+- [x] Repeat mode — finished tracks re-append to queue for continuous playback
+- [x] Album auto-queue — playing a track from album view queues remaining tracks
+- [x] Active rooms list on room selection screen (auto-refreshing)
 - [x] Volume control with persistent preferences
 - [x] Leave room functionality
 - [x] Loading states for all async operations
 - [x] Error boundary for graceful error handling
 - [x] Session validation and auto-recovery
-- [x] Windows 98 / GeoCities retro UI theme
+- [x] OG meta tags and Twitter Cards for rich link previews
+- [x] Windows 98 / GeoCities retro UI theme with custom favicon and OG image
+- [x] Admin dashboard for invite code management (server-rendered at `/admin`)
 
 ### Security & Reliability
 - [x] Input validation and sanitization (XSS prevention)
@@ -183,6 +188,9 @@ navidrome-jam/
 │   │   │   └── jamClient.js          # WebSocket client wrapper
 │   │   └── App.jsx          # Main app with loading states
 │   └── public/
+│       ├── favicon.svg            # Win98 music note favicon
+│       ├── og-image.svg           # OG image source (Win98 scene)
+│       └── og-image.png           # Rasterized OG image for social previews
 ├── docs/             # Documentation
 ├── QUICKSTART.md     # Quick start guide
 └── SECURITY.md       # Security considerations
@@ -251,7 +259,17 @@ cd client && npm run dev
 - [x] Play history for previous track navigation
 - [x] Co-host system (host promotes users to share playback control)
 
-### Phase 6: Future Enhancements
+### Phase 6: Sync, UX & Admin ✅
+- [x] Fix sync: join-in-progress playback, track change detection, race condition handling
+- [x] Album auto-queue (remaining tracks queued when playing from browse view)
+- [x] Repeat mode with localStorage persistence
+- [x] Active rooms list on room selection screen
+- [x] Admin dashboard (invite code management, code generation/deletion)
+- [x] GitHub repo link in client UI
+- [x] OG meta tags, Twitter Cards, custom favicon and OG image
+- [x] Win98-themed SVG favicon and OG image with Winamp player scene
+
+### Phase 7: Future Enhancements
 - [ ] Mobile-responsive improvements
 - [ ] Persistent rooms (database storage)
 - [ ] Discord bot for queue control
@@ -259,6 +277,16 @@ cd client && npm run dev
 - [ ] Automated tests (Jest, Vitest)
 
 ## Changelog
+
+### 2026-02-10 — Sync Fixes, Repeat, Active Rooms, Admin Dashboard
+
+- **Sync fixes**: Fixed three interrelated bugs — no playback on join, wrong track on host change, race condition when sync arrives before audio element mounts. Server now sends sync event on join; client detects track changes and applies deferred sync via `pendingSyncRef`.
+- **Repeat mode**: Toggle auto-repeat so the room plays forever. Finished tracks re-append to queue tail. Empty queue + repeat = single-track loop. State persisted in localStorage.
+- **Album auto-queue**: Playing a track from album browse view now queues all remaining album tracks, so next/prev buttons work within the album.
+- **Active rooms**: Room selection screen shows currently active rooms with host name, listener count, and current track. Auto-refreshes every 10 seconds.
+- **Admin dashboard**: Server-rendered Win98-styled page at `/admin` for invite code management — view code status (available/used/who used it), generate new codes, delete codes. Protected by admin password.
+- **Social sharing**: OG meta tags, Twitter Cards, custom Win98 favicon (SVG), and OG image with Winamp player scene for rich link previews in messengers.
+- **GitHub link**: Repo link added to login and room selection screens.
 
 ### 2026-02-10 — Co-hosts, Library Browser, Transport Controls
 
