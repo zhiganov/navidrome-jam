@@ -34,6 +34,9 @@ function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
+  // Play history for previous track
+  const [playHistory, setPlayHistory] = useState([]);
+
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
   const [browseView, setBrowseView] = useState('artists');
@@ -319,6 +322,11 @@ function App() {
       return;
     }
 
+    // Push current track to history before switching
+    if (currentTrack) {
+      setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
+    }
+
     jamClient.play(song.id, 0);
     loadTrack(song.id);
   };
@@ -356,6 +364,11 @@ function App() {
       return;
     }
 
+    // Push current track to history
+    if (currentTrack) {
+      setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
+    }
+
     const nextTrack = queue[0];
     const newQueue = queue.slice(1);
 
@@ -364,7 +377,7 @@ function App() {
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [isHost, queue, jamClient]);
+  }, [isHost, queue, jamClient, currentTrack]);
 
   const handleLeaveRoom = () => {
     jamClient.leaveRoom();
@@ -372,6 +385,7 @@ function App() {
     setCurrentRoom(null);
     setCurrentTrack(null);
     setQueue([]);
+    setPlayHistory([]);
     setSearchResults(null);
     setIsHost(false);
 
@@ -394,24 +408,51 @@ function App() {
   const handleNextTrack = useCallback(() => {
     if (!isHost || queue.length === 0) return;
 
+    // Push current track to history
+    if (currentTrack) {
+      setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
+    }
+
     const nextTrack = queue[0];
     const newQueue = queue.slice(1);
 
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [isHost, queue, jamClient]);
+  }, [isHost, queue, jamClient, currentTrack]);
 
   const handlePrevTrack = useCallback(() => {
     if (!isHost || !currentTrack) return;
 
-    // Restart current track from beginning
     const audio = audioRef.current;
-    if (audio) {
+
+    // If more than 3 seconds in, restart current track
+    if (audio && audio.currentTime > 3) {
       audio.currentTime = 0;
       jamClient.play(currentTrack.id, 0);
+      return;
     }
-  }, [isHost, currentTrack, jamClient]);
+
+    // Otherwise go to previous track from history
+    if (playHistory.length === 0) {
+      // No history — just restart
+      if (audio) {
+        audio.currentTime = 0;
+        jamClient.play(currentTrack.id, 0);
+      }
+      return;
+    }
+
+    // Pop last track from history, put current track back at front of queue
+    const prevTrack = playHistory[playHistory.length - 1];
+    setPlayHistory(prev => prev.slice(0, -1));
+
+    const newQueue = [{ id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }, ...queue];
+    jamClient.updateQueue(newQueue);
+
+    jamClient.play(prevTrack.id, 0);
+    loadTrack(prevTrack.id);
+  }, [isHost, currentTrack, jamClient, playHistory, queue]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -701,7 +742,7 @@ function App() {
                   className="win98-btn transport-btn"
                   onClick={handlePrevTrack}
                   disabled={!currentTrack}
-                  title="Restart track"
+                  title={playHistory.length > 0 ? "Previous track" : "Restart track"}
                 >
                   |&lt;&lt;
                 </button>
@@ -971,11 +1012,54 @@ function App() {
           <div className="panel-body">
             <ul className="queue-list">
               {queue.map((track, index) => (
-                <li key={index}>
+                <li key={`${track.id}-${index}`}>
                   <div className="queue-track">
-                    <strong>{track.title}</strong>
-                    <span>{track.artist}</span>
+                    <span className="queue-num">{index + 1}.</span>
+                    <div className="queue-track-info">
+                      <strong>{track.title}</strong>
+                      <span>{track.artist}</span>
+                    </div>
                   </div>
+                  {isHost && (
+                    <div className="queue-controls">
+                      <button
+                        className="queue-ctrl-btn"
+                        onClick={() => {
+                          if (index === 0) return;
+                          const newQueue = [...queue];
+                          [newQueue[index - 1], newQueue[index]] = [newQueue[index], newQueue[index - 1]];
+                          jamClient.updateQueue(newQueue);
+                        }}
+                        disabled={index === 0}
+                        title="Move up"
+                      >
+                        ^
+                      </button>
+                      <button
+                        className="queue-ctrl-btn"
+                        onClick={() => {
+                          if (index === queue.length - 1) return;
+                          const newQueue = [...queue];
+                          [newQueue[index], newQueue[index + 1]] = [newQueue[index + 1], newQueue[index]];
+                          jamClient.updateQueue(newQueue);
+                        }}
+                        disabled={index === queue.length - 1}
+                        title="Move down"
+                      >
+                        v
+                      </button>
+                      <button
+                        className="queue-ctrl-btn queue-remove-btn"
+                        onClick={() => {
+                          const newQueue = queue.filter((_, i) => i !== index);
+                          jamClient.updateQueue(newQueue);
+                        }}
+                        title="Remove"
+                      >
+                        x
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
               {queue.length === 0 && <li className="empty">Queue is empty</li>}

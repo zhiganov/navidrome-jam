@@ -631,22 +631,50 @@ body {
   padding: 3px 4px;
   border-bottom: 1px solid #d0d0d0;
   font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dark);
 }
 
 .queue-track {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
 }
 
-.queue-track strong {
-  color: var(--text-dark);
-  font-size: 11px;
-}
-
-.queue-track span {
+.queue-num {
   color: var(--win-dark);
   font-size: 10px;
+  min-width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.queue-track-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.queue-track-info strong {
+  color: var(--text-dark);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-track-info span {
+  color: var(--win-dark);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .queue-list .empty {
@@ -654,6 +682,45 @@ body {
   color: var(--win-dark);
   font-style: italic;
   padding: 8px;
+  display: block;
+}
+
+/* Queue reorder controls */
+.queue-controls {
+  display: flex;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.queue-ctrl-btn {
+  width: 16px;
+  height: 14px;
+  background: var(--win-bg);
+  border: 1px solid;
+  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+  font-size: 8px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-dark);
+  font-family: 'Tahoma', sans-serif;
+}
+
+.queue-ctrl-btn:active {
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+}
+
+.queue-ctrl-btn:disabled {
+  color: var(--win-dark);
+  cursor: default;
+}
+
+.queue-remove-btn {
+  color: var(--red);
+  font-weight: bold;
 }
 
 /* Now Playing */
