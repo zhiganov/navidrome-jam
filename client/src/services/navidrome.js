@@ -210,6 +210,13 @@ class NavidromeClient {
   }
 
   /**
+   * Get all artists (alphabetically indexed)
+   */
+  async getArtists() {
+    return this.fetch('getArtists.view');
+  }
+
+  /**
    * Search for songs, albums, artists
    */
   async search(query, artistCount = 10, albumCount = 10, songCount = 20) {

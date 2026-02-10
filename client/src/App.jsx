@@ -34,6 +34,14 @@ function App() {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
+  // Browse state
+  const [musicTab, setMusicTab] = useState('browse');
+  const [browseView, setBrowseView] = useState('artists');
+  const [artists, setArtists] = useState(null);
+  const [selectedArtist, setSelectedArtist] = useState(null);
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
+
   // Restore session on mount
   useEffect(() => {
     const restoreSession = async () => {
@@ -210,6 +218,79 @@ function App() {
       setIsSearching(false);
     }
   };
+
+  // Browse handlers
+  const loadArtists = async () => {
+    if (artists) return; // Already loaded
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getArtists();
+      // Flatten the indexed artist list
+      const allArtists = [];
+      if (result.artists?.index) {
+        for (const idx of result.artists.index) {
+          if (idx.artist) {
+            const artistList = Array.isArray(idx.artist) ? idx.artist : [idx.artist];
+            allArtists.push(...artistList);
+          }
+        }
+      }
+      setArtists(allArtists);
+    } catch (error) {
+      console.error('Error loading artists:', error);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const handleBrowseArtist = async (artist) => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getArtist(artist.id);
+      const albums = result.artist?.album
+        ? (Array.isArray(result.artist.album) ? result.artist.album : [result.artist.album])
+        : [];
+      setSelectedArtist({ ...artist, albums });
+      setBrowseView('albums');
+    } catch (error) {
+      console.error('Error loading artist:', error);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const handleBrowseAlbum = async (album) => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getAlbum(album.id);
+      const songs = result.album?.song
+        ? (Array.isArray(result.album.song) ? result.album.song : [result.album.song])
+        : [];
+      setSelectedAlbum({ ...album, songs });
+      setBrowseView('songs');
+    } catch (error) {
+      console.error('Error loading album:', error);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const handleBrowseBack = () => {
+    if (browseView === 'songs') {
+      setSelectedAlbum(null);
+      setBrowseView('albums');
+    } else if (browseView === 'albums') {
+      setSelectedArtist(null);
+      setBrowseView('artists');
+    }
+  };
+
+  // Load artists when switching to browse tab
+  useEffect(() => {
+    if (musicTab === 'browse' && currentRoom) {
+      loadArtists();
+    }
+  }, [musicTab, currentRoom]);
 
   const loadTrack = async (songId) => {
     setIsLoadingTrack(true);
@@ -593,45 +674,221 @@ function App() {
 
             <hr className="retro-divider" />
 
-            <div className="search-panel">
-              <h3>Search Music</h3>
-              <form onSubmit={handleSearch}>
-                <input
-                  type="text"
-                  className="win98-input"
-                  placeholder="Search songs, albums, artists..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={isSearching}
-                />
-                <button type="submit" className="win98-btn" disabled={isSearching}>
-                  {isSearching ? 'Searching...' : 'Search'}
-                </button>
-              </form>
+            {/* Music tabs: Browse | Search */}
+            <div className="music-tabs">
+              <button
+                className={`auth-tab ${musicTab === 'browse' ? 'active' : ''}`}
+                onClick={() => setMusicTab('browse')}
+              >
+                Browse
+              </button>
+              <button
+                className={`auth-tab ${musicTab === 'search' ? 'active' : ''}`}
+                onClick={() => setMusicTab('search')}
+              >
+                Search
+              </button>
+            </div>
 
-              {searchResults && (
-                <div className="search-results">
-                  {searchResults.searchResult3?.song?.length > 0 && (
-                    <div className="results-section">
-                      <h4>Songs</h4>
-                      <ul>
-                        {searchResults.searchResult3.song.map((song) => (
-                          <li key={song.id} className="song-item">
-                            <div className="song-info">
-                              <strong>{song.title}</strong>
-                              <span>{song.artist}</span>
-                            </div>
-                            <div className="song-actions">
-                              {isHost && (
-                                <>
-                                  <button onClick={() => handlePlayTrack(song)}>Play</button>
-                                  <button onClick={() => handleAddToQueue(song)}>Queue+</button>
-                                </>
+            <div className="music-tab-content">
+              {musicTab === 'search' ? (
+                <div className="search-panel">
+                  <form onSubmit={handleSearch}>
+                    <input
+                      type="text"
+                      className="win98-input"
+                      placeholder="Search songs, albums, artists..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      disabled={isSearching}
+                    />
+                    <button type="submit" className="win98-btn" disabled={isSearching}>
+                      {isSearching ? 'Searching...' : 'Search'}
+                    </button>
+                  </form>
+
+                  {searchResults && (
+                    <div className="search-results">
+                      {searchResults.searchResult3?.song?.length > 0 && (
+                        <div className="results-section">
+                          <h4>Songs</h4>
+                          <ul>
+                            {searchResults.searchResult3.song.map((song) => (
+                              <li key={song.id} className="song-item">
+                                <div className="song-info">
+                                  <strong>{song.title}</strong>
+                                  <span>{song.artist}</span>
+                                </div>
+                                <div className="song-actions">
+                                  {isHost && (
+                                    <>
+                                      <button onClick={() => handlePlayTrack(song)}>Play</button>
+                                      <button onClick={() => handleAddToQueue(song)}>Queue+</button>
+                                    </>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="browse-panel">
+                  {/* Breadcrumb navigation */}
+                  <div className="browse-breadcrumb">
+                    <span
+                      className={browseView === 'artists' ? 'current' : 'clickable'}
+                      onClick={() => { setBrowseView('artists'); setSelectedArtist(null); setSelectedAlbum(null); }}
+                    >
+                      Library
+                    </span>
+                    {selectedArtist && (
+                      <>
+                        <span className="separator">&gt;</span>
+                        <span
+                          className={browseView === 'albums' ? 'current' : 'clickable'}
+                          onClick={() => { setBrowseView('albums'); setSelectedAlbum(null); }}
+                        >
+                          {selectedArtist.name}
+                        </span>
+                      </>
+                    )}
+                    {selectedAlbum && (
+                      <>
+                        <span className="separator">&gt;</span>
+                        <span className="current">{selectedAlbum.name}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {isLoadingBrowse && (
+                    <div className="browse-loading">Loading...</div>
+                  )}
+
+                  {/* Artists list */}
+                  {!isLoadingBrowse && browseView === 'artists' && (
+                    <div className="browse-list">
+                      {artists && artists.length > 0 ? (
+                        <ul>
+                          {artists.map((artist) => (
+                            <li
+                              key={artist.id}
+                              className="browse-item"
+                              onClick={() => handleBrowseArtist(artist)}
+                            >
+                              <span className="browse-icon folder-icon"></span>
+                              <div className="browse-item-info">
+                                <strong>{artist.name}</strong>
+                                <span>{artist.albumCount} album{artist.albumCount !== 1 ? 's' : ''}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">No artists found</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Albums list */}
+                  {!isLoadingBrowse && browseView === 'albums' && selectedArtist && (
+                    <div className="browse-list">
+                      <button className="win98-btn browse-back-btn" onClick={handleBrowseBack}>
+                        &lt; Back
+                      </button>
+                      {selectedArtist.albums.length > 0 ? (
+                        <ul>
+                          {selectedArtist.albums.map((album) => (
+                            <li
+                              key={album.id}
+                              className="browse-item album-item"
+                              onClick={() => handleBrowseAlbum(album)}
+                            >
+                              {album.coverArt ? (
+                                <img
+                                  src={navidrome.getCoverArtUrl(album.coverArt, 40)}
+                                  alt=""
+                                  className="browse-thumb"
+                                />
+                              ) : (
+                                <span className="browse-icon cd-icon"></span>
                               )}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                              <div className="browse-item-info">
+                                <strong>{album.name}</strong>
+                                <span>{album.year ? `${album.year} - ` : ''}{album.songCount} track{album.songCount !== 1 ? 's' : ''}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">No albums found</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Songs list */}
+                  {!isLoadingBrowse && browseView === 'songs' && selectedAlbum && (
+                    <div className="browse-list">
+                      <button className="win98-btn browse-back-btn" onClick={handleBrowseBack}>
+                        &lt; Back
+                      </button>
+
+                      {selectedAlbum.coverArt && (
+                        <div className="browse-album-header">
+                          <img
+                            src={navidrome.getCoverArtUrl(selectedAlbum.coverArt, 80)}
+                            alt=""
+                            className="browse-album-art"
+                          />
+                          <div className="browse-album-meta">
+                            <strong>{selectedAlbum.name}</strong>
+                            <span>{selectedArtist?.name}</span>
+                            {selectedAlbum.year && <span>{selectedAlbum.year}</span>}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedAlbum.songs.length > 0 ? (
+                        <ul>
+                          {selectedAlbum.songs.map((song, index) => (
+                            <li key={song.id} className="song-item">
+                              <div className="song-info">
+                                <strong>
+                                  <span className="track-num">{song.track || index + 1}.</span>
+                                  {song.title}
+                                </strong>
+                                <span>{formatDuration(song.duration)}</span>
+                              </div>
+                              <div className="song-actions">
+                                {isHost && (
+                                  <>
+                                    <button onClick={() => handlePlayTrack(song)}>Play</button>
+                                    <button onClick={() => handleAddToQueue(song)}>Queue+</button>
+                                  </>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">No tracks found</div>
+                      )}
+
+                      {isHost && selectedAlbum.songs.length > 0 && (
+                        <div className="browse-album-actions">
+                          <button
+                            className="win98-btn"
+                            onClick={() => {
+                              selectedAlbum.songs.forEach(song => handleAddToQueue(song));
+                            }}
+                          >
+                            Queue All
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -674,6 +931,13 @@ function App() {
       </div>
     </div>
   );
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export default App;
