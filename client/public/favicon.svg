@@ -1,4 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="4" fill="#000080"/>
-  <text x="16" y="24" font-size="22" fill="#00ffff" text-anchor="middle" font-family="serif">&#9835;</text>
+  <!-- Win98 beveled outer frame -->
+  <rect width="32" height="32" fill="#c0c0c0"/>
+  <rect x="0" y="0" width="31" height="1" fill="#fff"/>
+  <rect x="0" y="0" width="1" height="31" fill="#fff"/>
+  <rect x="1" y="31" width="31" height="1" fill="#000"/>
+  <rect x="31" y="1" width="1" height="31" fill="#000"/>
+  <rect x="1" y="1" width="30" height="1" fill="#dfdfdf"/>
+  <rect x="1" y="1" width="1" height="30" fill="#dfdfdf"/>
+  <rect x="2" y="30" width="29" height="1" fill="#808080"/>
+  <rect x="30" y="2" width="1" height="29" fill="#808080"/>
+
+  <!-- Blue gradient titlebar -->
+  <rect x="3" y="3" width="26" height="6" fill="#000080"/>
+  <rect x="16" y="3" width="13" height="6" fill="#1084d0"/>
+
+  <!-- Inner recessed area -->
+  <rect x="3" y="10" width="26" height="19" fill="#fff"/>
+  <rect x="3" y="10" width="26" height="1" fill="#808080"/>
+  <rect x="3" y="10" width="1" height="19" fill="#808080"/>
+
+  <!-- Musical note — pixel art style -->
+  <!-- Note head 1 (bottom-left) -->
+  <rect x="8" y="22" width="4" height="3" rx="1" fill="#000080"/>
+  <!-- Note head 2 (bottom-right) -->
+  <rect x="18" y="20" width="4" height="3" rx="1" fill="#000080"/>
+  <!-- Stem 1 -->
+  <rect x="11" y="13" width="2" height="10" fill="#000080"/>
+  <!-- Stem 2 -->
+  <rect x="21" y="11" width="2" height="10" fill="#000080"/>
+  <!-- Beam connecting stems -->
+  <rect x="11" y="11" width="12" height="3" fill="#000080"/>
+
+  <!-- Cyan sparkle dots -->
+  <rect x="6" y="14" width="2" height="2" fill="#00ffff"/>
+  <rect x="24" y="16" width="2" height="2" fill="#00ffff"/>
+  <rect x="14" y="24" width="2" height="2" fill="#00ffff"/>
 </svg>

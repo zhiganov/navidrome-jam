@@ -1140,41 +1140,90 @@ body {
   background: #a0a0a0;
 }
 
-/* CSS-drawn repeat/loop icon — two arrows forming a cycle */
+/* Repeat icon — pixel-art loop arrows via box-shadow */
 .repeat-icon {
   width: 14px;
   height: 10px;
 }
 
+/* Top arrow: ——→ pointing right */
 .repeat-icon::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  width: 12px;
-  height: 8px;
-  border: 2px solid var(--text-dark);
-  border-radius: 1px;
+  left: 1px;
+  width: 2px;
+  height: 2px;
+  background: var(--text-dark);
+  box-shadow:
+    /* Top horizontal bar */
+    2px 0 0 var(--text-dark),
+    4px 0 0 var(--text-dark),
+    6px 0 0 var(--text-dark),
+    8px 0 0 var(--text-dark),
+    /* Right arrowhead */
+    8px -2px 0 var(--text-dark),
+    10px 0 0 var(--text-dark),
+    8px 2px 0 var(--text-dark),
+    /* Left vertical connector going down */
+    0 2px 0 var(--text-dark),
+    0 4px 0 var(--text-dark),
+    0 6px 0 var(--text-dark);
 }
 
+/* Bottom arrow: ←—— pointing left */
 .repeat-icon::after {
   content: '';
   position: absolute;
-  right: -1px;
-  top: 2px;
-  width: 0;
-  height: 0;
-  border-left: 4px solid var(--text-dark);
-  border-top: 3px solid transparent;
-  border-bottom: 3px solid transparent;
+  bottom: 0;
+  right: 1px;
+  width: 2px;
+  height: 2px;
+  background: var(--text-dark);
+  box-shadow:
+    /* Bottom horizontal bar */
+    -2px 0 0 var(--text-dark),
+    -4px 0 0 var(--text-dark),
+    -6px 0 0 var(--text-dark),
+    -8px 0 0 var(--text-dark),
+    /* Left arrowhead */
+    -8px -2px 0 var(--text-dark),
+    -10px 0 0 var(--text-dark),
+    -8px 2px 0 var(--text-dark),
+    /* Right vertical connector going up */
+    0 -2px 0 var(--text-dark),
+    0 -4px 0 var(--text-dark),
+    0 -6px 0 var(--text-dark);
 }
 
 .repeat-active .repeat-icon::before {
-  border-color: #006000;
+  background: #006000;
+  box-shadow:
+    2px 0 0 #006000,
+    4px 0 0 #006000,
+    6px 0 0 #006000,
+    8px 0 0 #006000,
+    8px -2px 0 #006000,
+    10px 0 0 #006000,
+    8px 2px 0 #006000,
+    0 2px 0 #006000,
+    0 4px 0 #006000,
+    0 6px 0 #006000;
 }
 
 .repeat-active .repeat-icon::after {
-  border-left-color: #006000;
+  background: #006000;
+  box-shadow:
+    -2px 0 0 #006000,
+    -4px 0 0 #006000,
+    -6px 0 0 #006000,
+    -8px 0 0 #006000,
+    -8px -2px 0 #006000,
+    -10px 0 0 #006000,
+    -8px 2px 0 #006000,
+    0 -2px 0 #006000,
+    0 -4px 0 #006000,
+    0 -6px 0 #006000;
 }
 
 /* Search Panel */
