@@ -26,6 +26,7 @@ export class RoomManager {
       id,
       hostId: null, // Set when first user joins
       hostName,
+      coHosts: [], // User IDs with co-host privileges
       users: [],
       queue: [],
       playbackState: {
@@ -106,6 +107,8 @@ export class RoomManager {
 
     const wasHost = room.hostId === userId;
     room.users = room.users.filter(u => u.id !== userId);
+    // Remove from co-hosts if they were one
+    room.coHosts = room.coHosts.filter(id => id !== userId);
 
     // If room is empty, delete it
     if (room.users.length === 0) {
@@ -118,6 +121,37 @@ export class RoomManager {
       room.hostId = room.users[0].id;
       console.log(`New host for room ${roomId}: ${room.users[0].username}`);
     }
+  }
+
+  /**
+   * Check if a user can control playback (host or co-host)
+   */
+  canControl(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return false;
+    return room.hostId === userId || room.coHosts.includes(userId);
+  }
+
+  /**
+   * Add a co-host to a room (host only)
+   */
+  addCoHost(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    if (!room.coHosts.includes(userId)) {
+      room.coHosts.push(userId);
+    }
+    return room;
+  }
+
+  /**
+   * Remove a co-host from a room (host only)
+   */
+  removeCoHost(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    room.coHosts = room.coHosts.filter(id => id !== userId);
+    return room;
   }
 
   /**

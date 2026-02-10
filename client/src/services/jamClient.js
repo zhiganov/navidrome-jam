@@ -87,6 +87,11 @@ class JamClient {
       this.emit('queue-updated', queue);
     });
 
+    this.socket.on('cohost-updated', ({ room }) => {
+      console.log('Co-host updated:', room.coHosts);
+      this.emit('cohost-updated', room);
+    });
+
     this.socket.on('error', ({ message }) => {
       console.error('Server error:', message);
       this.emit('error', message);
@@ -211,6 +216,34 @@ class JamClient {
     this.socket.emit('update-queue', {
       roomId: this.currentRoomId,
       queue
+    });
+  }
+
+  /**
+   * Promote user to co-host (host only)
+   */
+  promoteCoHost(userId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+
+    this.socket.emit('promote-cohost', {
+      roomId: this.currentRoomId,
+      userId
+    });
+  }
+
+  /**
+   * Demote co-host (host only)
+   */
+  demoteCoHost(userId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+
+    this.socket.emit('demote-cohost', {
+      roomId: this.currentRoomId,
+      userId
     });
   }
 

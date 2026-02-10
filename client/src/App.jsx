@@ -31,6 +31,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [isHost, setIsHost] = useState(false);
+  const [canControl, setCanControl] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
@@ -67,7 +69,10 @@ function App() {
   useEffect(() => {
     const handleRoomState = (room) => {
       setCurrentRoom(room);
-      setIsHost(room.hostId === jamClient.userId);
+      const host = room.hostId === jamClient.userId;
+      const cohost = (room.coHosts || []).includes(jamClient.userId);
+      setIsHost(host);
+      setCanControl(host || cohost);
       setQueue(room.queue || []);
       setIsJoiningRoom(false);
       setIsCreatingRoom(false);
@@ -83,10 +88,21 @@ function App() {
 
     const handleUserLeft = ({ room, newHost }) => {
       setCurrentRoom(room);
+      const cohost = (room.coHosts || []).includes(jamClient.userId);
+      setCanControl(room.hostId === jamClient.userId || cohost);
       if (newHost === jamClient.userId) {
         setIsHost(true);
+        setCanControl(true);
         alert('You are now the host!');
       }
+    };
+
+    const handleCoHostUpdated = (room) => {
+      setCurrentRoom(room);
+      const host = room.hostId === jamClient.userId;
+      const cohost = (room.coHosts || []).includes(jamClient.userId);
+      setIsHost(host);
+      setCanControl(host || cohost);
     };
 
     const handleQueueUpdated = (newQueue) => {
@@ -105,6 +121,7 @@ function App() {
     jamClient.on('room-state', handleRoomState);
     jamClient.on('user-joined', handleUserJoined);
     jamClient.on('user-left', handleUserLeft);
+    jamClient.on('cohost-updated', handleCoHostUpdated);
     jamClient.on('queue-updated', handleQueueUpdated);
     jamClient.on('error', handleError);
     jamClient.on('disconnected', handleDisconnected);
@@ -113,6 +130,7 @@ function App() {
       jamClient.off('room-state', handleRoomState);
       jamClient.off('user-joined', handleUserJoined);
       jamClient.off('user-left', handleUserLeft);
+      jamClient.off('cohost-updated', handleCoHostUpdated);
       jamClient.off('queue-updated', handleQueueUpdated);
       jamClient.off('error', handleError);
       jamClient.off('disconnected', handleDisconnected);
@@ -317,8 +335,8 @@ function App() {
   };
 
   const handlePlayTrack = (song) => {
-    if (!isHost) {
-      alert('Only the host can control playback');
+    if (!canControl) {
+      alert('Only the host or co-hosts can control playback');
       return;
     }
 
@@ -332,8 +350,8 @@ function App() {
   };
 
   const handleAddToQueue = (song) => {
-    if (!isHost) {
-      alert('Only the host can modify the queue');
+    if (!canControl) {
+      alert('Only the host or co-hosts can modify the queue');
       return;
     }
 
@@ -357,7 +375,7 @@ function App() {
   };
 
   const handleTrackEnded = useCallback(() => {
-    if (!isHost) return;
+    if (!canControl) return;
 
     if (queue.length === 0) {
       console.log('Queue is empty, playback stopped');
@@ -377,7 +395,7 @@ function App() {
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [isHost, queue, jamClient, currentTrack]);
+  }, [canControl, queue, jamClient, currentTrack]);
 
   const handleLeaveRoom = () => {
     jamClient.leaveRoom();
@@ -388,12 +406,14 @@ function App() {
     setPlayHistory([]);
     setSearchResults(null);
     setIsHost(false);
+    setCanControl(false);
+    setIsPlaying(false);
 
     console.log('Left room');
   };
 
   const handlePlayPause = () => {
-    if (!isHost) return;
+    if (!canControl) return;
 
     const audio = audioRef.current;
     if (!audio) return;
@@ -406,7 +426,7 @@ function App() {
   };
 
   const handleNextTrack = useCallback(() => {
-    if (!isHost || queue.length === 0) return;
+    if (!canControl || queue.length === 0) return;
 
     // Push current track to history
     if (currentTrack) {
@@ -419,10 +439,10 @@ function App() {
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [isHost, queue, jamClient, currentTrack]);
+  }, [canControl, queue, jamClient, currentTrack]);
 
   const handlePrevTrack = useCallback(() => {
-    if (!isHost || !currentTrack) return;
+    if (!canControl || !currentTrack) return;
 
     const audio = audioRef.current;
 
@@ -452,7 +472,11 @@ function App() {
 
     jamClient.play(prevTrack.id, 0);
     loadTrack(prevTrack.id);
-  }, [isHost, currentTrack, jamClient, playHistory, queue]);
+  }, [canControl, currentTrack, jamClient, playHistory, queue]);
+
+  const handlePlaybackUpdate = useCallback((time, paused) => {
+    setIsPlaying(!paused);
+  }, []);
 
   // Login screen
   if (!isAuthenticated) {
@@ -674,7 +698,7 @@ function App() {
         <h1>Navidrome Jam</h1>
         <div className="header-info">
           <span>Room: {currentRoom.id}</span>
-          <span>{isHost ? 'HOST' : 'LISTENER'}</span>
+          <span>{isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}</span>
           <span>{username}</span>
         </div>
         <button onClick={handleLeaveRoom} className="win98-btn leave-room-btn">
@@ -690,12 +714,38 @@ function App() {
           </div>
           <div className="panel-body">
             <ul className="users-list">
-              {currentRoom.users?.map((user) => (
-                <li key={user.id} className={user.id === currentRoom.hostId ? 'host' : ''}>
-                  <span>{user.username}</span>
-                  {user.id === currentRoom.hostId && <span className="badge">HOST</span>}
-                </li>
-              ))}
+              {currentRoom.users?.map((user) => {
+                const userIsHost = user.id === currentRoom.hostId;
+                const userIsCoHost = (currentRoom.coHosts || []).includes(user.id);
+                return (
+                  <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
+                    <span className="user-name">{user.username}</span>
+                    <span className="user-badges">
+                      {userIsHost && <span className="badge badge-host">HOST</span>}
+                      {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
+                      {isHost && !userIsHost && (
+                        userIsCoHost ? (
+                          <button
+                            className="user-action-btn demote-btn"
+                            onClick={() => jamClient.demoteCoHost(user.id)}
+                            title="Remove co-host"
+                          >
+                            &minus;
+                          </button>
+                        ) : (
+                          <button
+                            className="user-action-btn promote-btn"
+                            onClick={() => jamClient.promoteCoHost(user.id)}
+                            title="Make co-host"
+                          >
+                            +
+                          </button>
+                        )
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </aside>
@@ -729,37 +779,41 @@ function App() {
               <SyncedAudioPlayer
                 streamUrl={currentTrack.streamUrl}
                 jamClient={jamClient}
-                isHost={isHost}
+                isHost={canControl}
                 isConnected={isConnected}
+                onPlaybackUpdate={handlePlaybackUpdate}
                 onEnded={handleTrackEnded}
                 audioRef={audioRef}
               />
             )}
 
-            {isHost && (
-              <div className="host-controls">
+            {canControl && (
+              <div className="transport-controls">
                 <button
-                  className="win98-btn transport-btn"
+                  className="transport-btn"
                   onClick={handlePrevTrack}
                   disabled={!currentTrack}
                   title={playHistory.length > 0 ? "Previous track" : "Restart track"}
                 >
-                  |&lt;&lt;
+                  <span className="transport-icon prev-icon"></span>
                 </button>
                 <button
-                  className="win98-btn transport-btn transport-play"
+                  className="transport-btn transport-play-btn"
                   onClick={handlePlayPause}
                   disabled={!currentTrack}
                 >
-                  {currentTrack ? (audioRef.current && !audioRef.current.paused ? '||' : '>>') : '--'}
+                  {isPlaying
+                    ? <span className="transport-icon pause-icon"></span>
+                    : <span className="transport-icon play-icon"></span>
+                  }
                 </button>
                 <button
-                  className="win98-btn transport-btn"
+                  className="transport-btn"
                   onClick={handleNextTrack}
                   disabled={!currentTrack || queue.length === 0}
                   title="Next track"
                 >
-                  &gt;&gt;|
+                  <span className="transport-icon next-icon"></span>
                 </button>
               </div>
             )}
@@ -812,7 +866,7 @@ function App() {
                                   <span>{song.artist}</span>
                                 </div>
                                 <div className="song-actions">
-                                  {isHost && (
+                                  {canControl && (
                                     <>
                                       <button onClick={() => handlePlayTrack(song)}>Play</button>
                                       <button onClick={() => handleAddToQueue(song)}>Queue+</button>
@@ -955,7 +1009,7 @@ function App() {
                                 <span>{formatDuration(song.duration)}</span>
                               </div>
                               <div className="song-actions">
-                                {isHost && (
+                                {canControl && (
                                   <>
                                     <button onClick={() => handlePlayTrack(song)}>Play</button>
                                     <button onClick={() => handleAddToQueue(song)}>Queue+</button>
@@ -969,7 +1023,7 @@ function App() {
                         <div className="browse-empty">No tracks found</div>
                       )}
 
-                      {isHost && selectedAlbum.songs.length > 0 && (
+                      {canControl && selectedAlbum.songs.length > 0 && (
                         <div className="browse-album-actions">
                           <button
                             className="win98-btn"
@@ -1020,7 +1074,7 @@ function App() {
                       <span>{track.artist}</span>
                     </div>
                   </div>
-                  {isHost && (
+                  {canControl && (
                     <div className="queue-controls">
                       <button
                         className="queue-ctrl-btn"
@@ -1033,7 +1087,7 @@ function App() {
                         disabled={index === 0}
                         title="Move up"
                       >
-                        ^
+                        &#9650;
                       </button>
                       <button
                         className="queue-ctrl-btn"
@@ -1046,7 +1100,7 @@ function App() {
                         disabled={index === queue.length - 1}
                         title="Move down"
                       >
-                        v
+                        &#9660;
                       </button>
                       <button
                         className="queue-ctrl-btn queue-remove-btn"
@@ -1056,7 +1110,7 @@ function App() {
                         }}
                         title="Remove"
                       >
-                        x
+                        &#10005;
                       </button>
                     </div>
                   )}
@@ -1076,7 +1130,7 @@ function App() {
           {isConnected ? 'Connected' : 'Disconnected'}
         </div>
         <div className="status-bar-section">
-          {isHost ? 'HOST' : 'LISTENER'}
+          {isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}
         </div>
       </div>
     </div>

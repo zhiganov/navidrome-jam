@@ -307,12 +307,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Play command (host only)
+  // Play command (host or co-host)
   socket.on('play', ({ roomId, trackId, position = 0 }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
-        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+        socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
 
@@ -331,12 +331,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Pause command (host only)
+  // Pause command (host or co-host)
   socket.on('pause', ({ roomId, position }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
-        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+        socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
 
@@ -354,12 +354,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Seek command (host only)
+  // Seek command (host or co-host)
   socket.on('seek', ({ roomId, position }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
-        socket.emit('error', { message: 'Unauthorized: Only host can control playback' });
+      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+        socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
 
@@ -376,12 +376,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Queue management (host only)
+  // Queue management (host or co-host)
   socket.on('update-queue', ({ roomId, queue }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
-        socket.emit('error', { message: 'Unauthorized: Only host can update queue' });
+      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+        socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can update queue' });
         return;
       }
 
@@ -410,6 +410,56 @@ io.on('connection', (socket) => {
       console.log(`Room ${roomId}: Queue updated`);
     } catch (error) {
       console.error('Error updating queue:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Promote user to co-host (host only)
+  socket.on('promote-cohost', ({ roomId, userId }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can promote co-hosts' });
+        return;
+      }
+
+      if (!userId || typeof userId !== 'string' || userId.length > 50) {
+        socket.emit('error', { message: 'Invalid user ID' });
+        return;
+      }
+
+      // Can't promote yourself or someone not in the room
+      if (userId === currentUserId) return;
+      if (!room.users.find(u => u.id === userId)) {
+        socket.emit('error', { message: 'User not found in room' });
+        return;
+      }
+
+      roomManager.addCoHost(roomId, userId);
+      io.to(roomId).emit('cohost-updated', { room: roomManager.getRoom(roomId) });
+      console.log(`Room ${roomId}: ${userId} promoted to co-host`);
+    } catch (error) {
+      console.error('Error promoting co-host:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Demote co-host (host only)
+  socket.on('demote-cohost', ({ roomId, userId }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== currentUserId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can demote co-hosts' });
+        return;
+      }
+
+      if (!userId || typeof userId !== 'string') return;
+
+      roomManager.removeCoHost(roomId, userId);
+      io.to(roomId).emit('cohost-updated', { room: roomManager.getRoom(roomId) });
+      console.log(`Room ${roomId}: ${userId} demoted from co-host`);
+    } catch (error) {
+      console.error('Error demoting co-host:', error);
       socket.emit('error', { message: error.message });
     }
   });

@@ -611,13 +611,72 @@ body {
   background: #ffffcc;
 }
 
+.user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.user-badges {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .users-list .badge {
-  background: var(--title-blue);
-  color: var(--yellow);
   padding: 1px 6px;
   font-size: 9px;
   font-weight: bold;
   font-family: 'VT323', monospace;
+  white-space: nowrap;
+}
+
+.badge-host {
+  background: var(--title-blue);
+  color: var(--yellow);
+}
+
+.badge-cohost {
+  background: #006600;
+  color: var(--lime);
+}
+
+.users-list li.cohost {
+  background: #e6ffe6;
+}
+
+.user-action-btn {
+  width: 18px;
+  height: 16px;
+  background: var(--win-bg);
+  border: 1px solid;
+  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-dark);
+  font-family: 'Tahoma', sans-serif;
+}
+
+.user-action-btn:active {
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+}
+
+.promote-btn {
+  color: #006600;
+  font-weight: bold;
+}
+
+.demote-btn {
+  color: var(--red);
+  font-weight: bold;
 }
 
 /* Queue List */
@@ -688,17 +747,17 @@ body {
 /* Queue reorder controls */
 .queue-controls {
   display: flex;
-  gap: 1px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 .queue-ctrl-btn {
-  width: 16px;
-  height: 14px;
+  width: 18px;
+  height: 16px;
   background: var(--win-bg);
   border: 1px solid;
   border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
-  font-size: 8px;
+  font-size: 7px;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -721,6 +780,7 @@ body {
 .queue-remove-btn {
   color: var(--red);
   font-weight: bold;
+  font-size: 8px;
 }
 
 /* Now Playing */
@@ -867,27 +927,147 @@ body {
   cursor: pointer;
 }
 
-/* Host Controls — Transport buttons */
-.host-controls {
+/* Transport Controls — Winamp-style recessed panel */
+.transport-controls {
   margin-bottom: 8px;
   display: flex;
   justify-content: center;
-  gap: 2px;
+  gap: 0;
+  background: #1a1a2e;
+  border: 2px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  padding: 4px 6px;
 }
 
 .transport-btn {
-  min-width: 48px !important;
-  padding: 4px 12px !important;
-  font-family: 'VT323', monospace !important;
-  font-size: 16px !important;
-  font-weight: bold;
-  letter-spacing: -1px;
+  width: 36px;
+  height: 28px;
+  background: var(--win-bg);
+  border: 2px solid;
+  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 1px;
 }
 
-.transport-play {
-  min-width: 64px !important;
-  padding: 4px 20px !important;
-  font-size: 18px !important;
+.transport-btn:active {
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+}
+
+.transport-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.transport-play-btn {
+  width: 42px;
+}
+
+/* CSS-drawn transport icons */
+.transport-icon {
+  display: block;
+  position: relative;
+}
+
+/* Previous: |◀◀ */
+.prev-icon {
+  width: 14px;
+  height: 12px;
+}
+.prev-icon::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 2px;
+  height: 10px;
+  background: var(--text-dark);
+}
+.prev-icon::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 8px solid var(--text-dark);
+}
+
+/* Play: ▶ */
+.play-icon {
+  width: 12px;
+  height: 12px;
+}
+.play-icon::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid var(--text-dark);
+}
+
+/* Pause: ❚❚ */
+.pause-icon {
+  width: 10px;
+  height: 12px;
+}
+.pause-icon::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 3px;
+  height: 10px;
+  background: var(--text-dark);
+}
+.pause-icon::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 1px;
+  width: 3px;
+  height: 10px;
+  background: var(--text-dark);
+}
+
+/* Next: ▶▶| */
+.next-icon {
+  width: 14px;
+  height: 12px;
+}
+.next-icon::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--text-dark);
+}
+.next-icon::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 1px;
+  width: 2px;
+  height: 10px;
+  background: var(--text-dark);
+}
+
+.transport-btn:disabled .transport-icon::before,
+.transport-btn:disabled .transport-icon::after {
+  opacity: 0.4;
 }
 
 /* Search Panel */
