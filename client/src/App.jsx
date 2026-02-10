@@ -882,7 +882,14 @@ function App() {
                           <button
                             className="win98-btn"
                             onClick={() => {
-                              selectedAlbum.songs.forEach(song => handleAddToQueue(song));
+                              const newItems = selectedAlbum.songs.map(song => ({
+                                id: song.id,
+                                title: song.title,
+                                artist: song.artist,
+                                album: song.album
+                              }));
+                              const newQueue = [...queue, ...newItems];
+                              jamClient.updateQueue(newQueue);
                             }}
                           >
                             Queue All
