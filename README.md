@@ -1,6 +1,8 @@
 # Navidrome Jam
 
-Synchronized music playback for listening to the same music with friends in real-time. Built as an extension to [Navidrome](https://www.navidrome.org/).
+Synchronized music playback for listening to the same music with friends in real-time. Built as an extension to [Navidrome](https://www.navidrome.org/). Features a retro Windows 98 / GeoCities aesthetic.
+
+**Live at [jam.zhgnv.com](https://jam.zhgnv.com)**
 
 ## Motivation
 
@@ -42,18 +44,22 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - [x] User presence tracking with heartbeat system
 
 ### User Experience
+- [x] Invite-code-based self-service registration (no admin dashboard needed)
+- [x] Login / Sign Up tabs with form validation
 - [x] Volume control with persistent preferences
 - [x] Leave room functionality
 - [x] Loading states for all async operations
 - [x] Error boundary for graceful error handling
 - [x] Session validation and auto-recovery
+- [x] Windows 98 / GeoCities retro UI theme
 
 ### Security & Reliability
 - [x] Input validation and sanitization (XSS prevention)
-- [x] Rate limiting on room creation (5 per minute per IP)
+- [x] Rate limiting on room creation (5/min/IP) and registration (3/min/IP)
 - [x] Authentication token validation
 - [x] Automatic stale room cleanup
 - [x] Duplicate user prevention on reconnect
+- [x] Invite codes are single-use; admin credentials never exposed to client
 
 ## Tech Stack
 
@@ -66,18 +72,17 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 
 Choose your deployment method:
 
-### 🚀 Option 1: Vercel + Railway (Recommended)
+### Option 1: Vercel + Railway (Recommended)
 
 **Fastest deployment, ~$0-5/month**
 
-1. **Deploy Server**: [Railway.app](https://railway.app) → Deploy from GitHub
-2. **Deploy Client**: [Vercel.com](https://vercel.com) → Import project
-3. **Custom Domain**: Add `jam.zhgnv.com` in Vercel settings
+1. **Deploy Server**: [Railway.app](https://railway.app) — deploy from GitHub, set env vars (see `server/.env.example`)
+2. **Deploy Client**: [Vercel.com](https://vercel.com) — import project, set `VITE_NAVIDROME_URL` and `VITE_JAM_SERVER_URL`
+3. **Set invite codes**: Add `INVITE_CODES`, `NAVIDROME_ADMIN_USER`, `NAVIDROME_ADMIN_PASS` on Railway for self-service registration
 
-📖 [5-Minute Quickstart Guide](./VERCEL_QUICKSTART.md)
-📖 [Full Vercel Deployment Guide](./VERCEL_DEPLOYMENT.md)
+See [VERCEL_QUICKSTART.md](./VERCEL_QUICKSTART.md) for details.
 
-### 🖥️ Option 2: VPS (Self-Hosted)
+### Option 2: VPS (Self-Hosted)
 
 **Full control, ~$5-10/month**
 
@@ -229,16 +234,20 @@ cd client && npm run dev
 - [x] Proper event listener cleanup
 - [x] Leave room functionality
 
-### Phase 4: Future Enhancements
+### Phase 4: Deployment & Registration ✅
+- [x] Deploy server to Railway
+- [x] Deploy client to Vercel (jam.zhgnv.com)
+- [x] Invite-code-based user registration via Navidrome native API
+- [x] Windows 98 / GeoCities UI redesign
+
+### Phase 5: Future Enhancements
+- [ ] Album/artist browsing UI
+- [ ] Advanced queue features (drag-to-reorder, remove)
 - [ ] Mobile-responsive improvements
 - [ ] Persistent rooms (database storage)
-- [ ] Advanced queue features (drag-to-reorder, remove)
-- [ ] Album/artist browsing UI
-- [ ] Voice chat integration?
 - [ ] Discord bot for queue control
 - [ ] Docker deployment
 - [ ] Automated tests (Jest, Vitest)
-- [ ] Admin dashboard
 
 ## Contributing
 

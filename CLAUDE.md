@@ -30,18 +30,20 @@ Client 2 ──┘                                   │
                                           Stream audio from Navidrome (HTTP)
 ```
 
-### Subsonic API Integration
+### Navidrome API Integration
 
-**IMPORTANT**: This project uses Navidrome's **Subsonic API** (not the Native API). The Subsonic API is stable and documented, while the Native API is intentionally unstable. See `docs/navidrome-api-research.md` for detailed rationale.
+The client uses Navidrome's **Subsonic API** for music playback (stable, documented). The server uses Navidrome's **Native REST API** for user registration (the Subsonic `createUser.view` endpoint is not implemented in Navidrome).
 
-**Authentication**: Token-based auth using MD5(password + salt) per Subsonic spec. Implementation in `client/src/services/navidrome.js`.
+**Client authentication** (Subsonic API): Token-based auth using MD5(password + salt) per Subsonic spec. Implementation in `client/src/services/navidrome.js`.
 
-**Key endpoints used**:
-- `ping.view` - Server health check
+**Key Subsonic endpoints used**:
+- `ping.view` - Server health check and session validation
 - `search3.view` - Music search
 - `getAlbum.view`, `getArtist.view`, `getSong.view` - Metadata
 - `stream.view` - Audio streaming URL (clients use this directly)
 - `scrobble.view` - Mark songs as played
+
+**Server-side registration** (Native API): The server authenticates as admin via `POST /auth/login` (JWT), then creates users via `POST /api/user`. This enables invite-code-based self-service registration without exposing admin credentials to the client.
 
 ## Development Commands
 
@@ -57,7 +59,10 @@ npm start                # Production mode
 **Environment**: Copy `.env.example` to `.env` and configure:
 - `PORT` - Server port (default: 3001)
 - `CLIENT_URL` - CORS origin for web client
-- `NAVIDROME_URL` - Navidrome instance URL (optional, for future features)
+- `NAVIDROME_URL` - Navidrome instance URL (required for registration)
+- `NAVIDROME_ADMIN_USER` - Admin username for user registration proxy
+- `NAVIDROME_ADMIN_PASS` - Admin password for user registration proxy
+- `INVITE_CODES` - Comma-separated single-use invite codes (e.g., `CODE1,CODE2,CODE3`)
 
 ### Client (React Web App)
 
@@ -100,10 +105,12 @@ cd client && npm run dev
 ### Sync Server (`server/src/`)
 
 **`index.js`** - Express + Socket.io server with event handlers:
-- REST endpoints: `/health`, `/api/rooms` (create room)
+- REST endpoints: `/health`, `/api/rooms` (create room), `/api/register` (invite-code registration)
 - WebSocket events: `join-room`, `play`, `pause`, `seek`, `update-queue`, `heartbeat`
 - Authorization: Only room host can send playback commands
 - Auto host transfer when host disconnects
+- Invite-code registration: validates codes, authenticates as admin via Navidrome native API, creates user
+- `trust proxy` enabled for Railway reverse proxy (rate limiting)
 
 **`roomManager.js`** - In-memory state management:
 - `RoomManager` class managing Map of rooms
@@ -117,9 +124,11 @@ cd client && npm run dev
 ### Web Client (`client/src/`)
 
 **`App.jsx`** - Main component with three screens:
-1. Login screen - Navidrome authentication
+1. Login screen - Navidrome authentication with Login/Sign Up tabs (invite-code registration)
 2. Room selection - Create/join rooms
-3. Jam session - Player, search, queue, users
+3. Jam session - Player, search, queue, users (3-panel layout with status bar)
+
+**Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee.
 
 State management via React hooks (no Redux/Zustand). Client instances provided via React Context (`NavidromeContext`, `JamContext`) for proper hot-reload cleanup.
 
@@ -138,7 +147,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Socket.io connection management
 - Event emitter pattern for React integration
 - User ID generation and persistence (localStorage)
-- Methods: `connect()`, `joinRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `sendHeartbeat()`
+- Methods: `connect()`, `joinRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `sendHeartbeat()`, `register()`
 
 **`components/SyncedAudioPlayer.jsx`** - Core sync logic:
 - HTML5 Audio element wrapped in React
@@ -176,10 +185,11 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 
 This project supports multiple deployment strategies:
 
-### Vercel + Railway (Recommended for Production)
-- Client: Vercel (static hosting, global CDN)
-- Server: Railway (WebSocket support, auto-deploy)
+### Vercel + Railway (Current Production Setup)
+- **Client**: Vercel — https://jam.zhgnv.com
+- **Server**: Railway — https://navidrome-jam-production.up.railway.app
 - Config files: `vercel.json`, `railway.json`
+- Railway project: `b4f46e75-3c65-4606-a8ee-2b7ded7b7109`
 - See: `VERCEL_QUICKSTART.md`
 
 ### VPS (Traditional Deployment)
@@ -202,10 +212,10 @@ This project supports multiple deployment strategies:
 - Client: `http://localhost:5173`
 - Navidrome: User provides their own instance
 
-### Production
-- Set `CLIENT_URL` on server to match client domain (CORS)
-- Set `VITE_JAM_SERVER_URL` to actual deployed server URL
-- SSL/HTTPS required for production (auto via Vercel/Railway or certbot on VPS)
+### Production (Current)
+- **Client** (Vercel): `VITE_NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, `VITE_JAM_SERVER_URL=https://navidrome-jam-production.up.railway.app`
+- **Server** (Railway): `CLIENT_URL=https://jam.zhgnv.com`, `NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, plus admin credentials and invite codes
+- Navidrome hosted on PikaPods
 
 ## Common Development Patterns
 
@@ -287,8 +297,10 @@ Currently manual testing only. Test checklist:
 The project includes several security measures (see `SECURITY.md` for details):
 
 - **Input validation**: Room IDs, usernames, and all user input are validated and sanitized
-- **Rate limiting**: Room creation limited to 5 per minute per IP (`express-rate-limit`)
+- **Rate limiting**: Room creation (5/min/IP), registration (3/min/IP) via `express-rate-limit`
 - **XSS prevention**: HTML tags and special characters stripped from user input
 - **Session validation**: Restored sessions are validated with Navidrome ping before use
-- **Token-based auth**: Credentials stored as MD5 tokens, not plaintext passwords
+- **Token-based auth**: Client credentials stored as MD5 tokens, not plaintext passwords
+- **Invite-code registration**: Single-use codes, admin credentials never exposed to client
+- **Trust proxy**: Enabled for accurate IP detection behind Railway reverse proxy
 
