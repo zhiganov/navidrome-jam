@@ -4,7 +4,6 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import { createHash } from 'crypto';
 import { RoomManager } from './roomManager.js';
 
 dotenv.config();
@@ -182,35 +181,50 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       return res.status(403).json({ error: 'This invite code has already been used' });
     }
 
-    // Build Subsonic createUser.view request with admin credentials
-    const salt = Math.random().toString(36).substring(2, 15);
-    const token = createHash('md5').update(adminPass + salt).digest('hex');
+    // Step 1: Authenticate as admin via Navidrome native API
+    const loginResponse = await fetch(`${navidromeUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: adminUser, password: adminPass })
+    });
 
-    const url = new URL(`${navidromeUrl}/rest/createUser.view`);
-    url.searchParams.append('u', adminUser);
-    url.searchParams.append('t', token);
-    url.searchParams.append('s', salt);
-    url.searchParams.append('v', '1.16.1');
-    url.searchParams.append('c', 'navidrome-jam');
-    url.searchParams.append('f', 'json');
-    url.searchParams.append('username', username.trim());
-    url.searchParams.append('password', password);
-
-    const response = await fetch(url);
-    const responseText = await response.text();
-    console.log('Navidrome createUser response:', responseText.substring(0, 500));
-
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      console.error('Navidrome returned non-JSON:', responseText.substring(0, 200));
-      return res.status(502).json({ error: 'Navidrome returned an unexpected response' });
+    if (!loginResponse.ok) {
+      console.error('Admin login failed:', loginResponse.status);
+      return res.status(502).json({ error: 'Failed to authenticate with Navidrome' });
     }
 
-    if (data['subsonic-response'].status !== 'ok') {
-      const errMsg = data['subsonic-response'].error?.message || 'Failed to create user';
-      if (errMsg.toLowerCase().includes('already exists')) {
+    const loginData = await loginResponse.json();
+    const adminToken = loginData.token;
+
+    if (!adminToken) {
+      console.error('No token in admin login response');
+      return res.status(502).json({ error: 'Failed to authenticate with Navidrome' });
+    }
+
+    // Step 2: Create user via Navidrome native API
+    const createResponse = await fetch(`${navidromeUrl}/api/user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-nd-authorization': `Bearer ${adminToken}`
+      },
+      body: JSON.stringify({
+        userName: username.trim(),
+        password: password,
+        isAdmin: false
+      })
+    });
+
+    const createText = await createResponse.text();
+    console.log('Navidrome createUser response:', createResponse.status, createText.substring(0, 500));
+
+    if (!createResponse.ok) {
+      let errMsg = 'Failed to create user';
+      try {
+        const errData = JSON.parse(createText);
+        errMsg = errData.error || errData.message || errMsg;
+      } catch {}
+      if (errMsg.toLowerCase().includes('already exists') || createResponse.status === 409) {
         return res.status(409).json({ error: 'Username already taken' });
       }
       return res.status(400).json({ error: errMsg });
