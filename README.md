@@ -37,15 +37,19 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - [x] Create/join jam rooms with room codes
 - [x] Synchronized play/pause/seek across all participants
 - [x] Shared queue management with auto-play
-- [x] Host controls (room creator has full control)
+- [x] Host controls with co-host delegation
 - [x] Low-latency sync (<500ms drift tolerance)
 - [x] Support for FLAC and all formats Navidrome supports
 - [x] Music search integrated with Navidrome library
+- [x] Library browser (artist/album/song navigation)
 - [x] User presence tracking with heartbeat system
 
 ### User Experience
 - [x] Invite-code-based self-service registration (no admin dashboard needed)
 - [x] Login / Sign Up tabs with form validation
+- [x] Co-host system (host can promote/demote users)
+- [x] Queue reordering (move up/down/remove)
+- [x] Transport controls (prev/play-pause/next) with play history
 - [x] Volume control with persistent preferences
 - [x] Leave room functionality
 - [x] Loading states for all async operations
@@ -240,14 +244,38 @@ cd client && npm run dev
 - [x] Invite-code-based user registration via Navidrome native API
 - [x] Windows 98 / GeoCities UI redesign
 
-### Phase 5: Future Enhancements
-- [ ] Album/artist browsing UI
-- [ ] Advanced queue features (drag-to-reorder, remove)
+### Phase 5: Library & Controls ✅
+- [x] Album/artist browsing UI with breadcrumb navigation
+- [x] Queue reordering (move up/down/remove)
+- [x] Transport controls (prev/play-pause/next) with Winamp-style CSS icons
+- [x] Play history for previous track navigation
+- [x] Co-host system (host promotes users to share playback control)
+
+### Phase 6: Future Enhancements
 - [ ] Mobile-responsive improvements
 - [ ] Persistent rooms (database storage)
 - [ ] Discord bot for queue control
 - [ ] Docker deployment
 - [ ] Automated tests (Jest, Vitest)
+
+## Changelog
+
+### 2026-02-10 — Co-hosts, Library Browser, Transport Controls
+
+- **Co-host system**: Host can promote/demote users to co-host. Co-hosts get full playback and queue control. Server validates with `canControl()` (host OR co-host). Co-host status cleaned up on user leave.
+- **Library browser**: Browse tab with artist/album/song navigation. Breadcrumb navigation (Library > Artist > Album). "Queue All" button on album view. Win98 folder icons and album thumbnails.
+- **Transport controls**: Winamp-style prev/play-pause/next buttons with CSS-drawn icons in a dark recessed panel. Play/pause updates reactively via audio element callbacks.
+- **Queue reordering**: Move tracks up/down or remove them. Unicode arrow buttons.
+- **Play history**: Previous track button navigates actual history (3-second threshold — restart vs go back).
+- **Bug fixes**: Queue All only adding last track (stale state closure), invisible username in users list (CSS color inheritance), queue disconnected from player (auto-play on first add).
+
+### 2026-02-09 — Initial Release
+
+- Synchronized music playback rooms with WebSocket sync
+- Navidrome Subsonic API integration (search, stream, metadata)
+- Invite-code-based self-service registration
+- Windows 98 / GeoCities retro UI theme
+- Deployed to Vercel (client) + Railway (server)
 
 ## Contributing
 

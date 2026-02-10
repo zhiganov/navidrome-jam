@@ -114,8 +114,8 @@ cd client && npm run dev
 
 **`index.js`** - Express + Socket.io server with event handlers:
 - REST endpoints: `/health`, `/api/rooms` (create room), `/api/register` (invite-code registration)
-- WebSocket events: `join-room`, `play`, `pause`, `seek`, `update-queue`, `heartbeat`
-- Authorization: Only room host can send playback commands
+- WebSocket events: `join-room`, `play`, `pause`, `seek`, `update-queue`, `heartbeat`, `promote-cohost`, `demote-cohost`
+- Authorization: Host and co-hosts can send playback/queue commands; only host can promote/demote co-hosts
 - Auto host transfer when host disconnects
 - Invite-code registration: validates codes, authenticates as admin via Navidrome native API, creates user
 - `trust proxy` enabled for Railway reverse proxy (rate limiting)
@@ -123,10 +123,11 @@ cd client && npm run dev
 **`roomManager.js`** - In-memory state management:
 - `RoomManager` class managing Map of rooms
 - Room code generation: `randomBytes(3).toString('hex').toUpperCase()` — 6 hex chars (e.g., `A3F1B2`)
-- Room structure: `{ id, hostId, hostName, users[], queue[], playbackState, createdAt }`
+- Room structure: `{ id, hostId, hostName, coHosts[], users[], queue[], playbackState, createdAt }`
 - Playback state: `{ trackId, position, playing, timestamp }` - timestamp critical for drift correction
 - User structure: `{ id, socketId, username, joinedAt, position, lastHeartbeat }`
 - Host assignment: First user to join becomes host, auto-promotes next user on host leave
+- Co-host system: `canControl(roomId, userId)` checks host OR co-host status; `addCoHost()` / `removeCoHost()` manage the list; co-hosts are cleaned up when users leave
 - Duplicate user handling: Reconnecting users update their socketId without creating duplicate entries
 - Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min, deletes empty rooms
 
@@ -139,7 +140,7 @@ cd client && npm run dev
 **`App.jsx`** - Main component with three screens:
 1. Login screen - Navidrome authentication with Login/Sign Up tabs (invite-code registration)
 2. Room selection - Create/join rooms
-3. Jam session - Player, search, queue, users (3-panel layout with status bar)
+3. Jam session - Player with Winamp-style transport controls, Browse/Search tabs, queue with reordering, users panel with co-host promote/demote (3-panel layout with status bar)
 
 **Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee.
 
@@ -154,7 +155,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Token-based authentication with MD5 hashing (CryptoJS): `token = MD5(password + salt)`, random salt per request
 - Session persistence via localStorage (`nd_username`, `nd_token`, `nd_salt`) with **async validation on restore** (ping check)
 - URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
-- Methods: `authenticate()`, `restoreSession()`, `search()`, `getStreamUrl()`, `getCoverArtUrl()`
+- Methods: `authenticate()`, `restoreSession()`, `search()`, `getArtists()`, `getArtist()`, `getAlbum()`, `getSong()`, `getStreamUrl()`, `getCoverArtUrl()`
 - No plaintext passwords stored — only MD5 tokens (per Subsonic spec)
 
 **`services/jamClient.js`** - WebSocket client wrapper:
@@ -162,13 +163,14 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Custom event emitter pattern for React integration (not Node EventEmitter — manual `listeners` map)
 - User ID generation: `'user-' + Math.random().toString(36).substring(2, 18)`, persisted in localStorage as `jam_user_id`
 - Room creation via REST (`POST /api/rooms`), registration via REST (`POST /api/register`), all other operations via WebSocket
-- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `sendHeartbeat()`, `register()`
-- Events emitted: `room-state`, `sync`, `user-joined`, `user-left`, `queue-updated`, `error`, `disconnected`
+- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `promoteCoHost()`, `demoteCoHost()`, `sendHeartbeat()`, `register()`
+- Events emitted: `room-state`, `sync`, `user-joined`, `user-left`, `cohost-updated`, `queue-updated`, `error`, `disconnected`
 
 **`components/SyncedAudioPlayer.jsx`** - Core sync logic:
 - HTML5 Audio element wrapped in React
 - Volume control with localStorage persistence
-- Seek bar (host-only) with sync event emission
+- Seek bar (host/co-host only) with sync event emission
+- `onPlaybackUpdate` callback reports `(currentTime, paused)` to parent for reactive UI updates
 - **Drift correction algorithm** (critical):
   ```javascript
   const latency = Date.now() - state.timestamp;
@@ -189,7 +191,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 ### Synchronization Protocol
 
 **Server-authoritative model**:
-1. Host emits action (play/pause/seek) → Server validates host permission
+1. Host or co-host emits action (play/pause/seek) → Server validates permission via `canControl()`
 2. Server updates room state, adds timestamp
 3. Server broadcasts `sync` event with `{ trackId, position, playing, timestamp }`
 4. All clients (including host) adjust local playback based on timestamp + latency
@@ -203,15 +205,18 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 |-------|-----------|---------|------|
 | `join-room` | Client → Server | `{ roomId, userId, username }` | Any |
 | `leave-room` | Client → Server | (none) | Any |
-| `play` | Client → Server | `{ roomId, trackId, position }` | Host only |
-| `pause` | Client → Server | `{ roomId, position }` | Host only |
-| `seek` | Client → Server | `{ roomId, position }` | Host only |
-| `update-queue` | Client → Server | `{ roomId, queue[] }` | Host only |
+| `play` | Client → Server | `{ roomId, trackId, position }` | Host / Co-host |
+| `pause` | Client → Server | `{ roomId, position }` | Host / Co-host |
+| `seek` | Client → Server | `{ roomId, position }` | Host / Co-host |
+| `update-queue` | Client → Server | `{ roomId, queue[] }` | Host / Co-host |
+| `promote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
+| `demote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
 | `heartbeat` | Client → Server | `{ roomId, position }` | Any |
 | `room-state` | Server → Client | `{ room }` | — |
 | `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
 | `user-joined` | Server → Client | `{ user, room }` | — |
 | `user-left` | Server → Client | `{ userId, room, newHost }` | — |
+| `cohost-updated` | Server → Client | `{ room }` | — |
 | `queue-updated` | Server → Client | `{ queue[] }` | — |
 | `error` | Server → Client | `{ message }` | — |
 
@@ -359,9 +364,19 @@ Currently manual testing only. Test checklist:
 - [ ] Clients stay within 500ms of each other (check console logs)
 - [ ] Audio streams from Navidrome (check Network tab)
 
-**Host Transfer**:
+**Host Transfer & Co-Hosts**:
 - [ ] Host disconnect promotes next user
 - [ ] New host can control playback
+- [ ] Host can promote user to co-host (+ button in users panel)
+- [ ] Co-host can play/pause/seek/queue
+- [ ] Host can demote co-host (- button)
+- [ ] Co-host status cleared when user leaves room
+
+**Library Browser**:
+- [ ] Browse tab shows all artists from Navidrome
+- [ ] Clicking artist shows their albums
+- [ ] Clicking album shows track list with Queue All button
+- [ ] Breadcrumb navigation works (Library > Artist > Album)
 
 **Edge Cases**:
 - [ ] Multiple rapid play/pause commands
