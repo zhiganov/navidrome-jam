@@ -353,7 +353,7 @@ function App() {
     }
   };
 
-  const handlePlayTrack = (song) => {
+  const handlePlayTrack = (song, albumSongs = null) => {
     if (!canControl) {
       alert('Only the host or co-hosts can control playback');
       return;
@@ -362,6 +362,15 @@ function App() {
     // Push current track to history before switching
     if (currentTrack) {
       setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
+    }
+
+    // If playing from an album, queue the remaining tracks after this one
+    if (albumSongs) {
+      const songIndex = albumSongs.findIndex(s => s.id === song.id);
+      const remaining = albumSongs.slice(songIndex + 1).map(s => ({
+        id: s.id, title: s.title, artist: s.artist, album: s.album
+      }));
+      jamClient.updateQueue(remaining);
     }
 
     jamClient.play(song.id, 0);
@@ -1071,7 +1080,7 @@ function App() {
                               <div className="song-actions">
                                 {canControl && (
                                   <>
-                                    <button onClick={() => handlePlayTrack(song)}>Play</button>
+                                    <button onClick={() => handlePlayTrack(song, selectedAlbum.songs)}>Play</button>
                                     <button onClick={() => handleAddToQueue(song)}>Queue+</button>
                                   </>
                                 )}
