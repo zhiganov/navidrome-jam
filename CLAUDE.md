@@ -11,8 +11,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The system consists of three independent components:
 
 1. **Navidrome** (external dependency) - Music server providing Subsonic API for streaming
-2. **Sync Server** (`server/`) - Node.js WebSocket server managing room state and synchronization
-3. **Web Client** (`client/`) - React SPA handling UI, Navidrome auth, and audio playback
+2. **Sync Server** (`server/`) - Node.js + Express 4 + Socket.io 4 WebSocket server managing room state and synchronization
+3. **Web Client** (`client/`) - React 19 + Vite 7 SPA handling UI, Navidrome auth, and audio playback
+
+### Key Dependencies
+
+**Server**: express ^4.18.2, socket.io ^4.7.2, express-rate-limit ^8.2.1, cors ^2.8.5, dotenv ^16.4.5 (ES modules, no TypeScript)
+
+**Client**: react ^19.2.0, socket.io-client ^4.8.3, crypto-js ^4.2.0 (MD5 hashing for Subsonic auth), vite ^7.2.4, eslint ^9.39.1
 
 **Critical architectural decision**: Clients stream audio directly from Navidrome, NOT through the sync server. The sync server only broadcasts playback commands (play/pause/seek/timestamp). This design keeps the sync server lightweight and allows Navidrome to handle all media delivery.
 
@@ -43,7 +49,9 @@ The client uses Navidrome's **Subsonic API** for music playback (stable, documen
 - `stream.view` - Audio streaming URL (clients use this directly)
 - `scrobble.view` - Mark songs as played
 
-**Server-side registration** (Native API): The server authenticates as admin via `POST /auth/login` (JWT), then creates users via `POST /api/user`. This enables invite-code-based self-service registration without exposing admin credentials to the client.
+**Server-side registration** (Native API): The server authenticates as admin via `POST /auth/login` (JWT), then creates users via `POST /api/user` with `x-nd-authorization: Bearer <token>` header. This enables invite-code-based self-service registration without exposing admin credentials to the client.
+
+**Important**: Navidrome does NOT implement the Subsonic `createUser.view` endpoint. User creation must use the native REST API. The auth header is `x-nd-authorization` (not `Authorization`).
 
 ## Development Commands
 
@@ -114,10 +122,15 @@ cd client && npm run dev
 
 **`roomManager.js`** - In-memory state management:
 - `RoomManager` class managing Map of rooms
-- Room structure: `{ id, hostId, users[], queue[], playbackState, createdAt }`
+- Room code generation: `randomBytes(3).toString('hex').toUpperCase()` — 6 hex chars (e.g., `A3F1B2`)
+- Room structure: `{ id, hostId, hostName, users[], queue[], playbackState, createdAt }`
 - Playback state: `{ trackId, position, playing, timestamp }` - timestamp critical for drift correction
-- Host assignment: First user to join becomes host, auto-promotes on host leave
-- Cleanup: `cleanupStaleRooms()` removes inactive rooms (5min timeout)
+- User structure: `{ id, socketId, username, joinedAt, position, lastHeartbeat }`
+- Host assignment: First user to join becomes host, auto-promotes next user on host leave
+- Duplicate user handling: Reconnecting users update their socketId without creating duplicate entries
+- Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min, deletes empty rooms
+
+**Invite code lifecycle**: Codes loaded from `INVITE_CODES` env var into a `Set`. A separate `usedInviteCodes` Set tracks consumed codes. Codes are marked used only after successful Navidrome user creation. Both sets are in-memory — server restart resets used codes (acceptable for casual use).
 
 **Key design pattern**: All state is ephemeral in-memory. Rooms disappear when empty. For persistence, future work would add Redis/database layer.
 
@@ -138,16 +151,19 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Use `useNavidrome()` and `useJam()` hooks to access clients
 
 **`services/navidrome.js`** - Navidrome Subsonic API client:
-- Token-based authentication with MD5 hashing (CryptoJS)
-- Session persistence via localStorage with **async validation on restore** (ping check)
+- Token-based authentication with MD5 hashing (CryptoJS): `token = MD5(password + salt)`, random salt per request
+- Session persistence via localStorage (`nd_username`, `nd_token`, `nd_salt`) with **async validation on restore** (ping check)
 - URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
 - Methods: `authenticate()`, `restoreSession()`, `search()`, `getStreamUrl()`, `getCoverArtUrl()`
+- No plaintext passwords stored — only MD5 tokens (per Subsonic spec)
 
 **`services/jamClient.js`** - WebSocket client wrapper:
-- Socket.io connection management
-- Event emitter pattern for React integration
-- User ID generation and persistence (localStorage)
-- Methods: `connect()`, `joinRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `sendHeartbeat()`, `register()`
+- Socket.io connection management (default transport: WebSocket with polling fallback)
+- Custom event emitter pattern for React integration (not Node EventEmitter — manual `listeners` map)
+- User ID generation: `'user-' + Math.random().toString(36).substring(2, 18)`, persisted in localStorage as `jam_user_id`
+- Room creation via REST (`POST /api/rooms`), registration via REST (`POST /api/register`), all other operations via WebSocket
+- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `sendHeartbeat()`, `register()`
+- Events emitted: `room-state`, `sync`, `user-joined`, `user-left`, `queue-updated`, `error`, `disconnected`
 
 **`components/SyncedAudioPlayer.jsx`** - Core sync logic:
 - HTML5 Audio element wrapped in React
@@ -181,15 +197,38 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 
 **Why timestamps matter**: Network latency varies. Each client calculates expected position using `position + (now - timestamp) / 1000` for playing state, enabling smooth sync despite variable network delays.
 
+### WebSocket Events Reference
+
+| Event | Direction | Payload | Auth |
+|-------|-----------|---------|------|
+| `join-room` | Client → Server | `{ roomId, userId, username }` | Any |
+| `leave-room` | Client → Server | (none) | Any |
+| `play` | Client → Server | `{ roomId, trackId, position }` | Host only |
+| `pause` | Client → Server | `{ roomId, position }` | Host only |
+| `seek` | Client → Server | `{ roomId, position }` | Host only |
+| `update-queue` | Client → Server | `{ roomId, queue[] }` | Host only |
+| `heartbeat` | Client → Server | `{ roomId, position }` | Any |
+| `room-state` | Server → Client | `{ room }` | — |
+| `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
+| `user-joined` | Server → Client | `{ user, room }` | — |
+| `user-left` | Server → Client | `{ userId, room, newHost }` | — |
+| `queue-updated` | Server → Client | `{ queue[] }` | — |
+| `error` | Server → Client | `{ message }` | — |
+
 ## Deployment
 
 This project supports multiple deployment strategies:
 
 ### Vercel + Railway (Current Production Setup)
 - **Client**: Vercel — https://jam.zhgnv.com
+  - Build: `cd client && npm install && npm run build` → outputs to `client/dist/`
+  - SPA rewrites: all routes → `/index.html` (configured in `vercel.json`)
+  - Asset caching: `/assets/*` gets `Cache-Control: public, max-age=31536000, immutable`
 - **Server**: Railway — https://navidrome-jam-production.up.railway.app
-- Config files: `vercel.json`, `railway.json`
-- Railway project: `b4f46e75-3c65-4606-a8ee-2b7ded7b7109`
+  - Nixpacks builder: `cd server && npm install` (install), `cd server && node src/index.js` (start)
+  - Restart policy: ON_FAILURE with max 10 retries (configured in `railway.json`)
+  - Railway project: `b4f46e75-3c65-4606-a8ee-2b7ded7b7109`
+- **Navidrome**: PikaPods — https://airborne-unicorn.pikapod.net
 - See: `VERCEL_QUICKSTART.md`
 
 ### VPS (Traditional Deployment)
@@ -207,6 +246,19 @@ This project supports multiple deployment strategies:
 
 ## Environment Configuration
 
+| Variable | Where | Required | Default | Description |
+|----------|-------|----------|---------|-------------|
+| `PORT` | Server | No | `3001` | Server listen port |
+| `CLIENT_URL` | Server | No | `*` | CORS origin (set to client URL in production) |
+| `NAVIDROME_URL` | Server | For registration | — | Navidrome instance URL |
+| `NAVIDROME_ADMIN_USER` | Server | For registration | — | Admin username for user creation |
+| `NAVIDROME_ADMIN_PASS` | Server | For registration | — | Admin password for user creation |
+| `INVITE_CODES` | Server | For registration | — | Comma-separated single-use codes |
+| `VITE_NAVIDROME_URL` | Client | Yes | — | Navidrome instance URL |
+| `VITE_JAM_SERVER_URL` | Client | Yes | — | Sync server URL |
+
+**Note**: If `NAVIDROME_ADMIN_USER`, `NAVIDROME_ADMIN_PASS`, or `NAVIDROME_URL` are not set, the `/api/register` endpoint returns 503 gracefully — login still works, only registration is disabled.
+
 ### Development
 - Server: `http://localhost:3001`
 - Client: `http://localhost:5173`
@@ -216,6 +268,8 @@ This project supports multiple deployment strategies:
 - **Client** (Vercel): `VITE_NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, `VITE_JAM_SERVER_URL=https://navidrome-jam-production.up.railway.app`
 - **Server** (Railway): `CLIENT_URL=https://jam.zhgnv.com`, `NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, plus admin credentials and invite codes
 - Navidrome hosted on PikaPods
+
+**Gotcha**: When adding env vars on Railway/Vercel, watch for leading spaces in variable names — both platforms silently accept them, causing cryptic build failures like `"empty key"` errors in Docker.
 
 ## Common Development Patterns
 
@@ -264,6 +318,29 @@ async getPlaylists() {
 ```
 
 All Subsonic responses are wrapped in `{ "subsonic-response": { status, ...data } }`.
+
+### Registration Flow (Server-Side)
+
+```
+Client → POST /api/register { username, password, inviteCode }
+  ↓ validate input + check invite code
+Server → POST navidrome/auth/login { username: admin, password: adminPass }
+  ↓ get JWT token
+Server → POST navidrome/api/user { userName, password, isAdmin: false }
+         (header: x-nd-authorization: Bearer <jwt>)
+  ↓ success → mark invite code as used
+Server → 201 { message: "Account created successfully" }
+```
+
+### Client localStorage Keys
+
+| Key | Purpose |
+|-----|---------|
+| `jam_user_id` | Persistent user ID (`user-<random>`) for WebSocket identity |
+| `nd_username` | Navidrome username for session restore |
+| `nd_token` | MD5(password + salt) for Subsonic auth |
+| `nd_salt` | Random salt used in token generation |
+| `audio_volume` | Last-used volume level (0.0–1.0) |
 
 ## Testing Strategy
 
