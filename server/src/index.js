@@ -249,7 +249,8 @@ app.get('/api/admin/codes', (req, res) => {
   }
 
   const auth = req.headers.authorization;
-  if (!auth || auth !== `Bearer ${adminPass}`) {
+  const queryKey = req.query.key;
+  if (queryKey !== adminPass && (!auth || auth !== `Bearer ${adminPass}`)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
