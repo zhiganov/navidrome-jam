@@ -27,7 +27,7 @@ const roomManager = new RoomManager();
 const validInviteCodes = new Set(
   (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean)
 );
-const usedInviteCodes = new Set();
+const usedInviteCodes = new Map(); // code → username
 
 // Validation helpers
 function validateRoomId(roomId) {
@@ -231,7 +231,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     }
 
     // Mark invite code as used only after successful creation
-    usedInviteCodes.add(trimmedCode);
+    usedInviteCodes.set(trimmedCode, username.trim());
 
     console.log(`User registered: ${username.trim()} (invite code used)`);
     res.status(201).json({ message: 'Account created successfully. You can now log in.' });
@@ -239,6 +239,27 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
+});
+
+// Admin: invite code status
+app.get('/api/admin/codes', (req, res) => {
+  const adminPass = process.env.NAVIDROME_ADMIN_PASS;
+  if (!adminPass) {
+    return res.status(503).json({ error: 'Admin not configured' });
+  }
+
+  const auth = req.headers.authorization;
+  if (!auth || auth !== `Bearer ${adminPass}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const codes = [...validInviteCodes].map(code => ({
+    code,
+    status: usedInviteCodes.has(code) ? 'used' : 'available',
+    usedBy: usedInviteCodes.get(code) || null
+  }));
+
+  res.json({ codes, total: codes.length, available: codes.filter(c => c.status === 'available').length });
 });
 
 // WebSocket connection handling
