@@ -604,6 +604,7 @@ body {
   align-items: center;
   font-size: 11px;
   border-bottom: 1px solid #d0d0d0;
+  color: var(--text-dark);
 }
 
 .users-list li.host {
