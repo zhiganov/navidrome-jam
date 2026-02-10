@@ -823,12 +823,18 @@ io.on('connection', (socket) => {
       });
 
       // Send current room state to the joining user
-      socket.emit('room-state', { room: roomManager.getRoom(roomId) });
+      const currentRoom = roomManager.getRoom(roomId);
+      socket.emit('room-state', { room: currentRoom });
+
+      // If there's an active track, send sync so the player starts playback
+      if (currentRoom.playbackState.trackId) {
+        socket.emit('sync', currentRoom.playbackState);
+      }
 
       // Notify others in the room
       socket.to(roomId).emit('user-joined', {
         user,
-        room: roomManager.getRoom(roomId)
+        room: currentRoom
       });
 
       console.log(`User ${username} (${userId}) joined room ${roomId}`);

@@ -9,6 +9,7 @@ function App() {
   const navidrome = useNavidrome();
   const jamClient = useJam();
   const audioRef = useRef(null);
+  const pendingSyncRef = useRef(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [username, setUsername] = useState('');
@@ -68,6 +69,9 @@ function App() {
 
   // Setup Jam client event listeners
   useEffect(() => {
+    // Track the current track ID so sync handler can detect changes
+    let syncedTrackId = null;
+
     const handleRoomState = (room) => {
       setCurrentRoom(room);
       const host = room.hostId === jamClient.userId;
@@ -78,8 +82,23 @@ function App() {
       setIsJoiningRoom(false);
       setIsCreatingRoom(false);
 
-      if (room.playbackState.trackId) {
-        loadTrack(room.playbackState.trackId);
+      // On join, load and sync to current playback state
+      const ps = room.playbackState;
+      if (ps.trackId) {
+        syncedTrackId = ps.trackId;
+        loadTrack(ps.trackId);
+      }
+    };
+
+    // Handle sync events — detect track changes and load new tracks
+    const handleSyncInApp = (state) => {
+      // Store latest sync state so SyncedAudioPlayer can apply it on mount
+      pendingSyncRef.current = state;
+
+      if (state.trackId && state.trackId !== syncedTrackId) {
+        console.log(`Track changed via sync: ${syncedTrackId} -> ${state.trackId}`);
+        syncedTrackId = state.trackId;
+        loadTrack(state.trackId);
       }
     };
 
@@ -120,6 +139,7 @@ function App() {
     };
 
     jamClient.on('room-state', handleRoomState);
+    jamClient.on('sync', handleSyncInApp);
     jamClient.on('user-joined', handleUserJoined);
     jamClient.on('user-left', handleUserLeft);
     jamClient.on('cohost-updated', handleCoHostUpdated);
@@ -129,6 +149,7 @@ function App() {
 
     return () => {
       jamClient.off('room-state', handleRoomState);
+      jamClient.off('sync', handleSyncInApp);
       jamClient.off('user-joined', handleUserJoined);
       jamClient.off('user-left', handleUserLeft);
       jamClient.off('cohost-updated', handleCoHostUpdated);
@@ -853,6 +874,7 @@ function App() {
                 onPlaybackUpdate={handlePlaybackUpdate}
                 onEnded={handleTrackEnded}
                 audioRef={audioRef}
+                pendingSyncRef={pendingSyncRef}
               />
             )}
 

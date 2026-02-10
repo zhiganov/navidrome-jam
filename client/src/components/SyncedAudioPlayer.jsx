@@ -10,7 +10,8 @@ export default function SyncedAudioPlayer({
   isConnected,
   onPlaybackUpdate,
   onEnded,
-  audioRef: externalAudioRef
+  audioRef: externalAudioRef,
+  pendingSyncRef
 }) {
   const internalAudioRef = useRef(null);
   // Use external ref if provided, otherwise use internal ref
@@ -72,43 +73,69 @@ export default function SyncedAudioPlayer({
     };
   }, [onPlaybackUpdate, onEnded]);
 
+  // Apply a sync state to the audio element
+  const applySyncState = (state) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    console.log('Applying sync:', state);
+
+    // Calculate expected position accounting for network latency
+    const latency = Date.now() - state.timestamp;
+    const expectedPosition = state.position + (state.playing ? latency / 1000 : 0);
+
+    // Check for drift
+    const drift = Math.abs(audio.currentTime - expectedPosition);
+    console.log(`Drift: ${drift.toFixed(3)}s`);
+
+    if (drift > DRIFT_THRESHOLD) {
+      console.log(`Correcting drift: seeking to ${expectedPosition.toFixed(2)}s`);
+      audio.currentTime = expectedPosition;
+    }
+
+    // Sync play/pause state
+    if (state.playing && audio.paused) {
+      audio.play().catch(err => console.error('Playback error:', err));
+    } else if (!state.playing && !audio.paused) {
+      audio.pause();
+    }
+  };
+
   // Handle sync commands from server
   useEffect(() => {
     if (!jamClient) return;
 
-    const handleSync = (state) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-
-      console.log('Applying sync:', state);
-
-      // Calculate expected position accounting for network latency
-      const latency = Date.now() - state.timestamp;
-      const expectedPosition = state.position + (state.playing ? latency / 1000 : 0);
-
-      // Check for drift
-      const drift = Math.abs(audio.currentTime - expectedPosition);
-      console.log(`Drift: ${drift.toFixed(3)}s`);
-
-      if (drift > DRIFT_THRESHOLD) {
-        console.log(`Correcting drift: seeking to ${expectedPosition.toFixed(2)}s`);
-        audio.currentTime = expectedPosition;
-      }
-
-      // Sync play/pause state
-      if (state.playing && audio.paused) {
-        audio.play().catch(err => console.error('Playback error:', err));
-      } else if (!state.playing && !audio.paused) {
-        audio.pause();
-      }
-    };
-
-    jamClient.on('sync', handleSync);
+    jamClient.on('sync', applySyncState);
 
     return () => {
-      jamClient.off('sync', handleSync);
+      jamClient.off('sync', applySyncState);
     };
   }, [jamClient]);
+
+  // Apply pending sync state on mount (handles join-in-progress)
+  useEffect(() => {
+    if (!pendingSyncRef?.current) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Wait for audio to be ready enough to seek/play
+    const applyPending = () => {
+      const pending = pendingSyncRef.current;
+      if (pending) {
+        console.log('Applying pending sync state on mount');
+        applySyncState(pending);
+        pendingSyncRef.current = null;
+      }
+    };
+
+    if (audio.readyState >= 1) {
+      applyPending();
+    } else {
+      audio.addEventListener('loadedmetadata', applyPending, { once: true });
+      return () => audio.removeEventListener('loadedmetadata', applyPending);
+    }
+  }, [streamUrl]);
 
   // Send heartbeat to server
   useEffect(() => {
