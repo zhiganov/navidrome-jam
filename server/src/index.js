@@ -18,6 +18,7 @@ const io = new Server(httpServer, {
   }
 });
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
@@ -196,7 +197,16 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     url.searchParams.append('password', password);
 
     const response = await fetch(url);
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('Navidrome createUser response:', responseText.substring(0, 500));
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      console.error('Navidrome returned non-JSON:', responseText.substring(0, 200));
+      return res.status(502).json({ error: 'Navidrome returned an unexpected response' });
+    }
 
     if (data['subsonic-response'].status !== 'ok') {
       const errMsg = data['subsonic-response'].error?.message || 'Failed to create user';
