@@ -469,6 +469,65 @@ body {
   margin-top: 16px !important;
 }
 
+/* Active rooms list */
+.active-rooms-fieldset {
+  margin-top: 4px;
+}
+
+.active-rooms-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.active-room-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 3px;
+  border-bottom: 1px dotted var(--win-dark);
+}
+
+.active-room-item:last-child {
+  border-bottom: none;
+}
+
+.active-room-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.active-room-code {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--title-blue);
+  letter-spacing: 2px;
+}
+
+.active-room-meta {
+  font-size: 10px;
+  color: var(--win-dark);
+}
+
+.active-room-track {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: #006000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-room-join {
+  width: auto !important;
+  padding: 2px 10px;
+  flex-shrink: 0;
+}
+
 /* ==================
    JAM SESSION SCREEN
    ================== */

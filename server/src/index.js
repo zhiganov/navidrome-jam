@@ -104,6 +104,10 @@ app.get('/health', (req, res) => {
 });
 
 // REST endpoints for room management
+app.get('/api/rooms', (req, res) => {
+  res.json({ rooms: roomManager.listRooms() });
+});
+
 app.post('/api/rooms', createRoomLimiter, (req, res) => {
   try {
     const { roomId, hostName } = req.body;

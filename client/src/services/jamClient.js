@@ -99,6 +99,18 @@ class JamClient {
   }
 
   /**
+   * List active rooms
+   */
+  async listRooms() {
+    const response = await fetch(`${this.serverUrl}/api/rooms`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rooms');
+    }
+    const data = await response.json();
+    return data.rooms;
+  }
+
+  /**
    * Create a new room
    */
   async createRoom(roomId = null, hostName = null) {

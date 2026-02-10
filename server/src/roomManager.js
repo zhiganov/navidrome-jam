@@ -58,6 +58,23 @@ export class RoomManager {
   }
 
   /**
+   * List all active rooms (public summary, no sensitive data)
+   */
+  listRooms() {
+    return Array.from(this.rooms.values()).map(room => ({
+      id: room.id,
+      hostName: room.hostName,
+      userCount: room.users.length,
+      currentTrack: room.playbackState.trackId ? {
+        title: room.queue.find(t => t.id === room.playbackState.trackId)?.title || null,
+        artist: room.queue.find(t => t.id === room.playbackState.trackId)?.artist || null,
+        playing: room.playbackState.playing
+      } : null,
+      createdAt: room.createdAt
+    }));
+  }
+
+  /**
    * Add user to room (or update if already exists)
    */
   addUser(roomId, user) {

@@ -25,6 +25,7 @@ function App() {
   const [roomError, setRoomError] = useState('');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [activeRooms, setActiveRooms] = useState([]);
 
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -138,10 +139,28 @@ function App() {
     };
   }, []);
 
+  const fetchActiveRooms = useCallback(async () => {
+    try {
+      const rooms = await jamClient.listRooms();
+      setActiveRooms(rooms);
+    } catch (e) {
+      // silent — room list is best-effort
+    }
+  }, [jamClient]);
+
+  // Poll active rooms every 10s when on room selection screen
+  useEffect(() => {
+    if (!isAuthenticated || currentRoom) return;
+    fetchActiveRooms();
+    const interval = setInterval(fetchActiveRooms, 10000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, currentRoom, fetchActiveRooms]);
+
   const connectToJamServer = async () => {
     try {
       await jamClient.connect();
       setIsConnected(true);
+      fetchActiveRooms();
     } catch (error) {
       console.error('Failed to connect to Jam server:', error);
     }
@@ -672,6 +691,45 @@ function App() {
 
             {roomError && <div className="error">{roomError}</div>}
             {!isConnected && <div className="warning">Connecting to Jam server...</div>}
+
+            {activeRooms.length > 0 && (
+              <>
+                <hr className="retro-divider" />
+                <fieldset className="win98-fieldset active-rooms-fieldset">
+                  <legend>Active Rooms ({activeRooms.length})</legend>
+                  <ul className="active-rooms-list">
+                    {activeRooms.map(room => (
+                      <li key={room.id} className="active-room-item">
+                        <div className="active-room-info">
+                          <span className="active-room-code">{room.id}</span>
+                          <span className="active-room-meta">
+                            {room.hostName} &middot; {room.userCount} {room.userCount === 1 ? 'listener' : 'listeners'}
+                          </span>
+                          {room.currentTrack && (
+                            <span className="active-room-track">
+                              {room.currentTrack.playing ? '\u266B ' : '\u23F8 '}
+                              {room.currentTrack.title}{room.currentTrack.artist ? ` \u2013 ${room.currentTrack.artist}` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          className="win98-btn active-room-join"
+                          onClick={() => {
+                            setRoomInput(room.id);
+                            setIsJoiningRoom(true);
+                            setRoomError('');
+                            try { jamClient.joinRoom(room.id, username); } catch (e) { setRoomError(e.message); setIsJoiningRoom(false); }
+                          }}
+                          disabled={!isConnected || isJoiningRoom || isCreatingRoom}
+                        >
+                          Join
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </fieldset>
+              </>
+            )}
 
             <div className="form-actions">
               <button onClick={handleLogout} className="win98-btn logout-btn">
