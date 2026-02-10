@@ -15,6 +15,10 @@ function App() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [inviteCode, setInviteCode] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState('');
 
   const [currentRoom, setCurrentRoom] = useState(null);
   const [roomInput, setRoomInput] = useState('');
@@ -132,6 +136,25 @@ function App() {
       setLoginError(error.message);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setRegisterSuccess('');
+    setIsRegistering(true);
+
+    try {
+      const result = await jamClient.register(username, password, inviteCode);
+      setRegisterSuccess(result.message);
+      setInviteCode('');
+      setAuthMode('login');
+      setPassword('');
+    } catch (error) {
+      setLoginError(error.message);
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -297,27 +320,81 @@ function App() {
       <div className="app login-screen">
         <div className="login-container">
           <h1>🎵 Navidrome Jam</h1>
-          <form onSubmit={handleLogin}>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={isLoggingIn}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoggingIn}
-            />
-            <button type="submit" disabled={isLoggingIn}>
-              {isLoggingIn ? 'Logging in...' : 'Login to Navidrome'}
+
+          <div className="auth-tabs">
+            <button
+              className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
+              onClick={() => { setAuthMode('login'); setLoginError(''); }}
+            >
+              Login
             </button>
-          </form>
+            <button
+              className={`auth-tab ${authMode === 'signup' ? 'active' : ''}`}
+              onClick={() => { setAuthMode('signup'); setLoginError(''); }}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          {registerSuccess && <div className="success">{registerSuccess}</div>}
+
+          {authMode === 'login' ? (
+            <form onSubmit={handleLogin}>
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={isLoggingIn}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoggingIn}
+              />
+              <button type="submit" disabled={isLoggingIn}>
+                {isLoggingIn ? 'Logging in...' : 'Login to Navidrome'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister}>
+              <input
+                type="text"
+                placeholder="Choose a username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={isRegistering}
+                minLength={3}
+                maxLength={50}
+              />
+              <input
+                type="password"
+                placeholder="Choose a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isRegistering}
+                minLength={6}
+              />
+              <input
+                type="text"
+                placeholder="Invite code"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
+                disabled={isRegistering}
+              />
+              <button type="submit" disabled={isRegistering}>
+                {isRegistering ? 'Creating account...' : 'Create Account'}
+              </button>
+            </form>
+          )}
+
           {loginError && <div className="error">{loginError}</div>}
           <div className="server-info">
             Server: {navidrome.baseUrl}

@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import { createHash } from 'crypto';
 import { RoomManager } from './roomManager.js';
 
 dotenv.config();
@@ -21,6 +22,12 @@ app.use(cors());
 app.use(express.json());
 
 const roomManager = new RoomManager();
+
+// Invite code tracking (single-use, in-memory)
+const validInviteCodes = new Set(
+  (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean)
+);
+const usedInviteCodes = new Set();
 
 // Validation helpers
 function validateRoomId(roomId) {
@@ -54,11 +61,35 @@ function sanitizeString(str, maxLength = 50) {
     .substring(0, maxLength);
 }
 
+function validateRegistration({ username, password, inviteCode }) {
+  if (!username || typeof username !== 'string' || username.trim().length < 3 || username.length > 50) {
+    return { valid: false, error: 'Username must be 3-50 characters' };
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { valid: false, error: 'Username must be alphanumeric (hyphens and underscores allowed)' };
+  }
+  if (!password || typeof password !== 'string' || password.length < 6 || password.length > 128) {
+    return { valid: false, error: 'Password must be 6-128 characters' };
+  }
+  if (!inviteCode || typeof inviteCode !== 'string') {
+    return { valid: false, error: 'Invite code is required' };
+  }
+  return { valid: true };
+}
+
 // Rate limiting for room creation (max 5 rooms per IP per minute)
 const createRoomLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 5,
   message: { error: 'Too many room creation attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  message: { error: 'Too many registration attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -120,6 +151,69 @@ app.get('/api/rooms/:roomId', (req, res) => {
   } catch (error) {
     console.error('Error fetching room:', error);
     res.status(500).json({ error: 'Failed to fetch room' });
+  }
+});
+
+// User registration via invite code
+app.post('/api/register', registerLimiter, async (req, res) => {
+  try {
+    const { username, password, inviteCode } = req.body;
+
+    const validation = validateRegistration({ username, password, inviteCode });
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const adminUser = process.env.NAVIDROME_ADMIN_USER;
+    const adminPass = process.env.NAVIDROME_ADMIN_PASS;
+    const navidromeUrl = process.env.NAVIDROME_URL;
+
+    if (!adminUser || !adminPass || !navidromeUrl) {
+      console.error('Registration endpoint called but admin credentials not configured');
+      return res.status(503).json({ error: 'Registration is not available' });
+    }
+
+    const trimmedCode = inviteCode.trim();
+    if (!validInviteCodes.has(trimmedCode)) {
+      return res.status(403).json({ error: 'Invalid invite code' });
+    }
+    if (usedInviteCodes.has(trimmedCode)) {
+      return res.status(403).json({ error: 'This invite code has already been used' });
+    }
+
+    // Build Subsonic createUser.view request with admin credentials
+    const salt = Math.random().toString(36).substring(2, 15);
+    const token = createHash('md5').update(adminPass + salt).digest('hex');
+
+    const url = new URL(`${navidromeUrl}/rest/createUser.view`);
+    url.searchParams.append('u', adminUser);
+    url.searchParams.append('t', token);
+    url.searchParams.append('s', salt);
+    url.searchParams.append('v', '1.16.1');
+    url.searchParams.append('c', 'navidrome-jam');
+    url.searchParams.append('f', 'json');
+    url.searchParams.append('username', username.trim());
+    url.searchParams.append('password', password);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data['subsonic-response'].status !== 'ok') {
+      const errMsg = data['subsonic-response'].error?.message || 'Failed to create user';
+      if (errMsg.toLowerCase().includes('already exists')) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+      return res.status(400).json({ error: errMsg });
+    }
+
+    // Mark invite code as used only after successful creation
+    usedInviteCodes.add(trimmedCode);
+
+    console.log(`User registered: ${username.trim()} (invite code used)`);
+    res.status(201).json({ message: 'Account created successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
 

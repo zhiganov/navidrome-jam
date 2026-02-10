@@ -112,6 +112,25 @@ class JamClient {
   }
 
   /**
+   * Register a new Navidrome user via invite code
+   */
+  async register(username, password, inviteCode) {
+    const response = await fetch(`${this.serverUrl}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, inviteCode })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Registration failed');
+    }
+
+    return data;
+  }
+
+  /**
    * Join a room
    */
   joinRoom(roomId, username) {
