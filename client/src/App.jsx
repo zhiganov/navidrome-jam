@@ -48,6 +48,9 @@ function App() {
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
+  const [repeatMode, setRepeatMode] = useState(() => {
+    return localStorage.getItem('jam_repeat') === 'on';
+  });
 
   // Restore session on mount
   useEffect(() => {
@@ -426,7 +429,12 @@ function App() {
   const handleTrackEnded = useCallback(() => {
     if (!canControl) return;
 
-    if (queue.length === 0) {
+    // Re-append current track to end of queue if repeat is on
+    const reappendItem = repeatMode && currentTrack
+      ? { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }
+      : null;
+
+    if (queue.length === 0 && !reappendItem) {
       console.log('Queue is empty, playback stopped');
       return;
     }
@@ -436,15 +444,23 @@ function App() {
       setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
     }
 
-    const nextTrack = queue[0];
-    const newQueue = queue.slice(1);
+    if (queue.length === 0 && reappendItem) {
+      // Queue empty but repeat on — replay current track
+      console.log(`Repeat: replaying ${currentTrack.title}`);
+      jamClient.play(currentTrack.id, 0);
+      loadTrack(currentTrack.id);
+      return;
+    }
 
-    console.log(`Auto-playing next track: ${nextTrack.title}`);
+    const nextTrack = queue[0];
+    const newQueue = [...queue.slice(1), ...(reappendItem ? [reappendItem] : [])];
+
+    console.log(`Auto-playing next track: ${nextTrack.title}${reappendItem ? ' (repeat on)' : ''}`);
 
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [canControl, queue, jamClient, currentTrack]);
+  }, [canControl, queue, jamClient, currentTrack, repeatMode]);
 
   const handleLeaveRoom = () => {
     jamClient.leaveRoom();
@@ -482,13 +498,17 @@ function App() {
       setPlayHistory(prev => [...prev, { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }]);
     }
 
+    const reappendItem = repeatMode && currentTrack
+      ? { id: currentTrack.id, title: currentTrack.title, artist: currentTrack.artist, album: currentTrack.album }
+      : null;
+
     const nextTrack = queue[0];
-    const newQueue = queue.slice(1);
+    const newQueue = [...queue.slice(1), ...(reappendItem ? [reappendItem] : [])];
 
     jamClient.updateQueue(newQueue);
     jamClient.play(nextTrack.id, 0);
     loadTrack(nextTrack.id);
-  }, [canControl, queue, jamClient, currentTrack]);
+  }, [canControl, queue, jamClient, currentTrack, repeatMode]);
 
   const handlePrevTrack = useCallback(() => {
     if (!canControl || !currentTrack) return;
@@ -905,6 +925,17 @@ function App() {
                   title="Next track"
                 >
                   <span className="transport-icon next-icon"></span>
+                </button>
+                <button
+                  className={`transport-btn repeat-btn${repeatMode ? ' repeat-active' : ''}`}
+                  onClick={() => {
+                    const next = !repeatMode;
+                    setRepeatMode(next);
+                    localStorage.setItem('jam_repeat', next ? 'on' : 'off');
+                  }}
+                  title={repeatMode ? 'Repeat: ON' : 'Repeat: OFF'}
+                >
+                  <span className="transport-icon repeat-icon"></span>
                 </button>
               </div>
             )}
