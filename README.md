@@ -4,6 +4,8 @@ Synchronized music playback for listening to the same music with friends in real
 
 **Live at [jam.zhgnv.com](https://jam.zhgnv.com)**
 
+<img width="1200" height="630" alt="og-image" src="https://github.com/user-attachments/assets/6eba935c-632b-407e-b905-6d334d6a0eab" />
+
 ## Motivation
 
 Spotify Jam lets you listen to music together, but it requires Spotify Premium and doesn't support your own music library (FLAC files). This project enables synchronized playback of your personal music collection with friends while gaming or hanging out.
