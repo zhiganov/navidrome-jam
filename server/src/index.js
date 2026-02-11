@@ -105,12 +105,17 @@ app.get('/health', (req, res) => {
 
 // REST endpoints for room management
 app.get('/api/rooms', (req, res) => {
-  res.json({ rooms: roomManager.listRooms() });
+  let rooms = roomManager.listRooms();
+  const { community } = req.query;
+  if (community) {
+    rooms = rooms.filter(r => r.community === community);
+  }
+  res.json({ rooms });
 });
 
 app.post('/api/rooms', createRoomLimiter, (req, res) => {
   try {
-    const { roomId, hostName } = req.body;
+    const { roomId, hostName, community } = req.body;
 
     // Validate roomId
     const roomIdValidation = validateRoomId(roomId);
@@ -120,9 +125,10 @@ app.post('/api/rooms', createRoomLimiter, (req, res) => {
 
     // Sanitize hostName to prevent XSS
     const sanitizedHostName = sanitizeString(hostName, 50) || 'Host';
+    const sanitizedCommunity = community ? sanitizeString(community, 50) : null;
 
     // Create room
-    const room = roomManager.createRoom(roomId || null, sanitizedHostName);
+    const room = roomManager.createRoom(roomId || null, sanitizedHostName, sanitizedCommunity);
 
     res.status(201).json({ room });
   } catch (error) {

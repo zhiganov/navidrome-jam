@@ -15,7 +15,7 @@ export class RoomManager {
   /**
    * Create a new room
    */
-  createRoom(roomId = null, hostName = 'Host') {
+  createRoom(roomId = null, hostName = 'Host', community = null) {
     const id = roomId || this.generateRoomCode();
 
     if (this.rooms.has(id)) {
@@ -26,6 +26,7 @@ export class RoomManager {
       id,
       hostId: null, // Set when first user joins
       hostName,
+      community: community || null,
       coHosts: [], // User IDs with co-host privileges
       users: [],
       queue: [],
@@ -64,6 +65,7 @@ export class RoomManager {
     return Array.from(this.rooms.values()).map(room => ({
       id: room.id,
       hostName: room.hostName,
+      community: room.community,
       userCount: room.users.length,
       currentTrack: room.playbackState.trackId ? {
         title: room.queue.find(t => t.id === room.playbackState.trackId)?.title || null,
