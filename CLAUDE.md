@@ -114,116 +114,36 @@ cd client && npm run dev
 
 ### Sync Server (`server/src/`)
 
-**`index.js`** - Express + Socket.io server with event handlers:
-- REST endpoints:
-  - `/health` — health check
-  - `GET /api/rooms` — list active rooms (public summary)
-  - `POST /api/rooms` — create room (rate-limited 5/min/IP)
-  - `GET /api/rooms/:roomId` — get room details
-  - `POST /api/register` — invite-code registration (rate-limited 3/min/IP)
-  - `GET /api/admin/codes` — list all invite codes with status (admin auth)
-  - `POST /api/admin/generate-codes` — generate new invite codes (admin auth)
-  - `DELETE /api/admin/codes/:code` — delete an invite code (admin auth)
-  - `GET /admin` — server-rendered Win98-styled admin dashboard HTML page
-- Admin auth: `checkAdminAuth(req, res)` helper — validates `Authorization: Bearer <NAVIDROME_ADMIN_PASS>` header or `?key=` query param
-- WebSocket events: `join-room`, `play`, `pause`, `seek`, `update-queue`, `heartbeat`, `promote-cohost`, `demote-cohost`
-- Authorization: Host and co-hosts can send playback/queue commands; only host can promote/demote co-hosts
-- Auto host transfer when host disconnects
-- Join-in-progress sync: Server sends `sync` event after `room-state` when joining a room with active playback
-- Invite-code registration: validates codes, authenticates as admin via Navidrome native API, creates user
-- `trust proxy` enabled for Railway reverse proxy (rate limiting)
+Two files: `index.js` (Express + Socket.io server, REST endpoints, WebSocket event handlers) and `roomManager.js` (in-memory room state management).
 
-**`roomManager.js`** - In-memory state management:
-- `RoomManager` class managing Map of rooms
-- Room code generation: `randomBytes(3).toString('hex').toUpperCase()` — 6 hex chars (e.g., `A3F1B2`)
-- Room structure: `{ id, hostId, hostName, coHosts[], users[], queue[], playbackState, createdAt }`
-- Playback state: `{ trackId, position, playing, timestamp }` - timestamp critical for drift correction
-- User structure: `{ id, socketId, username, joinedAt, position, lastHeartbeat }`
-- Host assignment: First user to join becomes host, auto-promotes next user on host leave
-- Co-host system: `canControl(roomId, userId)` checks host OR co-host status; `addCoHost()` / `removeCoHost()` manage the list; co-hosts are cleaned up when users leave
-- Duplicate user handling: Reconnecting users update their socketId without creating duplicate entries
-- Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min, deletes empty rooms
-
-**`listRooms()`** method on `RoomManager` returns public room summaries: `{ id, hostName, userCount, currentTrack: { title, artist, playing } | null, createdAt }`.
-
-**Invite code lifecycle**: Codes loaded from `INVITE_CODES` env var into a `Set`. A separate `usedInviteCodes` Map tracks consumed codes (`code → username`). Codes are marked used only after successful Navidrome user creation. Both are in-memory — server restart resets used codes (acceptable for casual use). Admin endpoints expose code status and allow generation/deletion.
-
-**Key design pattern**: All state is ephemeral in-memory. Rooms disappear when empty. For persistence, future work would add Redis/database layer.
+**Key design decisions**:
+- All state is ephemeral in-memory — rooms disappear when empty, invite code usage resets on server restart
+- Authorization via `canControl(roomId, userId)` — host OR co-host can send playback/queue commands; only host can promote/demote
+- `trust proxy` enabled for Railway reverse proxy (rate limiting needs real IPs)
+- Join-in-progress: Server sends `sync` event after `room-state` so new joiners start at the right position
+- Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min
 
 ### Web Client (`client/src/`)
 
-**`App.jsx`** - Main component with three screens:
-1. Login screen - Navidrome authentication with Login/Sign Up tabs (invite-code registration)
-2. Room selection - Create/join rooms + active rooms list (polled every 10s)
-3. Jam session - Player with Winamp-style transport controls, Browse/Search tabs (+ Queue/People tabs on mobile), queue with reordering, users panel with co-host promote/demote (3-panel layout with status bar)
+Single-page app with three screens in `App.jsx`: Login → Room Selection → Jam Session.
 
-Key features in App.jsx:
-- **Active rooms**: `fetchActiveRooms()` polls `GET /api/rooms` every 10s on room selection screen
-- **Browse modes**: `browseMode` state switches between Artists, Albums A-Z, Recently Added, and Random. Albums A-Z/Recent/Random use `getAlbumList2.view`. Dropdown selector in browse toolbar.
-- **Mobile tabs**: Queue and People tabs (`.mobile-tab` CSS class) appear on screens ≤1024px, rendering queue/users content inline where desktop uses sidebar panels
-- **Album auto-queue**: `handlePlayTrack(song, albumSongs)` accepts optional album context — queues remaining tracks when playing from browse view
-- **Artist names in tracklists**: Album song view shows track artist when it differs from album artist (compilations). When browsing via album list mode (no `selectedArtist`), artist names always show.
-- **Repeat mode**: `repeatMode` state with localStorage persistence (`jam_repeat`). When enabled, `handleTrackEnded` re-appends current track to queue tail (empty queue = single-track loop)
-- **Sync race condition handling**: `pendingSyncRef` stores sync events arriving before `SyncedAudioPlayer` mounts; applied on `loadedmetadata`
-- **Track change detection**: `handleSyncInApp` listener detects `trackId` changes in sync events and triggers `loadTrack`
+**Service layer** (non-obvious patterns):
+- `services/navidrome.js` — Subsonic API client with MD5 token auth (CryptoJS). Session restored from localStorage with async ping validation. Auth params appended to every URL: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
+- `services/jamClient.js` — Socket.io wrapper with custom event emitter (manual `listeners` map, not Node EventEmitter). Room creation and registration use REST; everything else uses WebSocket.
+- `contexts/NavidromeContext.jsx` and `JamContext.jsx` — React Context providers that create/destroy client instances on mount/unmount. Required to prevent duplicate listeners during Vite hot-reload.
 
-**Visual theme**: Windows 98 / GeoCities aesthetic — VT323 monospace font, beveled borders, blue gradient titlebars, starfield background, Win98 scrollbars, visitor counter, marquee. All theme colors defined as CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--win-darkest`, `--titlebar-*`, `--text-dark`, `--accent-*`). Transport control icons (play, pause, prev, next, repeat) are CSS-only using `box-shadow` pixel art on `::before`/`::after` pseudo-elements — no icon fonts or SVGs.
-
-State management via React hooks (no Redux/Zustand). Client instances provided via React Context (`NavidromeContext`, `JamContext`) for proper hot-reload cleanup.
-
-**`contexts/NavidromeContext.jsx`** and **`contexts/JamContext.jsx`** - React Context providers:
-- Create client instances on mount, cleanup on unmount
-- Prevents duplicate listeners during hot-reload
-- Use `useNavidrome()` and `useJam()` hooks to access clients
-
-**`services/navidrome.js`** - Navidrome Subsonic API client:
-- Token-based authentication with MD5 hashing (CryptoJS): `token = MD5(password + salt)`, random salt per request
-- Session persistence via localStorage (`navidrome_username`, `navidrome_token`, `navidrome_salt`) with **async validation on restore** (ping check)
-- URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
-- Methods: `authenticate()`, `restoreSession()`, `search()`, `getArtists()`, `getAlbumList()`, `getArtist()`, `getAlbum()`, `getSong()`, `getStreamUrl()`, `getCoverArtUrl()`
-- No plaintext passwords stored — only MD5 tokens (per Subsonic spec)
-
-**`services/jamClient.js`** - WebSocket client wrapper:
-- Socket.io connection management (default transport: WebSocket with polling fallback)
-- Custom event emitter pattern for React integration (not Node EventEmitter — manual `listeners` map)
-- User ID generation: `'user-' + Math.random().toString(36).substring(2, 18)`, persisted in localStorage as `jam_user_id`
-- Room creation via REST (`POST /api/rooms`), registration via REST (`POST /api/register`), all other operations via WebSocket
-- Methods: `connect()`, `disconnect()`, `createRoom()`, `joinRoom()`, `leaveRoom()`, `play()`, `pause()`, `seek()`, `updateQueue()`, `promoteCoHost()`, `demoteCoHost()`, `sendHeartbeat()`, `register()`, `listRooms()`
-- Events emitted: `room-state`, `sync`, `user-joined`, `user-left`, `cohost-updated`, `queue-updated`, `error`, `disconnected`
-
-**`components/SyncedAudioPlayer.jsx`** - Core sync logic:
-- HTML5 Audio element wrapped in React
-- Volume control with localStorage persistence
-- Seek bar (host/co-host only) with sync event emission
-- `onPlaybackUpdate` callback reports `(currentTime, paused)` to parent for reactive UI updates
-- **Drift correction algorithm** (critical):
-  ```javascript
-  const latency = Date.now() - state.timestamp;
-  const expectedPosition = state.position + (state.playing ? latency / 1000 : 0);
-  const drift = Math.abs(audio.currentTime - expectedPosition);
-  if (drift > DRIFT_THRESHOLD) {  // 0.5 seconds
-    audio.currentTime = expectedPosition;
-  }
-  ```
-- Heartbeat system: Sends position every 2s for presence tracking (restarts on reconnect via `isConnected` prop)
-- `pendingSyncRef` prop: Applies deferred sync state on mount (handles race condition when sync arrives before audio element is ready)
-- Audio streams directly from Navidrome via `getStreamUrl()`
-
-**`components/ErrorBoundary.jsx`** - React error boundary:
-- Catches component errors and displays fallback UI
-- "Try Again" and "Reload Page" recovery options
-- Development mode shows error details
+**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport control icons are CSS-only `box-shadow` pixel art — no icon fonts or SVGs.
 
 ### Synchronization Protocol
 
-**Server-authoritative model**:
-1. Host or co-host emits action (play/pause/seek) → Server validates permission via `canControl()`
-2. Server updates room state, adds timestamp
-3. Server broadcasts `sync` event with `{ trackId, position, playing, timestamp }`
-4. All clients (including host) adjust local playback based on timestamp + latency
-5. Clients continuously send heartbeats with current position
+Server-authoritative model in `SyncedAudioPlayer.jsx`:
 
-**Why timestamps matter**: Network latency varies. Each client calculates expected position using `position + (now - timestamp) / 1000` for playing state, enabling smooth sync despite variable network delays.
+1. Host/co-host emits action → Server validates via `canControl()`, adds timestamp, broadcasts `sync` event
+2. All clients compute expected position: `position + (Date.now() - timestamp) / 1000`
+3. If drift > 0.5s (`DRIFT_THRESHOLD`), client seeks to expected position
+4. Heartbeats sent every 2s for presence tracking
+
+**Race condition**: Sync events can arrive before the audio element mounts. `pendingSyncRef` stores these and applies them on `loadedmetadata`. Track changes detected in `handleSyncInApp` which triggers `loadTrack` in App.jsx.
 
 ### WebSocket Events Reference
 
@@ -384,78 +304,9 @@ Server → 201 { message: "Account created successfully" }
 | `audio_volume` | Last-used volume level (0.0–1.0) |
 | `jam_repeat` | Repeat mode (`on` / `off`) |
 
-## Testing Strategy
+## Testing
 
-Currently manual testing only. Test checklist:
-
-**Room Management**:
-- [ ] Create room generates unique 6-char code
-- [ ] Join room with valid code works
-- [ ] Join room with invalid code shows error
-- [ ] First user becomes host (crown icon)
-
-**Playback Sync**:
-- [ ] Host play command starts playback on all clients
-- [ ] Host pause command pauses all clients
-- [ ] Host seek updates position on all clients
-- [ ] Clients stay within 500ms of each other (check console logs)
-- [ ] Audio streams from Navidrome (check Network tab)
-
-**Host Transfer & Co-Hosts**:
-- [ ] Host disconnect promotes next user
-- [ ] New host can control playback
-- [ ] Host can promote user to co-host (+ button in users panel)
-- [ ] Co-host can play/pause/seek/queue
-- [ ] Host can demote co-host (- button)
-- [ ] Co-host status cleared when user leaves room
-
-**Library Browser**:
-- [ ] Browse mode dropdown switches between Artists, Albums A-Z, Recently Added, Random
-- [ ] Artists mode: shows all artists, clicking shows albums, clicking album shows tracks
-- [ ] Albums A-Z mode: shows all albums alphabetically with artist name and year
-- [ ] Recently Added mode: shows newest albums first
-- [ ] Random mode: shows random albums, Shuffle button re-rolls
-- [ ] Clicking album in any mode shows track list with Queue All button
-- [ ] Breadcrumb navigation works (Library > Artist > Album)
-- [ ] Compilation albums show per-track artist names when they differ from album artist
-
-**Mobile Layout**:
-- [ ] Queue tab appears on screens ≤1024px with full queue management (reorder, remove)
-- [ ] People tab appears on screens ≤1024px with user list and co-host controls
-- [ ] Desktop sidebar panels still work normally above 1024px
-
-**Active Rooms & Repeat**:
-- [ ] Room selection screen shows active rooms list
-- [ ] Active rooms list updates every 10 seconds
-- [ ] Clicking "Join" on active room enters the room
-- [ ] Repeat button toggles on/off with visual state change
-- [ ] With repeat on, finished track re-appends to queue
-- [ ] With repeat on and empty queue, single track loops
-- [ ] Playing from album browse view queues remaining album tracks
-
-**Admin Dashboard**:
-- [ ] `/admin?key=<pass>` loads Win98-styled admin page
-- [ ] Shows all invite codes with used/available status
-- [ ] Generate new codes button works
-- [ ] Delete code button works
-
-**Edge Cases**:
-- [ ] Multiple rapid play/pause commands
-- [ ] Seeking during playback
-- [ ] Network interruption and reconnect
-- [ ] Last user leaving deletes room
-
-## Security Features
-
-The project includes several security measures (see `SECURITY.md` for details):
-
-- **Input validation**: Room IDs, usernames, and all user input are validated and sanitized
-- **Rate limiting**: Room creation (5/min/IP), registration (3/min/IP) via `express-rate-limit`
-- **XSS prevention**: HTML tags and special characters stripped from user input
-- **Session validation**: Restored sessions are validated with Navidrome ping before use
-- **Token-based auth**: Client credentials stored as MD5 tokens, not plaintext passwords
-- **Invite-code registration**: Single-use codes, admin credentials never exposed to client
-- **Trust proxy**: Enabled for accurate IP detection behind Railway reverse proxy
+No automated tests yet. Manual testing with the HTML test client (`server/test-client.html`) or full stack (two browser windows). See `SECURITY.md` for security measures.
 
 ## Planned: User Uploads
 
