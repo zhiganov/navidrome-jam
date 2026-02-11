@@ -45,6 +45,8 @@ The client uses Navidrome's **Subsonic API** for music playback (stable, documen
 **Key Subsonic endpoints used**:
 - `ping.view` - Server health check and session validation
 - `search3.view` - Music search
+- `getArtists.view` - All artists (alphabetically indexed)
+- `getAlbumList2.view` - Album lists by type (alphabeticalByName, newest, random, etc.)
 - `getAlbum.view`, `getArtist.view`, `getSong.view` - Metadata
 - `stream.view` - Audio streaming URL (clients use this directly)
 - `scrobble.view` - Mark songs as played
@@ -153,11 +155,14 @@ cd client && npm run dev
 **`App.jsx`** - Main component with three screens:
 1. Login screen - Navidrome authentication with Login/Sign Up tabs (invite-code registration)
 2. Room selection - Create/join rooms + active rooms list (polled every 10s)
-3. Jam session - Player with Winamp-style transport controls, Browse/Search tabs, queue with reordering, users panel with co-host promote/demote (3-panel layout with status bar)
+3. Jam session - Player with Winamp-style transport controls, Browse/Search tabs (+ Queue/People tabs on mobile), queue with reordering, users panel with co-host promote/demote (3-panel layout with status bar)
 
 Key features in App.jsx:
 - **Active rooms**: `fetchActiveRooms()` polls `GET /api/rooms` every 10s on room selection screen
+- **Browse modes**: `browseMode` state switches between Artists, Albums A-Z, Recently Added, and Random. Albums A-Z/Recent/Random use `getAlbumList2.view`. Dropdown selector in browse toolbar.
+- **Mobile tabs**: Queue and People tabs (`.mobile-tab` CSS class) appear on screens ≤1024px, rendering queue/users content inline where desktop uses sidebar panels
 - **Album auto-queue**: `handlePlayTrack(song, albumSongs)` accepts optional album context — queues remaining tracks when playing from browse view
+- **Artist names in tracklists**: Album song view shows track artist when it differs from album artist (compilations). When browsing via album list mode (no `selectedArtist`), artist names always show.
 - **Repeat mode**: `repeatMode` state with localStorage persistence (`jam_repeat`). When enabled, `handleTrackEnded` re-appends current track to queue tail (empty queue = single-track loop)
 - **Sync race condition handling**: `pendingSyncRef` stores sync events arriving before `SyncedAudioPlayer` mounts; applied on `loadedmetadata`
 - **Track change detection**: `handleSyncInApp` listener detects `trackId` changes in sync events and triggers `loadTrack`
@@ -175,7 +180,7 @@ State management via React hooks (no Redux/Zustand). Client instances provided v
 - Token-based authentication with MD5 hashing (CryptoJS): `token = MD5(password + salt)`, random salt per request
 - Session persistence via localStorage (`navidrome_username`, `navidrome_token`, `navidrome_salt`) with **async validation on restore** (ping check)
 - URL building with auth params: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
-- Methods: `authenticate()`, `restoreSession()`, `search()`, `getArtists()`, `getArtist()`, `getAlbum()`, `getSong()`, `getStreamUrl()`, `getCoverArtUrl()`
+- Methods: `authenticate()`, `restoreSession()`, `search()`, `getArtists()`, `getAlbumList()`, `getArtist()`, `getAlbum()`, `getSong()`, `getStreamUrl()`, `getCoverArtUrl()`
 - No plaintext passwords stored — only MD5 tokens (per Subsonic spec)
 
 **`services/jamClient.js`** - WebSocket client wrapper:
@@ -405,10 +410,19 @@ Currently manual testing only. Test checklist:
 - [ ] Co-host status cleared when user leaves room
 
 **Library Browser**:
-- [ ] Browse tab shows all artists from Navidrome
-- [ ] Clicking artist shows their albums
-- [ ] Clicking album shows track list with Queue All button
+- [ ] Browse mode dropdown switches between Artists, Albums A-Z, Recently Added, Random
+- [ ] Artists mode: shows all artists, clicking shows albums, clicking album shows tracks
+- [ ] Albums A-Z mode: shows all albums alphabetically with artist name and year
+- [ ] Recently Added mode: shows newest albums first
+- [ ] Random mode: shows random albums, Shuffle button re-rolls
+- [ ] Clicking album in any mode shows track list with Queue All button
 - [ ] Breadcrumb navigation works (Library > Artist > Album)
+- [ ] Compilation albums show per-track artist names when they differ from album artist
+
+**Mobile Layout**:
+- [ ] Queue tab appears on screens ≤1024px with full queue management (reorder, remove)
+- [ ] People tab appears on screens ≤1024px with user list and co-host controls
+- [ ] Desktop sidebar panels still work normally above 1024px
 
 **Active Rooms & Repeat**:
 - [ ] Room selection screen shows active rooms list
@@ -442,4 +456,16 @@ The project includes several security measures (see `SECURITY.md` for details):
 - **Token-based auth**: Client credentials stored as MD5 tokens, not plaintext passwords
 - **Invite-code registration**: Single-use codes, admin credentials never exposed to client
 - **Trust proxy**: Enabled for accurate IP detection behind Railway reverse proxy
+
+## Planned: User Uploads
+
+Design doc: `docs/plans/2026-02-11-user-uploads-design.md`
+
+Registered users will be able to upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP, where Navidrome indexes them. Key design decisions:
+- **Stream-through**: Upload pipes directly from HTTP to SFTP (no temp files on Railway)
+- **Cleanup**: Non-permanent files auto-deleted after 30 days
+- **Permanent flag**: Users can mark up to 50 uploads as permanent; admin can override
+- **File limits**: 200MB max, allowed formats: mp3, flac, ogg, opus, m4a, wav, aac
+- **Storage path**: `/music/jam-uploads/<username>/` on PikaPods
+- **Metadata**: `.uploads-meta.json` on PikaPods tracks upload dates and permanent flags
 

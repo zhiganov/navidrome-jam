@@ -312,11 +312,35 @@ function App() {
   const loadAlbumList = async (type) => {
     setIsLoadingBrowse(true);
     try {
-      const result = await navidrome.getAlbumList(type, 100);
-      const albums = result.albumList2?.album
+      const result = await navidrome.getAlbumList(type, 500);
+      const rawAlbums = result.albumList2?.album
         ? (Array.isArray(result.albumList2.album) ? result.albumList2.album : [result.albumList2.album])
         : [];
-      setAlbumList(albums);
+
+      // Group albums by name+year to merge compilations split by artist
+      const grouped = new Map();
+      for (const album of rawAlbums) {
+        const key = `${album.name}||${album.year || ''}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            ...album,
+            _albumIds: [album.id],
+            _songCount: album.songCount || 0,
+          });
+        } else {
+          const existing = grouped.get(key);
+          existing._albumIds.push(album.id);
+          existing._songCount += album.songCount || 0;
+          // Use cover art from the entry with the most tracks
+          if ((album.songCount || 0) > (existing.songCount || 0)) {
+            existing.coverArt = album.coverArt;
+          }
+          existing.artist = 'Various Artists';
+          existing.songCount = existing._songCount;
+        }
+      }
+
+      setAlbumList(Array.from(grouped.values()));
     } catch (error) {
       console.error('Error loading album list:', error);
     } finally {
@@ -358,11 +382,26 @@ function App() {
   const handleBrowseAlbum = async (album) => {
     setIsLoadingBrowse(true);
     try {
-      const result = await navidrome.getAlbum(album.id);
-      const songs = result.album?.song
-        ? (Array.isArray(result.album.song) ? result.album.song : [result.album.song])
-        : [];
-      setSelectedAlbum({ ...album, songs });
+      const albumIds = album._albumIds || [album.id];
+      const allSongs = [];
+
+      for (const id of albumIds) {
+        const result = await navidrome.getAlbum(id);
+        const songs = result.album?.song
+          ? (Array.isArray(result.album.song) ? result.album.song : [result.album.song])
+          : [];
+        allSongs.push(...songs);
+      }
+
+      // Sort by disc number then track number
+      allSongs.sort((a, b) => {
+        const discA = a.discNumber || 1;
+        const discB = b.discNumber || 1;
+        if (discA !== discB) return discA - discB;
+        return (a.track || 0) - (b.track || 0);
+      });
+
+      setSelectedAlbum({ ...album, songs: allSongs });
       setBrowseView('songs');
     } catch (error) {
       console.error('Error loading album:', error);
