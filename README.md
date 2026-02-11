@@ -13,68 +13,44 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 ## Architecture
 
 ```
-┌─────────────┐         ┌──────────────────┐
-│  Navidrome  │◄────────┤  Jam Sync Server │
-│   (Media)   │         │   (WebSocket)    │
-└─────────────┘         └──────────────────┘
-                               ▲
-                               │
-                    ┌──────────┴──────────┐
-                    │                     │
-              ┌─────▼─────┐        ┌─────▼─────┐
-              │  Client 1 │        │  Client 2 │
-              │  (Web UI) │        │  (Web UI) │
-              └───────────┘        └───────────┘
+              ┌──────────────────┐
+              │  Jam Sync Server │
+              │   (WebSocket)    │
+              └──────────────────┘
+                ▲              ▲
+     sync cmds  │              │  sync cmds
+                │              │
+          ┌─────┴─────┐  ┌────┴──────┐
+          │  Client 1 │  │  Client 2 │
+          │  (Web UI) │  │  (Web UI) │
+          └─────┬─────┘  └────┬──────┘
+                │              │
+     audio HTTP │              │ audio HTTP
+                ▼              ▼
+              ┌──────────────────┐
+              │    Navidrome     │
+              │  (Your server)   │
+              └──────────────────┘
 ```
 
 ### Components
 
-1. **Navidrome** - Existing music server for hosting/streaming FLAC files
-2. **Jam Sync Server** - WebSocket server for real-time playback synchronization
-3. **Web Client** - Modified Navidrome web UI with jam session support
+1. **Navidrome** - Your existing music server (self-hosted or managed). Clients stream audio directly from it via the Subsonic API — the sync server never touches audio data.
+2. **Jam Sync Server** - Lightweight WebSocket server that broadcasts playback commands (play/pause/seek/timestamp). All state is ephemeral and in-memory.
+3. **Web Client** - React SPA that handles Navidrome auth, audio playback, and room UI. Connects to both Navidrome (for music) and the sync server (for coordination).
 
 ## Features
 
-### Core Functionality
-- [x] Create/join jam rooms with room codes
-- [x] Synchronized play/pause/seek across all participants
-- [x] Shared queue management with auto-play
-- [x] Host controls with co-host delegation
-- [x] Low-latency sync (<500ms drift tolerance)
-- [x] Support for FLAC and all formats Navidrome supports
-- [x] Music search integrated with Navidrome library
-- [x] Library browser with multiple browse modes (artist/album/song navigation)
-- [x] User presence tracking with heartbeat system
-
-### User Experience
-- [x] Invite-code-based self-service registration
-- [x] Login / Sign Up tabs with form validation
-- [x] Co-host system (host can promote/demote users)
-- [x] Queue reordering (move up/down/remove)
-- [x] Transport controls (prev/play-pause/next) with play history
-- [x] Repeat mode — finished tracks re-append to queue for continuous playback
-- [x] Album auto-queue — playing a track from album view queues remaining tracks
-- [x] Browse modes — Artists, Albums A-Z, Recently Added, Random with shuffle
-- [x] Compilation album grouping — merges duplicate album entries into single "Various Artists" view
-- [x] Artist names in tracklists — shows per-track artist for compilations
-- [x] Mobile layout — Queue and People tabs on screens ≤1024px
-- [x] Active rooms list on room selection screen (auto-refreshing)
-- [x] Volume control with persistent preferences
-- [x] Leave room functionality
-- [x] Loading states for all async operations
-- [x] Error boundary for graceful error handling
-- [x] Session validation and auto-recovery
-- [x] OG meta tags and Twitter Cards for rich link previews
-- [x] Windows 98 / GeoCities retro UI theme with custom favicon and OG image
-- [x] Admin dashboard for invite code management (server-rendered at `/admin`)
-
-### Security & Reliability
-- [x] Input validation and sanitization (XSS prevention)
-- [x] Rate limiting on room creation (5/min/IP) and registration (3/min/IP)
-- [x] Authentication token validation
-- [x] Automatic stale room cleanup
-- [x] Duplicate user prevention on reconnect
-- [x] Invite codes are single-use; admin credentials never exposed to client
+- Synchronized play/pause/seek across all participants (<500ms drift)
+- Shared queue with reordering, auto-play, repeat mode, and album auto-queue
+- Host controls with co-host delegation
+- Library browser — Artists, Albums A-Z, Recently Added, Random
+- Music search integrated with Navidrome library
+- Supports FLAC and all formats Navidrome handles
+- Invite-code-based self-service registration
+- Mobile-friendly layout (Queue/People tabs on ≤1024px screens)
+- Admin dashboard for invite code management
+- Windows 98 / GeoCities retro UI theme
 
 ## Tech Stack
 
