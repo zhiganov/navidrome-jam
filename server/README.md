@@ -249,4 +249,4 @@ For WebSocket testing, use the web client or tools like [Socket.io Client Tool](
 
 ## License
 
-MIT
+Apache-2.0

@@ -311,7 +311,7 @@ Contributions welcome! Open an issue or PR.
 
 ## License
 
-MIT
+Apache-2.0
 
 ## Acknowledgments
 
