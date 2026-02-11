@@ -207,7 +207,7 @@ cd client && npm run dev
 - **Persistent rooms** — Database storage for rooms that survive server restarts
 - **Automated tests** — Jest for sync server, Vitest + React Testing Library for client
 - **TypeScript migration** — Full codebase migration (server + client)
-- **Integrations** — Embed player in [My Community](https://github.com/zhiganov/my-community) extension and [Harmonica](https://github.com/harmonicabot/harmonica-web-app) sessions
+- **My Community integration** — Embed shared listening tab in [My Community](https://github.com/zhiganov/my-community) extension
 
 ## Changelog
 
