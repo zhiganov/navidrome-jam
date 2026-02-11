@@ -27,6 +27,10 @@ function App() {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [activeRooms, setActiveRooms] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [selectedCommunity, setSelectedCommunity] = useState(
+    () => localStorage.getItem('jam_community') || ''
+  );
 
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -182,6 +186,22 @@ function App() {
     return () => clearInterval(interval);
   }, [isAuthenticated, currentRoom, fetchActiveRooms]);
 
+  // Fetch available communities for room tagging
+  useEffect(() => {
+    if (isAuthenticated && !currentRoom) {
+      fetch('https://scenius-digest.vercel.app/api/groups')
+        .then(r => r.ok ? r.json() : {})
+        .then(data => {
+          const list = Object.entries(data).map(([id, info]) => ({
+            id,
+            name: info.name || id
+          }));
+          setCommunities(list);
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated, currentRoom]);
+
   const connectToJamServer = async () => {
     try {
       await jamClient.connect();
@@ -242,7 +262,8 @@ function App() {
     setRoomError('');
 
     try {
-      const room = await jamClient.createRoom(null, username);
+      const community = selectedCommunity || null;
+      const room = await jamClient.createRoom(null, username, community);
       setRoomInput(room.id);
       jamClient.joinRoom(room.id, username);
     } catch (error) {
@@ -804,6 +825,25 @@ function App() {
                     {isJoiningRoom ? 'Joining...' : 'Join'}
                   </button>
                 </div>
+                {communities.length > 0 && (
+                  <div className="community-select-group">
+                    <label className="community-label">Community (optional)</label>
+                    <select
+                      className="win98-input"
+                      value={selectedCommunity}
+                      onChange={(e) => {
+                        setSelectedCommunity(e.target.value);
+                        localStorage.setItem('jam_community', e.target.value);
+                      }}
+                      disabled={isCreatingRoom || isJoiningRoom}
+                    >
+                      <option value="">None</option>
+                      {communities.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <button
                   className="win98-btn"
                   onClick={handleCreateRoom}

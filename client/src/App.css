@@ -1773,3 +1773,15 @@ body {
     flex-wrap: wrap;
   }
 }
+
+/* Community select dropdown */
+.community-select-group {
+  margin: 6px 0;
+}
+
+.community-label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 3px;
+  font-family: 'Tahoma', sans-serif;
+}

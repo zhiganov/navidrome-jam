@@ -113,11 +113,11 @@ class JamClient {
   /**
    * Create a new room
    */
-  async createRoom(roomId = null, hostName = null) {
+  async createRoom(roomId = null, hostName = null, community = null) {
     const response = await fetch(`${this.serverUrl}/api/rooms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, hostName })
+      body: JSON.stringify({ roomId, hostName, community })
     });
 
     if (!response.ok) {
