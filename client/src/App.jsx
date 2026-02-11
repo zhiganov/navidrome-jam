@@ -189,15 +189,10 @@ function App() {
   // Fetch available communities for room tagging
   useEffect(() => {
     if (isAuthenticated && !currentRoom) {
-      fetch('https://scenius-digest.vercel.app/api/groups')
-        .then(r => r.ok ? r.json() : {})
+      fetch(`${import.meta.env.VITE_JAM_SERVER_URL}/api/communities`)
+        .then(r => r.ok ? r.json() : { communities: [] })
         .then(data => {
-          const groups = data.groups || data;
-          const list = Object.entries(groups).map(([id, info]) => ({
-            id,
-            name: info.name || id
-          }));
-          setCommunities(list);
+          setCommunities(data.communities || []);
         })
         .catch(() => {});
     }

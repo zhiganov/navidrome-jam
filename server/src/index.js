@@ -103,6 +103,29 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Proxy communities from scenius-digest (avoids CORS issues for browser clients)
+let communitiesCache = { data: null, fetchedAt: 0 };
+app.get('/api/communities', async (req, res) => {
+  try {
+    const now = Date.now();
+    if (communitiesCache.data && now - communitiesCache.fetchedAt < 60 * 60 * 1000) {
+      return res.json(communitiesCache.data);
+    }
+    const response = await fetch('https://scenius-digest.vercel.app/api/groups');
+    if (!response.ok) throw new Error('Failed to fetch groups');
+    const { groups } = await response.json();
+    const communities = Object.entries(groups).map(([id, info]) => ({
+      id,
+      name: info.name || id
+    }));
+    communitiesCache = { data: { communities }, fetchedAt: now };
+    res.json({ communities });
+  } catch (error) {
+    console.error('Error fetching communities:', error);
+    res.json({ communities: [] });
+  }
+});
+
 // REST endpoints for room management
 app.get('/api/rooms', (req, res) => {
   let rooms = roomManager.listRooms();
