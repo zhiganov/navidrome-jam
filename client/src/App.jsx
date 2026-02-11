@@ -43,8 +43,10 @@ function App() {
 
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
+  const [browseMode, setBrowseMode] = useState('artists'); // artists, albums, recent, random
   const [browseView, setBrowseView] = useState('artists');
   const [artists, setArtists] = useState(null);
+  const [albumList, setAlbumList] = useState(null);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
@@ -307,6 +309,36 @@ function App() {
     }
   };
 
+  const loadAlbumList = async (type) => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getAlbumList(type, 100);
+      const albums = result.albumList2?.album
+        ? (Array.isArray(result.albumList2.album) ? result.albumList2.album : [result.albumList2.album])
+        : [];
+      setAlbumList(albums);
+    } catch (error) {
+      console.error('Error loading album list:', error);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const handleBrowseModeChange = (mode) => {
+    setBrowseMode(mode);
+    setBrowseView(mode === 'artists' ? 'artists' : 'albumList');
+    setSelectedArtist(null);
+    setSelectedAlbum(null);
+    setAlbumList(null);
+
+    if (mode === 'artists') {
+      loadArtists();
+    } else {
+      const typeMap = { albums: 'alphabeticalByName', recent: 'newest', random: 'random' };
+      loadAlbumList(typeMap[mode]);
+    }
+  };
+
   const handleBrowseArtist = async (artist) => {
     setIsLoadingBrowse(true);
     try {
@@ -342,7 +374,11 @@ function App() {
   const handleBrowseBack = () => {
     if (browseView === 'songs') {
       setSelectedAlbum(null);
-      setBrowseView('albums');
+      if (browseMode === 'artists') {
+        setBrowseView('albums');
+      } else {
+        setBrowseView('albumList');
+      }
     } else if (browseView === 'albums') {
       setSelectedArtist(null);
       setBrowseView('artists');
@@ -942,7 +978,7 @@ function App() {
 
             <hr className="retro-divider" />
 
-            {/* Music tabs: Browse | Search */}
+            {/* Music tabs: Browse | Search | Queue (mobile) | People (mobile) */}
             <div className="music-tabs">
               <button
                 className={`auth-tab ${musicTab === 'browse' ? 'active' : ''}`}
@@ -956,10 +992,116 @@ function App() {
               >
                 Search
               </button>
+              <button
+                className={`auth-tab mobile-tab ${musicTab === 'queue' ? 'active' : ''}`}
+                onClick={() => setMusicTab('queue')}
+              >
+                Queue ({queue.length})
+              </button>
+              <button
+                className={`auth-tab mobile-tab ${musicTab === 'people' ? 'active' : ''}`}
+                onClick={() => setMusicTab('people')}
+              >
+                People ({currentRoom.users?.length || 0})
+              </button>
             </div>
 
             <div className="music-tab-content">
-              {musicTab === 'search' ? (
+              {musicTab === 'queue' ? (
+                <div className="mobile-queue-panel">
+                  <ul className="queue-list">
+                    {queue.map((track, index) => (
+                      <li key={`${track.id}-${index}`}>
+                        <div className="queue-track">
+                          <span className="queue-num">{index + 1}.</span>
+                          <div className="queue-track-info">
+                            <strong>{track.title}</strong>
+                            <span>{track.artist}</span>
+                          </div>
+                        </div>
+                        {canControl && (
+                          <div className="queue-controls">
+                            <button
+                              className="queue-ctrl-btn"
+                              onClick={() => {
+                                if (index === 0) return;
+                                const newQueue = [...queue];
+                                [newQueue[index - 1], newQueue[index]] = [newQueue[index], newQueue[index - 1]];
+                                jamClient.updateQueue(newQueue);
+                              }}
+                              disabled={index === 0}
+                              title="Move up"
+                            >
+                              &#9650;
+                            </button>
+                            <button
+                              className="queue-ctrl-btn"
+                              onClick={() => {
+                                if (index === queue.length - 1) return;
+                                const newQueue = [...queue];
+                                [newQueue[index], newQueue[index + 1]] = [newQueue[index + 1], newQueue[index]];
+                                jamClient.updateQueue(newQueue);
+                              }}
+                              disabled={index === queue.length - 1}
+                              title="Move down"
+                            >
+                              &#9660;
+                            </button>
+                            <button
+                              className="queue-ctrl-btn queue-remove-btn"
+                              onClick={() => {
+                                const newQueue = queue.filter((_, i) => i !== index);
+                                jamClient.updateQueue(newQueue);
+                              }}
+                              title="Remove"
+                            >
+                              &#10005;
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                    {queue.length === 0 && <li className="empty">Queue is empty</li>}
+                  </ul>
+                </div>
+              ) : musicTab === 'people' ? (
+                <div className="mobile-users-panel">
+                  <ul className="users-list">
+                    {currentRoom.users?.map((user) => {
+                      const userIsHost = user.id === currentRoom.hostId;
+                      const userIsCoHost = (currentRoom.coHosts || []).includes(user.id);
+                      return (
+                        <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
+                          <span className="user-name">{user.username}</span>
+                          <span className="user-badges">
+                            {userIsHost && <span className="badge badge-host">HOST</span>}
+                            {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
+                            {isHost && !userIsHost && (
+                              userIsCoHost ? (
+                                <button
+                                  className="user-action-btn demote-btn"
+                                  onClick={() => jamClient.demoteCoHost(user.id)}
+                                  title="Remove co-host"
+                                >
+                                  &minus;
+                                </button>
+                              ) : (
+                                <button
+                                  className="user-action-btn promote-btn"
+                                  onClick={() => jamClient.promoteCoHost(user.id)}
+                                  title="Make co-host"
+                                >
+                                  +
+                                </button>
+                              )
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : musicTab === 'search' ? (
                 <div className="search-panel">
                   <form onSubmit={handleSearch}>
                     <input
@@ -1005,11 +1147,32 @@ function App() {
                 </div>
               ) : (
                 <div className="browse-panel">
-                  {/* Breadcrumb navigation */}
+                  {/* Browse mode selector + breadcrumb */}
+                  <div className="browse-toolbar">
+                    <select
+                      className="browse-mode-select"
+                      value={browseMode}
+                      onChange={(e) => handleBrowseModeChange(e.target.value)}
+                    >
+                      <option value="artists">Artists</option>
+                      <option value="albums">Albums A-Z</option>
+                      <option value="recent">Recently Added</option>
+                      <option value="random">Random</option>
+                    </select>
+                    {browseMode === 'random' && (
+                      <button
+                        className="win98-btn browse-shuffle-btn"
+                        onClick={() => loadAlbumList('random')}
+                        title="Shuffle again"
+                      >
+                        Shuffle
+                      </button>
+                    )}
+                  </div>
                   <div className="browse-breadcrumb">
                     <span
-                      className={browseView === 'artists' ? 'current' : 'clickable'}
-                      onClick={() => { setBrowseView('artists'); setSelectedArtist(null); setSelectedAlbum(null); }}
+                      className={(browseView === 'artists' || browseView === 'albumList') ? 'current' : 'clickable'}
+                      onClick={() => handleBrowseModeChange(browseMode)}
                     >
                       Library
                     </span>
@@ -1061,7 +1224,40 @@ function App() {
                     </div>
                   )}
 
-                  {/* Albums list */}
+                  {/* Album list view (Albums A-Z, Recent, Random) */}
+                  {!isLoadingBrowse && browseView === 'albumList' && (
+                    <div className="browse-list">
+                      {albumList && albumList.length > 0 ? (
+                        <ul>
+                          {albumList.map((album) => (
+                            <li
+                              key={album.id}
+                              className="browse-item album-item"
+                              onClick={() => handleBrowseAlbum(album)}
+                            >
+                              {album.coverArt ? (
+                                <img
+                                  src={navidrome.getCoverArtUrl(album.coverArt, 40)}
+                                  alt=""
+                                  className="browse-thumb"
+                                />
+                              ) : (
+                                <span className="browse-icon cd-icon"></span>
+                              )}
+                              <div className="browse-item-info">
+                                <strong>{album.name}</strong>
+                                <span>{album.artist}{album.year ? ` \u2022 ${album.year}` : ''}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">No albums found</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Albums list (artist drill-down) */}
                   {!isLoadingBrowse && browseView === 'albums' && selectedArtist && (
                     <div className="browse-list">
                       <button className="win98-btn browse-back-btn" onClick={handleBrowseBack}>
@@ -1128,7 +1324,12 @@ function App() {
                                   <span className="track-num">{song.track || index + 1}.</span>
                                   {song.title}
                                 </strong>
-                                <span>{formatDuration(song.duration)}</span>
+                                <span>
+                                  {song.artist && song.artist !== selectedArtist?.name && (
+                                    <span className="song-artist-name">{song.artist} &middot; </span>
+                                  )}
+                                  {formatDuration(song.duration)}
+                                </span>
                               </div>
                               <div className="song-actions">
                                 {canControl && (

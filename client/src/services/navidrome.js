@@ -250,6 +250,16 @@ class NavidromeClient {
   }
 
   /**
+   * Get album list (sorted by various criteria)
+   * @param {string} type - alphabeticalByName, alphabeticalByArtist, newest, recent, frequent, random, starred
+   * @param {number} size - Number of albums to return
+   * @param {number} offset - Pagination offset
+   */
+  async getAlbumList(type = 'alphabeticalByName', size = 50, offset = 0) {
+    return this.fetch('getAlbumList2.view', { type, size, offset });
+  }
+
+  /**
    * Get random songs
    */
   async getRandomSongs(size = 50, genre = null) {

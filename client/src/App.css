@@ -1383,6 +1383,34 @@ body {
   padding: 0;
 }
 
+/* Browse mode toolbar */
+.browse-toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 4px;
+  background: var(--win-bg);
+  border-bottom: 1px solid var(--win-dark);
+}
+
+.browse-mode-select {
+  background: var(--input-bg);
+  border: 2px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  padding: 2px 4px;
+  font-family: 'Tahoma', 'Verdana', sans-serif;
+  font-size: 11px;
+  color: var(--text-dark);
+  outline: none;
+  cursor: pointer;
+}
+
+.browse-shuffle-btn {
+  min-width: auto !important;
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+}
+
 /* Breadcrumb — Win98 address bar style */
 .browse-breadcrumb {
   background: var(--input-bg);
@@ -1593,6 +1621,12 @@ body {
   font-weight: normal;
 }
 
+/* Artist name in tracklist (visible for compilations) */
+.song-artist-name {
+  color: var(--title-blue);
+  font-weight: bold;
+}
+
 /* Queue All button */
 .browse-album-actions {
   padding: 4px 6px;
@@ -1689,6 +1723,17 @@ body {
   color: #000033 !important;
 }
 
+/* Mobile tabs — hidden on desktop, shown on mobile */
+.mobile-tab {
+  display: none;
+}
+
+/* Mobile queue/people panels inside tab content */
+.mobile-queue-panel,
+.mobile-users-panel {
+  padding: 4px;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-content {
@@ -1698,6 +1743,10 @@ body {
   .users-panel,
   .queue-panel {
     display: none;
+  }
+
+  .mobile-tab {
+    display: inline-block;
   }
 }
 
@@ -1710,5 +1759,17 @@ body {
     width: 100%;
     height: auto;
     aspect-ratio: 1;
+  }
+
+  .header-info {
+    display: none;
+  }
+
+  .jam-screen h1 {
+    font-size: 16px;
+  }
+
+  .music-tabs {
+    flex-wrap: wrap;
   }
 }
