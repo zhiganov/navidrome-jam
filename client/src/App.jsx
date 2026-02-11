@@ -192,7 +192,8 @@ function App() {
       fetch('https://scenius-digest.vercel.app/api/groups')
         .then(r => r.ok ? r.json() : {})
         .then(data => {
-          const list = Object.entries(data).map(([id, info]) => ({
+          const groups = data.groups || data;
+          const list = Object.entries(groups).map(([id, info]) => ({
             id,
             name: info.name || id
           }));
