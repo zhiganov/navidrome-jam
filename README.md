@@ -200,70 +200,14 @@ cd client && npm run dev
 
 ## Roadmap
 
-### Phase 1: Proof of Concept ✅
-- [x] Create repository
-- [x] Research Navidrome API/architecture
-- [x] Build minimal sync server
-- [x] Create basic test client
-
-### Phase 2: Core Features ✅
-- [x] Room creation/joining
-- [x] Playback synchronization (WebSocket-based)
-- [x] Queue management
-- [x] User presence tracking
-- [x] Integrate with Navidrome authentication
-- [x] Build production web client UI
-- [x] Music search functionality
-- [x] Drift correction algorithm
-
-### Phase 3: Polish ✅
-- [x] Rate limiting and security hardening
-- [x] Input validation and XSS prevention
-- [x] Queue auto-play functionality
-- [x] Volume control with persistence
-- [x] Error boundaries and graceful error handling
-- [x] Loading states for better UX
-- [x] Session validation and recovery
-- [x] React context refactoring (hot-reload safe)
-- [x] Proper event listener cleanup
-- [x] Leave room functionality
-
-### Phase 4: Deployment & Registration ✅
-- [x] Deploy server to Railway
-- [x] Deploy client to Vercel (jam.zhgnv.com)
-- [x] Invite-code-based user registration via Navidrome native API
-- [x] Windows 98 / GeoCities UI redesign
-
-### Phase 5: Library & Controls ✅
-- [x] Album/artist browsing UI with breadcrumb navigation
-- [x] Browse modes: Artists, Albums A-Z, Recently Added, Random
-- [x] Queue reordering (move up/down/remove)
-- [x] Transport controls (prev/play-pause/next) with Winamp-style CSS icons
-- [x] Play history for previous track navigation
-- [x] Co-host system (host promotes users to share playback control)
-
-### Phase 6: Sync, UX & Admin ✅
-- [x] Fix sync: join-in-progress playback, track change detection, race condition handling
-- [x] Album auto-queue (remaining tracks queued when playing from browse view)
-- [x] Repeat mode with localStorage persistence
-- [x] Active rooms list on room selection screen
-- [x] Admin dashboard (invite code management, code generation/deletion)
-- [x] GitHub repo link in client UI
-- [x] OG meta tags, Twitter Cards, custom favicon and OG image
-- [x] Win98-themed SVG favicon and OG image with Winamp player scene
-
-### Phase 7: Mobile & Browse Improvements ✅
-- [x] Browse modes (Artists, Albums A-Z, Recently Added, Random)
-- [x] Compilation album deduplication (merged into single entries)
-- [x] Artist names in tracklists for compilations
-- [x] Mobile tabs for Queue and People (screens ≤1024px)
-
-### Phase 8: Future Enhancements
-- [ ] User uploads (upload music directly through the web client)
-- [ ] Persistent rooms (database storage)
-- [ ] Discord bot for queue control
-- [ ] Docker deployment
-- [ ] Automated tests (Jest, Vitest)
+- **User uploads** — Upload music through the web client. Files stream through the Jam server to PikaPods via SFTP, Navidrome auto-indexes. 30-day cleanup with permanent flag (50/user). [Design doc](./docs/plans/2026-02-11-user-uploads-design.md)
+- **Mobile UX** — Better touch interactions and responsive layout
+- **Playlist support** — Load Navidrome playlists into the queue
+- **Room settings** — Private/public rooms, password protection, permission levels
+- **Persistent rooms** — Database storage for rooms that survive server restarts
+- **Automated tests** — Jest for sync server, Vitest + React Testing Library for client
+- **TypeScript migration** — Full codebase migration (server + client)
+- **Integrations** — Embed player in [My Community](https://github.com/zhiganov/my-community) extension and [Harmonica](https://github.com/harmonicabot/harmonica-web-app) sessions
 
 ## Changelog
 
