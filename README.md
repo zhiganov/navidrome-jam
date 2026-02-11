@@ -43,7 +43,7 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - [x] Low-latency sync (<500ms drift tolerance)
 - [x] Support for FLAC and all formats Navidrome supports
 - [x] Music search integrated with Navidrome library
-- [x] Library browser (artist/album/song navigation)
+- [x] Library browser with multiple browse modes (artist/album/song navigation)
 - [x] User presence tracking with heartbeat system
 
 ### User Experience
@@ -54,6 +54,10 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - [x] Transport controls (prev/play-pause/next) with play history
 - [x] Repeat mode — finished tracks re-append to queue for continuous playback
 - [x] Album auto-queue — playing a track from album view queues remaining tracks
+- [x] Browse modes — Artists, Albums A-Z, Recently Added, Random with shuffle
+- [x] Compilation album grouping — merges duplicate album entries into single "Various Artists" view
+- [x] Artist names in tracklists — shows per-track artist for compilations
+- [x] Mobile layout — Queue and People tabs on screens ≤1024px
 - [x] Active rooms list on room selection screen (auto-refreshing)
 - [x] Volume control with persistent preferences
 - [x] Leave room functionality
@@ -256,6 +260,7 @@ cd client && npm run dev
 
 ### Phase 5: Library & Controls ✅
 - [x] Album/artist browsing UI with breadcrumb navigation
+- [x] Browse modes: Artists, Albums A-Z, Recently Added, Random
 - [x] Queue reordering (move up/down/remove)
 - [x] Transport controls (prev/play-pause/next) with Winamp-style CSS icons
 - [x] Play history for previous track navigation
@@ -271,14 +276,28 @@ cd client && npm run dev
 - [x] OG meta tags, Twitter Cards, custom favicon and OG image
 - [x] Win98-themed SVG favicon and OG image with Winamp player scene
 
-### Phase 7: Future Enhancements
-- [ ] Mobile-responsive improvements
+### Phase 7: Mobile & Browse Improvements ✅
+- [x] Browse modes (Artists, Albums A-Z, Recently Added, Random)
+- [x] Compilation album deduplication (merged into single entries)
+- [x] Artist names in tracklists for compilations
+- [x] Mobile tabs for Queue and People (screens ≤1024px)
+
+### Phase 8: Future Enhancements
+- [ ] User uploads (upload music directly through the web client)
 - [ ] Persistent rooms (database storage)
 - [ ] Discord bot for queue control
 - [ ] Docker deployment
 - [ ] Automated tests (Jest, Vitest)
 
 ## Changelog
+
+### 2026-02-11 — Browse Modes, Mobile Layout, Compilation Handling
+
+- **Browse modes**: Library browser now supports four modes via dropdown — Artists (default), Albums A-Z, Recently Added, and Random (with shuffle button). Albums fetched via `getAlbumList2.view`.
+- **Compilation album grouping**: Albums with the same name and year are merged into a single entry showing "Various Artists". Clicking opens a combined tracklist from all sub-albums, sorted by disc/track number.
+- **Artist names in tracklists**: Album song view shows per-track artist when it differs from the album artist — essential for compilations and soundtracks.
+- **Mobile tabs**: Queue and People tabs appear on screens ≤1024px, rendering full queue management and user list inline (desktop sidebar panels unchanged).
+- **License**: Changed from MIT to Apache-2.0.
 
 ### 2026-02-10 — Sync Fixes, Repeat, Active Rooms, Admin Dashboard
 
