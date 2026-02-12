@@ -171,10 +171,11 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 This project supports multiple deployment strategies:
 
 ### Vercel + Railway (Current Production Setup)
-- **Client**: Vercel — https://jam.zhgnv.com
+- **Client**: Vercel (personal account, auto-deploys on push to main) — https://jam.zhgnv.com
   - Build: `cd client && npm install && npm run build` → outputs to `client/dist/`
   - SPA rewrites: all routes → `/index.html` (configured in `vercel.json`)
   - Asset caching: `/assets/*` gets `Cache-Control: public, max-age=31536000, immutable`
+  - GitHub integration: `zhiganov/navidrome-jam` → deploys automatically, no CLI needed
 - **Server**: Railway — https://navidrome-jam-production.up.railway.app
   - Nixpacks builder: `cd server && npm install` (install), `cd server && node src/index.js` (start)
   - Restart policy: ON_FAILURE with max 10 retries (configured in `railway.json`)
