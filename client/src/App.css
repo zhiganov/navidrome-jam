@@ -143,6 +143,7 @@ body {
   cursor: pointer;
   color: var(--text-dark);
   min-width: 75px;
+  max-width: 100%;
   text-align: center;
 }
 
@@ -470,9 +471,16 @@ body {
   font-size: 16px;
 }
 
+/* All room buttons: can't overflow container */
 .room-container .win98-btn {
-  width: 100%;
+  max-width: 100%;
   margin-bottom: 4px;
+}
+
+/* Full-width standalone buttons (Create New Room, Logout) */
+.room-container .win98-fieldset > .win98-btn,
+.room-container .form-actions .win98-btn {
+  width: 100%;
 }
 
 .logout-btn {
