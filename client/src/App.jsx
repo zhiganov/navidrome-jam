@@ -45,6 +45,10 @@ function App() {
   // Play history for previous track
   const [playHistory, setPlayHistory] = useState([]);
 
+  // Reaction state
+  const [trackReactions, setTrackReactions] = useState({ likes: 0, dislikes: 0 });
+  const [userReaction, setUserReaction] = useState(null);
+
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
   const [browseMode, setBrowseMode] = useState('artists'); // artists, albums, recent, random
@@ -107,6 +111,8 @@ function App() {
       if (state.trackId && state.trackId !== syncedTrackId) {
         console.log(`Track changed via sync: ${syncedTrackId} -> ${state.trackId}`);
         syncedTrackId = state.trackId;
+        setTrackReactions({ likes: 0, dislikes: 0 });
+        setUserReaction(null);
         loadTrack(state.trackId);
       }
     };
@@ -142,6 +148,12 @@ function App() {
       setRoomError(message);
     };
 
+    const handleTrackReactions = ({ likes, dislikes, reactions }) => {
+      setTrackReactions({ likes, dislikes });
+      const myReaction = reactions[jamClient.userId] || null;
+      setUserReaction(myReaction);
+    };
+
     const handleDisconnected = () => {
       setIsConnected(false);
       setCurrentRoom(null);
@@ -155,6 +167,7 @@ function App() {
     jamClient.on('queue-updated', handleQueueUpdated);
     jamClient.on('error', handleError);
     jamClient.on('disconnected', handleDisconnected);
+    jamClient.on('track-reactions', handleTrackReactions);
 
     return () => {
       jamClient.off('room-state', handleRoomState);
@@ -165,6 +178,7 @@ function App() {
       jamClient.off('queue-updated', handleQueueUpdated);
       jamClient.off('error', handleError);
       jamClient.off('disconnected', handleDisconnected);
+      jamClient.off('track-reactions', handleTrackReactions);
       jamClient.disconnect();
     };
   }, []);
@@ -565,6 +579,8 @@ function App() {
     setIsHost(false);
     setCanControl(false);
     setIsPlaying(false);
+    setTrackReactions({ likes: 0, dislikes: 0 });
+    setUserReaction(null);
 
     console.log('Left room');
   };
@@ -638,6 +654,38 @@ function App() {
   const handlePlaybackUpdate = useCallback((time, paused) => {
     setIsPlaying(!paused);
   }, []);
+
+  const handleLike = useCallback(() => {
+    if (!currentTrack) return;
+
+    if (userReaction === 'like') {
+      jamClient.removeReaction(currentTrack.id);
+      navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
+      setUserReaction(null);
+    } else {
+      if (userReaction === 'dislike') {
+        // Switching from dislike to like — no unstar needed (wasn't starred)
+      }
+      jamClient.likeTrack(currentTrack.id);
+      navidrome.starTrack(currentTrack.id).catch(err => console.error('Star failed:', err));
+      setUserReaction('like');
+    }
+  }, [currentTrack, userReaction, jamClient, navidrome]);
+
+  const handleDislike = useCallback(() => {
+    if (!currentTrack) return;
+
+    if (userReaction === 'dislike') {
+      jamClient.removeReaction(currentTrack.id);
+      setUserReaction(null);
+    } else {
+      if (userReaction === 'like') {
+        navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
+      }
+      jamClient.dislikeTrack(currentTrack.id);
+      setUserReaction('dislike');
+    }
+  }, [currentTrack, userReaction, jamClient, navidrome]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -992,6 +1040,24 @@ function App() {
                   <h2>{currentTrack.title}</h2>
                   <p>{currentTrack.artist}</p>
                   <p className="album">{currentTrack.album}</p>
+                </div>
+                <div className="reaction-buttons">
+                  <button
+                    className={`reaction-btn like-btn${userReaction === 'like' ? ' active' : ''}`}
+                    onClick={handleLike}
+                    title={userReaction === 'like' ? 'Remove like' : 'Like this track'}
+                  >
+                    <span className="reaction-icon like-icon"></span>
+                    <span className="reaction-count">{trackReactions.likes}</span>
+                  </button>
+                  <button
+                    className={`reaction-btn dislike-btn${userReaction === 'dislike' ? ' active' : ''}`}
+                    onClick={handleDislike}
+                    title={userReaction === 'dislike' ? 'Remove dislike' : 'Dislike this track'}
+                  >
+                    <span className="reaction-icon dislike-icon"></span>
+                    <span className="reaction-count">{trackReactions.dislikes}</span>
+                  </button>
                 </div>
               </div>
             )}

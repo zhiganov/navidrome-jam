@@ -858,6 +858,15 @@ io.on('connection', (socket) => {
       // If there's an active track, send sync so the player starts playback
       if (currentRoom.playbackState.trackId) {
         socket.emit('sync', currentRoom.playbackState);
+
+        // Send existing reactions for the current track
+        const counts = roomManager.getReactionCounts(roomId, currentRoom.playbackState.trackId);
+        if (counts.likes > 0 || counts.dislikes > 0) {
+          socket.emit('track-reactions', {
+            trackId: currentRoom.playbackState.trackId,
+            ...counts
+          });
+        }
       }
 
       // Notify others in the room
@@ -1026,6 +1035,69 @@ io.on('connection', (socket) => {
       console.log(`Room ${roomId}: ${userId} demoted from co-host`);
     } catch (error) {
       console.error('Error demoting co-host:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Like a track (any room member)
+  socket.on('like-track', ({ roomId, trackId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+        socket.emit('error', { message: 'Invalid track ID' });
+        return;
+      }
+
+      roomManager.setReaction(roomId, trackId, socket.data.userId, 'like');
+      const counts = roomManager.getReactionCounts(roomId, trackId);
+      io.to(roomId).emit('track-reactions', { trackId, ...counts });
+    } catch (error) {
+      console.error('Error liking track:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Dislike a track (any room member)
+  socket.on('dislike-track', ({ roomId, trackId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+        socket.emit('error', { message: 'Invalid track ID' });
+        return;
+      }
+
+      roomManager.setReaction(roomId, trackId, socket.data.userId, 'dislike');
+      const counts = roomManager.getReactionCounts(roomId, trackId);
+      io.to(roomId).emit('track-reactions', { trackId, ...counts });
+    } catch (error) {
+      console.error('Error disliking track:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Remove reaction (any room member)
+  socket.on('remove-reaction', ({ roomId, trackId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+        socket.emit('error', { message: 'Invalid track ID' });
+        return;
+      }
+
+      roomManager.removeReaction(roomId, trackId, socket.data.userId);
+      const counts = roomManager.getReactionCounts(roomId, trackId);
+      io.to(roomId).emit('track-reactions', { trackId, ...counts });
+    } catch (error) {
+      console.error('Error removing reaction:', error);
       socket.emit('error', { message: error.message });
     }
   });

@@ -266,6 +266,20 @@ class NavidromeClient {
   }
 
   /**
+   * Star a track (add to Favourites)
+   */
+  async starTrack(id) {
+    return this.fetch('star.view', { id });
+  }
+
+  /**
+   * Unstar a track (remove from Favourites)
+   */
+  async unstarTrack(id) {
+    return this.fetch('unstar.view', { id });
+  }
+
+  /**
    * Get playlists
    */
   async getPlaylists() {

@@ -48,6 +48,7 @@ export class RoomManager {
         playing: false,
         timestamp: Date.now()
       },
+      reactions: {},
       createdAt: Date.now()
     };
 
@@ -183,6 +184,62 @@ export class RoomManager {
     if (!room) throw new Error('Room not found');
     room.coHosts = room.coHosts.filter(id => id !== userId);
     return room;
+  }
+
+  /**
+   * Set a reaction (like or dislike) for a user on a track
+   */
+  setReaction(roomId, trackId, userId, type) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    if (type !== 'like' && type !== 'dislike') throw new Error('Invalid reaction type');
+
+    if (!room.reactions[trackId]) {
+      room.reactions[trackId] = {};
+    }
+
+    const previous = room.reactions[trackId][userId] || null;
+    room.reactions[trackId][userId] = type;
+    return { previous, current: type };
+  }
+
+  /**
+   * Remove a user's reaction from a track
+   */
+  removeReaction(roomId, trackId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+
+    if (room.reactions[trackId]) {
+      const previous = room.reactions[trackId][userId] || null;
+      delete room.reactions[trackId][userId];
+
+      if (Object.keys(room.reactions[trackId]).length === 0) {
+        delete room.reactions[trackId];
+      }
+
+      return { previous, current: null };
+    }
+    return { previous: null, current: null };
+  }
+
+  /**
+   * Get aggregated reaction counts for a track
+   */
+  getReactionCounts(roomId, trackId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { likes: 0, dislikes: 0, reactions: {} };
+
+    const trackReactions = room.reactions[trackId] || {};
+    let likes = 0;
+    let dislikes = 0;
+
+    for (const type of Object.values(trackReactions)) {
+      if (type === 'like') likes++;
+      else if (type === 'dislike') dislikes++;
+    }
+
+    return { likes, dislikes, reactions: trackReactions };
   }
 
   /**

@@ -92,6 +92,11 @@ class JamClient {
       this.emit('cohost-updated', room);
     });
 
+    this.socket.on('track-reactions', (data) => {
+      console.log('Track reactions:', data);
+      this.emit('track-reactions', data);
+    });
+
     this.socket.on('error', ({ message }) => {
       console.error('Server error:', message);
       this.emit('error', message);
@@ -270,6 +275,45 @@ class JamClient {
     this.socket.emit('heartbeat', {
       roomId: this.currentRoomId,
       position
+    });
+  }
+
+  /**
+   * Like the currently playing track
+   */
+  likeTrack(trackId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+    this.socket.emit('like-track', {
+      roomId: this.currentRoomId,
+      trackId
+    });
+  }
+
+  /**
+   * Dislike the currently playing track
+   */
+  dislikeTrack(trackId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+    this.socket.emit('dislike-track', {
+      roomId: this.currentRoomId,
+      trackId
+    });
+  }
+
+  /**
+   * Remove reaction from the currently playing track
+   */
+  removeReaction(trackId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+    this.socket.emit('remove-reaction', {
+      roomId: this.currentRoomId,
+      trackId
     });
   }
 

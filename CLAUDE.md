@@ -158,12 +158,16 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `promote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
 | `demote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
 | `heartbeat` | Client → Server | `{ roomId, position }` | Any |
+| `like-track` | Client → Server | `{ roomId, trackId }` | Any room member |
+| `dislike-track` | Client → Server | `{ roomId, trackId }` | Any room member |
+| `remove-reaction` | Client → Server | `{ roomId, trackId }` | Any room member |
 | `room-state` | Server → Client | `{ room }` | — |
 | `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
 | `user-joined` | Server → Client | `{ user, room }` | — |
 | `user-left` | Server → Client | `{ userId, room, newHost }` | — |
 | `cohost-updated` | Server → Client | `{ room }` | — |
 | `queue-updated` | Server → Client | `{ queue[] }` | — |
+| `track-reactions` | Server → Client | `{ trackId, likes, dislikes, reactions }` | — |
 | `error` | Server → Client | `{ message }` | — |
 
 ## Deployment
