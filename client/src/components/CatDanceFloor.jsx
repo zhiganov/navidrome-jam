@@ -20,9 +20,9 @@ function CatDanceFloor({ catSelections, isPlaying, pawMagicLevel }) {
 
     const interval = setInterval(() => {
       const id = Date.now() + Math.random();
-      const x = 10 + Math.random() * 80; // 10-90% horizontal
-      setHearts(prev => [...prev.slice(-8), { id, x }]);
-    }, pawMagicLevel > 0 ? 400 : 1200);
+      const x = 10 + Math.random() * 80;
+      setHearts(prev => [...prev.slice(-6), { id, x }]);
+    }, pawMagicLevel > 0 ? 500 : 1500);
 
     return () => clearInterval(interval);
   }, [isPlaying, activeCats.length, pawMagicLevel]);
@@ -32,69 +32,44 @@ function CatDanceFloor({ catSelections, isPlaying, pawMagicLevel }) {
     if (hearts.length === 0) return;
     const timer = setTimeout(() => {
       setHearts(prev => prev.slice(1));
-    }, 3000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [hearts.length]);
 
   if (activeCats.length < 2) return null;
 
-  // Arrange cats in a row, evenly spaced
-  const catCount = activeCats.length;
-
   return (
-    <div className={`cat-dance-floor${pawMagicLevel > 0 ? ` magic-level-${pawMagicLevel}` : ''}`}>
-      {/* Floating hearts */}
+    <div className={`cat-dance-strip${pawMagicLevel > 0 ? ` magic-level-${pawMagicLevel}` : ''}`}>
+      {/* Floating mini hearts */}
       {hearts.map(heart => (
         <span
           key={heart.id}
-          className="floating-heart"
+          className="strip-heart"
           style={{ left: `${heart.x}%` }}
         >
           &#10084;
         </span>
       ))}
 
-      {/* Dancing cats */}
-      <div className="dance-cats" style={{ '--cat-count': catCount }}>
-        {activeCats.map((entry, i) => (
-          <div
-            key={entry.userId}
-            className={`dancing-cat${isPlaying ? ' dancing' : ''}`}
-            style={{
-              '--dance-delay': `${i * 0.15}s`,
-              '--dance-offset': `${(i % 2) * 4}px`,
-            }}
-          >
-            <div
-              className="cat-avatar-dance"
-              dangerouslySetInnerHTML={{ __html: getCatSvg(entry.cat, 56) }}
-            />
-          </div>
-        ))}
-      </div>
+      {/* Dancing cats in a row */}
+      {activeCats.map((entry, i) => (
+        <div
+          key={entry.userId}
+          className={`strip-cat${isPlaying ? ' dancing' : ''}`}
+          style={{
+            '--dance-delay': `${i * 0.15}s`,
+          }}
+        >
+          <span
+            className="strip-cat-svg"
+            dangerouslySetInnerHTML={{ __html: getCatSvg(entry.cat, 40) }}
+          />
+        </div>
+      ))}
 
-      {/* Magic overlay effects */}
+      {/* Magic glow overlay */}
       {pawMagicLevel >= 2 && (
-        <div className="heart-rain">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <span
-              key={i}
-              className="rain-heart"
-              style={{
-                left: `${5 + (i * 8)}%`,
-                animationDelay: `${i * 0.15}s`,
-              }}
-            >
-              &#10084;
-            </span>
-          ))}
-        </div>
-      )}
-
-      {pawMagicLevel >= 3 && (
-        <div className="magic-explosion">
-          <span className="boo-text">BOO</span>
-        </div>
+        <div className="strip-magic-glow" />
       )}
     </div>
   );

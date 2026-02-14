@@ -1,229 +1,120 @@
 // 9 kawaii cat definitions for Jam With Boo
-// Each cat has a unique face SVG with chibi proportions: huge head, big sparkly eyes, tiny features
+// Hand-crafted SVG with fixed viewBox — just swap colors per cat
 
 export const CATS = [
-  {
-    id: 0, name: 'Marmalade',
-    fur: '#ff8c42', furDark: '#e06b20', furLight: '#ffad6b',
-    earInner: '#ffb88a', eyeColor: '#2d5016', nose: '#ff6b8a',
-    cheek: '#ff9dba', pupil: '#1a3008', highlight: '#ffe8a0',
-    stripes: true, // tabby stripes
-  },
-  {
-    id: 1, name: 'Shadow',
-    fur: '#3a3a42', furDark: '#252528', furLight: '#555560',
-    earInner: '#6b6b78', eyeColor: '#e8b800', nose: '#888',
-    cheek: '#ff6b8a44', pupil: '#6b5500', highlight: '#fff8c0',
-    mysterious: true, // half-closed eyes
-  },
-  {
-    id: 2, name: 'Snowball',
-    fur: '#f5efe6', furDark: '#e0d6c8', furLight: '#fffcf5',
-    earInner: '#ffd6e0', eyeColor: '#4488cc', nose: '#ffaabb',
-    cheek: '#ffccdd', pupil: '#224466', highlight: '#e0f0ff',
-  },
-  {
-    id: 3, name: 'Smokey',
-    fur: '#8899aa', furDark: '#6b7a8a', furLight: '#a0b0c0',
-    earInner: '#b8c8d8', eyeColor: '#44aa44', nose: '#ccaabb',
-    cheek: '#ffaacc44', pupil: '#226622', highlight: '#c0ffc0',
-  },
-  {
-    id: 4, name: 'Mochi',
-    fur: '#e8c99a', furDark: '#c9a66d', furLight: '#f5ddb5',
-    earInner: '#f5d6b8', eyeColor: '#664422', nose: '#dd8899',
-    cheek: '#ffbbcc', pupil: '#332211', highlight: '#ffe8cc',
-    round: true, // extra chubby cheeks
-  },
-  {
-    id: 5, name: 'Patches',
-    fur: '#f5efe6', furDark: '#e0d6c8', furLight: '#fffcf5',
-    earInner: '#ff9955', eyeColor: '#558833', nose: '#dd7788',
-    cheek: '#ffccaa', pupil: '#2a4418', highlight: '#ddffc0',
-    patches: [ // calico spots
-      { cx: -0.25, cy: -0.15, r: 0.22, color: '#ff8c42' },
-      { cx: 0.3, cy: 0.05, r: 0.18, color: '#3a3a42' },
-      { cx: -0.1, cy: 0.25, r: 0.15, color: '#ff8c42' },
-    ],
-  },
-  {
-    id: 6, name: 'Tux',
-    fur: '#2d2d35', furDark: '#1a1a20', furLight: '#444450',
-    earInner: '#555566', eyeColor: '#ddaa00', nose: '#888',
-    cheek: '#ff668844', pupil: '#6b5500', highlight: '#fff5b0',
-    tuxedo: true, // white chest/chin
-  },
-  {
-    id: 7, name: 'Caramel',
-    fur: '#c06820', furDark: '#994d10', furLight: '#dd8840',
-    earInner: '#e8a060', eyeColor: '#556633', nose: '#cc7788',
-    cheek: '#ffaa99', pupil: '#2a3318', highlight: '#e0eeb0',
-    stripes: true,
-  },
-  {
-    id: 8, name: 'Boo',
-    fur: '#ffb3c6', furDark: '#ff8aaa', furLight: '#ffd6e2',
-    earInner: '#ff88aa', eyeColor: '#dd2277', nose: '#ff5599',
-    cheek: '#ff88bb', pupil: '#881144', highlight: '#ffccee',
-    hearts: true, // heart-shaped markings
-    special: true,
-  },
+  { id: 0, name: 'Marmalade', fur: '#ff8c42', furDark: '#d96d1f', earInner: '#ffb88a', nose: '#e86b6b', blush: '#ff9dba', eyeColor: '#333', stripes: true },
+  { id: 1, name: 'Shadow',    fur: '#444',    furDark: '#2a2a2a', earInner: '#666',    nose: '#999',    blush: '#ff6b8a', eyeColor: '#e8b800', sleepy: true },
+  { id: 2, name: 'Snowball',  fur: '#f5efe6', furDark: '#ddd4c6', earInner: '#ffc8d6', nose: '#ffaabb', blush: '#ffccdd', eyeColor: '#4488cc' },
+  { id: 3, name: 'Smokey',    fur: '#8899aa', furDark: '#6b7a8a', earInner: '#aabbcc', nose: '#cc99aa', blush: '#e8aacc', eyeColor: '#44aa44' },
+  { id: 4, name: 'Mochi',     fur: '#e8c99a', furDark: '#c9a66d', earInner: '#f5d6b8', nose: '#dd8899', blush: '#ffbbcc', eyeColor: '#553311', round: true },
+  { id: 5, name: 'Patches',   fur: '#f5efe6', furDark: '#ddd4c6', earInner: '#ff9955', nose: '#dd7788', blush: '#ffccaa', eyeColor: '#558833', patches: true },
+  { id: 6, name: 'Tux',       fur: '#333',    furDark: '#1a1a1a', earInner: '#555',    nose: '#888',    blush: '#ff668888', eyeColor: '#ddaa00', tuxedo: true },
+  { id: 7, name: 'Caramel',   fur: '#c06820', furDark: '#994d10', earInner: '#e8a060', nose: '#cc7788', blush: '#ffaa99', eyeColor: '#333', stripes: true },
+  { id: 8, name: 'Boo',       fur: '#ffb3c6', furDark: '#ff8aaa', earInner: '#ff88aa', nose: '#ff5599', blush: '#ff88bb', eyeColor: '#dd2277', heart: true },
 ];
 
 /**
- * Generate a kawaii chibi cat face SVG.
- * Big round head, huge eyes with sparkle highlights, tiny triangle ears,
- * small nose, whiskers, blush circles, and personality-specific markings.
+ * Generate a kawaii cat face SVG. Uses a fixed viewBox of 100x100 so
+ * proportions are always correct. The `size` param just sets rendered px.
+ * Design: round head, pointy ears, big dot eyes with sparkle, tiny nose,
+ * cat "ω" mouth, thin whiskers, rosy cheek blush.
  */
 export function getCatSvg(cat, size = 64) {
-  const s = size;
-  const cx = s / 2;
-  const cy = s * 0.52; // slightly below center for ear room
-  const r = s * 0.36;  // head radius — BIG
-
-  // Ear geometry
-  const earW = r * 0.55;
-  const earH = r * 0.65;
-  const earLx = cx - r * 0.6;
-  const earRx = cx + r * 0.6;
-  const earTip = cy - r - earH * 0.5;
-
-  // Eyes — big and round
-  const eyeR = r * 0.18;
-  const eyeSpacing = r * 0.42;
-  const eyeY = cy - r * 0.08;
-  const pupilR = eyeR * 0.7;
-
-  // Determine if shadow has half-closed eyes
-  const halfClosed = cat.mysterious;
-
-  // Nose
-  const noseY = cy + r * 0.2;
-  const noseR = r * 0.07;
-
-  // Mouth
-  const mouthY = noseY + r * 0.12;
-
-  // Cheeks (blush circles)
-  const cheekR = r * 0.15;
-  const cheekY = cy + r * 0.12;
-  const cheekXoff = r * 0.5;
-  const extraCheek = cat.round ? 1.3 : 1;
-
-  // Whiskers
-  const whiskerY = cy + r * 0.15;
-  const whiskerLen = r * 0.45;
+  // All coordinates are in the 0-100 viewBox
+  const dark = cat.furDark;
+  const eyeFill = cat.eyeColor || '#333';
 
   let extras = '';
 
-  // Patches (calico spots)
+  // Calico patches
   if (cat.patches) {
-    cat.patches.forEach(p => {
-      extras += `<circle cx="${cx + p.cx * r}" cy="${cy + p.cy * r}" r="${p.r * r}" fill="${p.color}" opacity="0.75"/>`;
-    });
+    extras += `<circle cx="35" cy="45" r="10" fill="#ff8c42" opacity="0.7"/>`;
+    extras += `<circle cx="62" cy="58" r="8" fill="#555" opacity="0.6"/>`;
   }
 
   // Tuxedo white bib
   if (cat.tuxedo) {
-    extras += `<ellipse cx="${cx}" cy="${cy + r * 0.45}" rx="${r * 0.42}" ry="${r * 0.35}" fill="#f0ece5"/>`;
-    extras += `<ellipse cx="${cx}" cy="${cy + r * 0.6}" rx="${r * 0.3}" ry="${r * 0.22}" fill="#f5f2ec"/>`;
+    extras += `<ellipse cx="50" cy="72" rx="16" ry="14" fill="#eee"/>`;
+    extras += `<ellipse cx="50" cy="78" rx="11" ry="9" fill="#f5f5f5"/>`;
   }
 
   // Tabby stripes on forehead
   if (cat.stripes) {
-    const sw = r * 0.04;
-    extras += `<line x1="${cx}" y1="${cy - r * 0.55}" x2="${cx}" y2="${cy - r * 0.3}" stroke="${cat.furDark}" stroke-width="${sw}" stroke-linecap="round" opacity="0.5"/>`;
-    extras += `<line x1="${cx - r * 0.15}" y1="${cy - r * 0.5}" x2="${cx - r * 0.1}" y2="${cy - r * 0.28}" stroke="${cat.furDark}" stroke-width="${sw}" stroke-linecap="round" opacity="0.4"/>`;
-    extras += `<line x1="${cx + r * 0.15}" y1="${cy - r * 0.5}" x2="${cx + r * 0.1}" y2="${cy - r * 0.28}" stroke="${cat.furDark}" stroke-width="${sw}" stroke-linecap="round" opacity="0.4"/>`;
+    extras += `<path d="M50 30 L50 40" stroke="${dark}" stroke-width="2" stroke-linecap="round" opacity="0.4"/>`;
+    extras += `<path d="M43 32 L45 41" stroke="${dark}" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>`;
+    extras += `<path d="M57 32 L55 41" stroke="${dark}" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>`;
   }
 
-  // Boo heart marking on forehead
-  if (cat.hearts) {
-    const hx = cx, hy = cy - r * 0.4, hs = r * 0.12;
-    extras += `<path d="M${hx} ${hy + hs * 0.8} C${hx - hs} ${hy - hs * 0.3} ${hx - hs * 1.5} ${hy + hs * 0.2} ${hx} ${hy + hs * 1.5} C${hx + hs * 1.5} ${hy + hs * 0.2} ${hx + hs} ${hy - hs * 0.3} ${hx} ${hy + hs * 0.8}Z" fill="${cat.furDark}" opacity="0.5"/>`;
+  // Boo's heart marking
+  if (cat.heart) {
+    extras += `<path d="M50 34 C47 30, 43 32, 46 37 L50 41 L54 37 C57 32, 53 30, 50 34Z" fill="${dark}" opacity="0.4"/>`;
   }
 
-  // Eye rendering
-  let eyesSvg = '';
-  const lx = cx - eyeSpacing;
-  const rx = cx + eyeSpacing;
-
-  if (halfClosed) {
-    // Half-closed mysterious eyes — narrower ovals
-    eyesSvg = `
-      <ellipse cx="${lx}" cy="${eyeY}" rx="${eyeR}" ry="${eyeR * 0.55}" fill="${cat.eyeColor}"/>
-      <ellipse cx="${rx}" cy="${eyeY}" rx="${eyeR}" ry="${eyeR * 0.55}" fill="${cat.eyeColor}"/>
-      <ellipse cx="${lx}" cy="${eyeY}" rx="${pupilR}" ry="${pupilR * 0.5}" fill="${cat.pupil}"/>
-      <ellipse cx="${rx}" cy="${eyeY}" rx="${pupilR}" ry="${pupilR * 0.5}" fill="${cat.pupil}"/>
-      <circle cx="${lx + eyeR * 0.25}" cy="${eyeY - eyeR * 0.12}" r="${eyeR * 0.15}" fill="white" opacity="0.9"/>
-      <circle cx="${rx + eyeR * 0.25}" cy="${eyeY - eyeR * 0.12}" r="${eyeR * 0.15}" fill="white" opacity="0.9"/>
+  // Eyes — sleepy cats get horizontal slits, others get big round eyes
+  let eyes;
+  if (cat.sleepy) {
+    eyes = `
+      <ellipse cx="38" cy="52" rx="5" ry="2.5" fill="${eyeFill}"/>
+      <ellipse cx="62" cy="52" rx="5" ry="2.5" fill="${eyeFill}"/>
+      <circle cx="36" cy="51" r="1.2" fill="white" opacity="0.8"/>
+      <circle cx="60" cy="51" r="1.2" fill="white" opacity="0.8"/>
     `;
   } else {
-    // Big round kawaii eyes with sparkle highlights
-    eyesSvg = `
-      <circle cx="${lx}" cy="${eyeY}" r="${eyeR}" fill="white"/>
-      <circle cx="${rx}" cy="${eyeY}" r="${eyeR}" fill="white"/>
-      <circle cx="${lx}" cy="${eyeY + eyeR * 0.1}" r="${pupilR}" fill="${cat.eyeColor}"/>
-      <circle cx="${rx}" cy="${eyeY + eyeR * 0.1}" r="${pupilR}" fill="${cat.eyeColor}"/>
-      <circle cx="${lx}" cy="${eyeY + eyeR * 0.15}" r="${pupilR * 0.65}" fill="${cat.pupil}"/>
-      <circle cx="${rx}" cy="${eyeY + eyeR * 0.15}" r="${pupilR * 0.65}" fill="${cat.pupil}"/>
-      <!-- Big sparkle highlight -->
-      <circle cx="${lx - eyeR * 0.25}" cy="${eyeY - eyeR * 0.2}" r="${eyeR * 0.25}" fill="white" opacity="0.95"/>
-      <circle cx="${rx - eyeR * 0.25}" cy="${eyeY - eyeR * 0.2}" r="${eyeR * 0.25}" fill="white" opacity="0.95"/>
-      <!-- Small sparkle -->
-      <circle cx="${lx + eyeR * 0.2}" cy="${eyeY + eyeR * 0.2}" r="${eyeR * 0.1}" fill="white" opacity="0.7"/>
-      <circle cx="${rx + eyeR * 0.2}" cy="${eyeY + eyeR * 0.2}" r="${eyeR * 0.1}" fill="white" opacity="0.7"/>
+    eyes = `
+      <circle cx="38" cy="50" r="5.5" fill="white"/>
+      <circle cx="62" cy="50" r="5.5" fill="white"/>
+      <circle cx="38" cy="51" r="4" fill="${eyeFill}"/>
+      <circle cx="62" cy="51" r="4" fill="${eyeFill}"/>
+      <circle cx="36" cy="49" r="2" fill="white" opacity="0.9"/>
+      <circle cx="60" cy="49" r="2" fill="white" opacity="0.9"/>
+      <circle cx="39" cy="52.5" r="0.8" fill="white" opacity="0.6"/>
+      <circle cx="63" cy="52.5" r="0.8" fill="white" opacity="0.6"/>
     `;
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" width="${s}" height="${s}">
-    <!-- Left ear -->
-    <path d="M${earLx} ${cy - r * 0.6} L${earLx - earW * 0.5} ${earTip} L${earLx + earW * 0.5} ${cy - r * 0.75} Z" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="${s * 0.01}"/>
-    <path d="M${earLx} ${cy - r * 0.55} L${earLx - earW * 0.3} ${earTip + earH * 0.25} L${earLx + earW * 0.3} ${cy - r * 0.7} Z" fill="${cat.earInner}" opacity="0.7"/>
-    <!-- Right ear -->
-    <path d="M${earRx} ${cy - r * 0.6} L${earRx + earW * 0.5} ${earTip} L${earRx - earW * 0.5} ${cy - r * 0.75} Z" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="${s * 0.01}"/>
-    <path d="M${earRx} ${cy - r * 0.55} L${earRx + earW * 0.3} ${earTip + earH * 0.25} L${earRx - earW * 0.3} ${cy - r * 0.7} Z" fill="${cat.earInner}" opacity="0.7"/>
-    <!-- Head -->
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${cat.fur}"/>
-    <!-- Fur shading -->
-    <circle cx="${cx}" cy="${cy}" r="${r * 0.97}" fill="none" stroke="${cat.furLight}" stroke-width="${r * 0.06}" opacity="0.3" stroke-dasharray="${r * 0.4} ${r * 0.8}"/>
-    ${extras}
-    <!-- Eyes -->
-    ${eyesSvg}
-    <!-- Nose (tiny inverted triangle) -->
-    <path d="M${cx - noseR} ${noseY - noseR * 0.5} L${cx + noseR} ${noseY - noseR * 0.5} L${cx} ${noseY + noseR * 0.6} Z" fill="${cat.nose}"/>
-    <!-- Mouth -->
-    <path d="M${cx - r * 0.1} ${mouthY} Q${cx - r * 0.04} ${mouthY + r * 0.06} ${cx} ${mouthY}" stroke="${cat.furDark}" stroke-width="${s * 0.012}" fill="none" stroke-linecap="round" opacity="0.5"/>
-    <path d="M${cx} ${mouthY} Q${cx + r * 0.04} ${mouthY + r * 0.06} ${cx + r * 0.1} ${mouthY}" stroke="${cat.furDark}" stroke-width="${s * 0.012}" fill="none" stroke-linecap="round" opacity="0.5"/>
-    <!-- Whiskers -->
-    <line x1="${cx - r * 0.2}" y1="${whiskerY - r * 0.03}" x2="${cx - r * 0.2 - whiskerLen}" y2="${whiskerY - r * 0.1}" stroke="${cat.furDark}" stroke-width="${s * 0.008}" opacity="0.35" stroke-linecap="round"/>
-    <line x1="${cx - r * 0.2}" y1="${whiskerY + r * 0.05}" x2="${cx - r * 0.2 - whiskerLen}" y2="${whiskerY + r * 0.1}" stroke="${cat.furDark}" stroke-width="${s * 0.008}" opacity="0.35" stroke-linecap="round"/>
-    <line x1="${cx + r * 0.2}" y1="${whiskerY - r * 0.03}" x2="${cx + r * 0.2 + whiskerLen}" y2="${whiskerY - r * 0.1}" stroke="${cat.furDark}" stroke-width="${s * 0.008}" opacity="0.35" stroke-linecap="round"/>
-    <line x1="${cx + r * 0.2}" y1="${whiskerY + r * 0.05}" x2="${cx + r * 0.2 + whiskerLen}" y2="${whiskerY + r * 0.1}" stroke="${cat.furDark}" stroke-width="${s * 0.008}" opacity="0.35" stroke-linecap="round"/>
-    <!-- Cheek blush -->
-    <circle cx="${cx - cheekXoff}" cy="${cheekY}" r="${cheekR * extraCheek}" fill="${cat.cheek}" opacity="0.45"/>
-    <circle cx="${cx + cheekXoff}" cy="${cheekY}" r="${cheekR * extraCheek}" fill="${cat.cheek}" opacity="0.45"/>
-  </svg>`;
+  // Mochi gets extra-round blush
+  const blushR = cat.round ? 7 : 5.5;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+  <!-- Ears -->
+  <path d="M28 38 L17 10 L40 32Z" fill="${cat.fur}" stroke="${dark}" stroke-width="1"/>
+  <path d="M72 38 L83 10 L60 32Z" fill="${cat.fur}" stroke="${dark}" stroke-width="1"/>
+  <path d="M29 36 L21 16 L38 33Z" fill="${cat.earInner}" opacity="0.6"/>
+  <path d="M71 36 L79 16 L62 33Z" fill="${cat.earInner}" opacity="0.6"/>
+  <!-- Head -->
+  <circle cx="50" cy="55" r="34" fill="${cat.fur}"/>
+  ${extras}
+  <!-- Eyes -->
+  ${eyes}
+  <!-- Nose -->
+  <path d="M48 59 L52 59 L50 62Z" fill="${cat.nose}"/>
+  <!-- Mouth (ω shape — the iconic kawaii cat mouth) -->
+  <path d="M43 64 Q46.5 68 50 64.5 Q53.5 68 57 64" fill="none" stroke="${dark}" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+  <!-- Whiskers -->
+  <line x1="8" y1="55" x2="29" y2="58" stroke="${dark}" stroke-width="0.8" opacity="0.25"/>
+  <line x1="8" y1="62" x2="29" y2="61" stroke="${dark}" stroke-width="0.8" opacity="0.25"/>
+  <line x1="92" y1="55" x2="71" y2="58" stroke="${dark}" stroke-width="0.8" opacity="0.25"/>
+  <line x1="92" y1="62" x2="71" y2="61" stroke="${dark}" stroke-width="0.8" opacity="0.25"/>
+  <!-- Blush -->
+  <circle cx="30" cy="61" r="${blushR}" fill="${cat.blush}" opacity="0.35"/>
+  <circle cx="70" cy="61" r="${blushR}" fill="${cat.blush}" opacity="0.35"/>
+</svg>`;
 }
 
 /**
- * Generate a paw SVG with visible toe beans.
- * Main pad + 4 toe pads, soft pink colors.
+ * Cat paw with toe beans — soft pink by default.
  */
 export function getPawSvg(size = 28, color = '#ffb3c6', beanColor = '#ff8aaa') {
-  const s = size;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" width="${s}" height="${s}">
-    <!-- Main pad -->
-    <ellipse cx="${s * 0.5}" cy="${s * 0.62}" rx="${s * 0.24}" ry="${s * 0.2}" fill="${color}"/>
-    <ellipse cx="${s * 0.5}" cy="${s * 0.62}" rx="${s * 0.18}" ry="${s * 0.14}" fill="${beanColor}" opacity="0.6"/>
-    <!-- Toe beans -->
-    <ellipse cx="${s * 0.28}" cy="${s * 0.36}" rx="${s * 0.1}" ry="${s * 0.12}" fill="${color}" transform="rotate(-15 ${s * 0.28} ${s * 0.36})"/>
-    <ellipse cx="${s * 0.28}" cy="${s * 0.36}" rx="${s * 0.065}" ry="${s * 0.08}" fill="${beanColor}" opacity="0.6" transform="rotate(-15 ${s * 0.28} ${s * 0.36})"/>
-    <ellipse cx="${s * 0.43}" cy="${s * 0.28}" rx="${s * 0.095}" ry="${s * 0.115}" fill="${color}" transform="rotate(-5 ${s * 0.43} ${s * 0.28})"/>
-    <ellipse cx="${s * 0.43}" cy="${s * 0.28}" rx="${s * 0.06}" ry="${s * 0.075}" fill="${beanColor}" opacity="0.6" transform="rotate(-5 ${s * 0.43} ${s * 0.28})"/>
-    <ellipse cx="${s * 0.57}" cy="${s * 0.28}" rx="${s * 0.095}" ry="${s * 0.115}" fill="${color}" transform="rotate(5 ${s * 0.57} ${s * 0.28})"/>
-    <ellipse cx="${s * 0.57}" cy="${s * 0.28}" rx="${s * 0.06}" ry="${s * 0.075}" fill="${beanColor}" opacity="0.6" transform="rotate(5 ${s * 0.57} ${s * 0.28})"/>
-    <ellipse cx="${s * 0.72}" cy="${s * 0.36}" rx="${s * 0.1}" ry="${s * 0.12}" fill="${color}" transform="rotate(15 ${s * 0.72} ${s * 0.36})"/>
-    <ellipse cx="${s * 0.72}" cy="${s * 0.36}" rx="${s * 0.065}" ry="${s * 0.08}" fill="${beanColor}" opacity="0.6" transform="rotate(15 ${s * 0.72} ${s * 0.36})"/>
-  </svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+  <ellipse cx="50" cy="64" rx="22" ry="18" fill="${color}"/>
+  <ellipse cx="50" cy="64" rx="16" ry="12" fill="${beanColor}" opacity="0.5"/>
+  <ellipse cx="29" cy="38" rx="10" ry="13" fill="${color}" transform="rotate(-12 29 38)"/>
+  <ellipse cx="29" cy="38" rx="6.5" ry="8.5" fill="${beanColor}" opacity="0.5" transform="rotate(-12 29 38)"/>
+  <ellipse cx="43" cy="28" rx="10" ry="12" fill="${color}" transform="rotate(-4 43 28)"/>
+  <ellipse cx="43" cy="28" rx="6.5" ry="8" fill="${beanColor}" opacity="0.5" transform="rotate(-4 43 28)"/>
+  <ellipse cx="57" cy="28" rx="10" ry="12" fill="${color}" transform="rotate(4 57 28)"/>
+  <ellipse cx="57" cy="28" rx="6.5" ry="8" fill="${beanColor}" opacity="0.5" transform="rotate(4 57 28)"/>
+  <ellipse cx="71" cy="38" rx="10" ry="13" fill="${color}" transform="rotate(12 71 38)"/>
+  <ellipse cx="71" cy="38" rx="6.5" ry="8.5" fill="${beanColor}" opacity="0.5" transform="rotate(12 71 38)"/>
+</svg>`;
 }

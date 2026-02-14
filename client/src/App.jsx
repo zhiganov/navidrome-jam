@@ -702,9 +702,17 @@ function App() {
   // Calculate paw magic level
   const pawMagicLevel = pawHolders.length >= 3 ? 3 : pawHolders.length >= 2 ? 2 : 0;
 
-  // Should we show dancing cats instead of album art?
+  // Show dance strip when 2+ cats selected
   const catCount = Object.keys(catSelections).length;
-  const showDancingCats = catCount >= 2;
+  const showDanceStrip = catCount >= 2;
+
+  // Paw climax celebration state
+  const [pawClimax, setPawClimax] = useState(false);
+
+  const handlePawClimax = useCallback(() => {
+    setPawClimax(true);
+    setTimeout(() => setPawClimax(false), 4000);
+  }, []);
 
   const handleLike = useCallback(() => {
     if (!currentTrack) return;
@@ -1102,22 +1110,25 @@ function App() {
             )}
 
             {currentTrack && (
-              <div className="now-playing">
-                {showDancingCats ? (
+              <>
+                {showDanceStrip && (
                   <CatDanceFloor
                     catSelections={catSelections}
                     isPlaying={isPlaying}
                     pawMagicLevel={pawMagicLevel}
                   />
-                ) : currentTrack.coverArt ? (
-                  <img src={currentTrack.coverArt} alt="Album art" className="cover-art" />
-                ) : null}
-                <div className="track-info">
-                  <h2>{currentTrack.title}</h2>
-                  <p>{currentTrack.artist}</p>
-                  <p className="album">{currentTrack.album}</p>
+                )}
+                <div className="now-playing">
+                  {currentTrack.coverArt && (
+                    <img src={currentTrack.coverArt} alt="Album art" className="cover-art" />
+                  )}
+                  <div className="track-info">
+                    <h2>{currentTrack.title}</h2>
+                    <p>{currentTrack.artist}</p>
+                    <p className="album">{currentTrack.album}</p>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {currentTrack && (
@@ -1197,6 +1208,7 @@ function App() {
                 <PawButton
                   jamClient={jamClient}
                   pawHolders={pawHolders}
+                  onClimax={handlePawClimax}
                 />
               </div>
             )}
@@ -1712,6 +1724,27 @@ function App() {
 
       {/* Magic screen flash */}
       {magicFlash && <div className="magic-screen-flash" />}
+
+      {/* Paw climax celebration — hearts burst across the screen */}
+      {pawClimax && (
+        <div className="paw-climax-overlay">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <span
+              key={i}
+              className="climax-heart"
+              style={{
+                '--ch-x': `${5 + Math.random() * 90}%`,
+                '--ch-delay': `${i * 0.08}s`,
+                '--ch-size': `${14 + Math.random() * 20}px`,
+                '--ch-drift': `${-30 + Math.random() * 60}px`,
+              }}
+            >
+              &#10084;
+            </span>
+          ))}
+          <div className="climax-text">BOO!</div>
+        </div>
+      )}
     </div>
   );
 }

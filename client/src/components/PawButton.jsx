@@ -1,17 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { getPawSvg } from './catData';
 
-function PawButton({ jamClient, pawHolders }) {
+function PawButton({ jamClient, pawHolders, onClimax }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const progressRef = useRef(null);
   const isHoldingRef = useRef(false);
+  const climaxFiredRef = useRef(false);
 
   const holderCount = pawHolders?.length || 0;
 
   const startHold = useCallback(() => {
     if (isHoldingRef.current) return;
     isHoldingRef.current = true;
+    climaxFiredRef.current = false;
     setIsHolding(true);
     setHoldProgress(0);
 
@@ -26,12 +28,19 @@ function PawButton({ jamClient, pawHolders }) {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       setHoldProgress(progress);
+
+      // Fire climax when progress hits 1.0 and 2+ holders
+      if (progress >= 1 && !climaxFiredRef.current && holderCount >= 2) {
+        climaxFiredRef.current = true;
+        onClimax?.();
+      }
+
       if (progress < 1) {
         progressRef.current = requestAnimationFrame(animate);
       }
     };
     progressRef.current = requestAnimationFrame(animate);
-  }, [jamClient]);
+  }, [jamClient, holderCount, onClimax]);
 
   const endHold = useCallback(() => {
     if (!isHoldingRef.current) return;
