@@ -1,29 +1,23 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { getPawSvg } from './catData';
 
-function PawButton({ jamClient, pawHolders, onClimax, onHoldProgress }) {
+function PawButton({ jamClient, pawHolders, onHoldProgress }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const progressRef = useRef(null);
   const isHoldingRef = useRef(false);
-  const climaxFiredRef = useRef(false);
 
   const holderCount = pawHolders?.length || 0;
-  const holderCountRef = useRef(holderCount);
-  useEffect(() => {
-    holderCountRef.current = holderCount;
-  }, [holderCount]);
 
   const startHold = useCallback(() => {
     if (isHoldingRef.current) return;
     isHoldingRef.current = true;
-    climaxFiredRef.current = false;
     setIsHolding(true);
     setHoldProgress(0);
 
     jamClient.pawHold();
 
-    // Animate progress ring — 8 seconds for full dramatic buildup
+    // Animate progress — 8 seconds for full dramatic buildup
     const startTime = Date.now();
     const duration = 8000;
 
@@ -34,18 +28,12 @@ function PawButton({ jamClient, pawHolders, onClimax, onHoldProgress }) {
       setHoldProgress(progress);
       onHoldProgress?.(progress);
 
-      // Fire climax when progress hits 1.0 and 2+ holders (use ref for current count)
-      if (progress >= 1 && !climaxFiredRef.current && holderCountRef.current >= 2) {
-        climaxFiredRef.current = true;
-        onClimax?.();
-      }
-
       if (progress < 1) {
         progressRef.current = requestAnimationFrame(animate);
       }
     };
     progressRef.current = requestAnimationFrame(animate);
-  }, [jamClient, onClimax, onHoldProgress]);
+  }, [jamClient, onHoldProgress]);
 
   const endHold = useCallback(() => {
     if (!isHoldingRef.current) return;

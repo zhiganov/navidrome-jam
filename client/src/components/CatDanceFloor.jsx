@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
-import { CATS, getCatSvg } from './catData';
+import { CATS } from './catData';
+import { AvatarIcon } from './AvatarIcon';
 
 // Deterministic pseudo-random positions for climax hearts (index-based, no Math.random in render)
 const CLIMAX_HEARTS = Array.from({ length: 16 }, (_, i) => ({
@@ -100,10 +101,9 @@ function CatDanceFloor({ catSelections, isPlaying, pawMagicLevel, holdProgress =
                 : 'transform 0.08s ease-out',
             }}
           >
-            <span
-              className="strip-cat-svg"
-              dangerouslySetInnerHTML={{ __html: getCatSvg(entry.cat, 40) }}
-            />
+            <span className="strip-cat-svg">
+              <AvatarIcon avatar={entry.cat} size={40} uniqueId={`dance-${entry.userId}`} />
+            </span>
           </div>
         );
       })}

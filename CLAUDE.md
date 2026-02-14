@@ -22,6 +22,8 @@ The system consists of three independent components:
 
 **Critical architectural decision**: Clients stream audio directly from Navidrome, NOT through the sync server. The sync server only broadcasts playback commands (play/pause/seek/timestamp). This design keeps the sync server lightweight and allows Navidrome to handle all media delivery.
 
+**Third-party assets**: Avatar illustrations use [react-kawaii](https://github.com/elizabetdev/react-kawaii) (MIT). 9 characters (Cat, Ghost, Planet, IceCream, Mug, Backpack, SpeechBubble, Chocolate, Browser) with different colors and moods. Renders as inline SVG React components — no `dangerouslySetInnerHTML`.
+
 ### Communication Flow
 
 ```
@@ -68,7 +70,7 @@ npm start                # Production mode
 
 **Environment**: Copy `.env.example` to `.env` and configure:
 - `PORT` - Server port (default: 3001)
-- `CLIENT_URL` - CORS origin for web client
+- `CLIENT_URL` - CORS origin(s) for web client (supports comma-separated values for multi-origin, e.g., `https://jam.zhgnv.com,http://localhost:5173`)
 - `NAVIDROME_URL` - Navidrome instance URL (required for registration)
 - `NAVIDROME_ADMIN_USER` - Admin username for user registration proxy
 - `NAVIDROME_ADMIN_PASS` - Admin password for user registration proxy
@@ -132,7 +134,14 @@ Single-page app with three screens in `App.jsx`: Login → Room Selection → Ja
 - `services/jamClient.js` — Socket.io wrapper with custom event emitter (manual `listeners` map, not Node EventEmitter). Room creation and registration use REST; everything else uses WebSocket.
 - `contexts/NavidromeContext.jsx` and `JamContext.jsx` — React Context providers that create/destroy client instances on mount/unmount. Required to prevent duplicate listeners during Vite hot-reload.
 
-**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport icons (prev/play/pause/next) use CSS borders for triangles and bars. Repeat, like, and dislike icons use SVG via CSS `mask-image` data URIs — monochrome by default (`background-color: var(--text-dark)`), colored when active. Like/dislike paths are from Bootstrap Icons (`hand-thumbs-up-fill`); repeat is Lucide-style arrows.
+**Visual theme**: Windows 98 / GeoCities aesthetic with Valentine overlay. Base theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Valentine accents use `--valentine-pink`, `--valentine-rose`, `--valentine-hot`, `--valentine-accent`. Transport icons (prev/play/pause/next) use CSS borders for triangles and bars. Repeat, like, and dislike icons use SVG via CSS `mask-image` data URIs — monochrome by default (`background-color: var(--text-dark)`), colored when active. Like/dislike paths are from Bootstrap Icons (`hand-thumbs-up-fill`); repeat is Lucide-style arrows.
+
+**Jam With Boo** (Valentine's Day feature): Avatar selection and synchronized dance strip. Components in `client/src/components/`:
+- `catData.js` — 9 named avatars using react-kawaii components. Exports `CATS` array (each entry has `component`, `color`, `mood`) and `getPawSvg(size)`.
+- `AvatarIcon.jsx` — Renders the correct react-kawaii character: `<AvatarIcon avatar={cat} size={40} uniqueId="ctx-id" />`. Pass unique `uniqueId` per render context to avoid SVG ID collisions.
+- `CatPicker.jsx` — Avatar selection overlay (48px). Emits `select-cat` to server.
+- `CatDanceFloor.jsx` — Strip of dancing avatars above the now-playing bar. Receives `catSelections`, `isPlaying`, `pawMagicLevel`, `holdProgress`, `pawClimax`. Avatars converge as hold progress increases; climax triggers heart burst and flash.
+- `PawButton.jsx` — Hold-to-activate button. 8-second hold timer with `requestAnimationFrame`. Reports progress via `onHoldProgress` callback (lifted to App.jsx). Fires `onClimax` when progress=1 AND 2+ holders (uses `useRef` for current holder count to avoid stale closure in rAF loop).
 
 ### Synchronization Protocol
 
@@ -161,6 +170,9 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `like-track` | Client → Server | `{ roomId, trackId }` | Any room member |
 | `dislike-track` | Client → Server | `{ roomId, trackId }` | Any room member |
 | `remove-reaction` | Client → Server | `{ roomId, trackId }` | Any room member |
+| `select-cat` | Client → Server | `{ roomId, catId }` | Any room member |
+| `paw-hold` | Client → Server | `{ roomId }` | Any room member |
+| `paw-release` | Client → Server | `{ roomId }` | Any room member |
 | `room-state` | Server → Client | `{ room }` | — |
 | `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
 | `user-joined` | Server → Client | `{ user, room }` | — |
@@ -168,6 +180,8 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `cohost-updated` | Server → Client | `{ room }` | — |
 | `queue-updated` | Server → Client | `{ queue[] }` | — |
 | `track-reactions` | Server → Client | `{ trackId, likes, dislikes, reactions }` | — |
+| `cat-updated` | Server → Client | `{ catSelections }` | — |
+| `paw-state` | Server → Client | `{ pawHolders }` | — |
 | `error` | Server → Client | `{ message }` | — |
 
 ## Deployment
@@ -217,7 +231,7 @@ git push
 | Variable | Where | Required | Default | Description |
 |----------|-------|----------|---------|-------------|
 | `PORT` | Server | No | `3001` | Server listen port |
-| `CLIENT_URL` | Server | No | `*` | CORS origin (set to client URL in production) |
+| `CLIENT_URL` | Server | No | `*` | CORS origin(s), comma-separated for multiple (e.g., `https://jam.zhgnv.com,http://localhost:5173`) |
 | `NAVIDROME_URL` | Server | For registration | — | Navidrome instance URL |
 | `NAVIDROME_ADMIN_USER` | Server | For registration | — | Admin username for user creation |
 | `NAVIDROME_ADMIN_PASS` | Server | For registration | — | Admin password for user creation |
@@ -238,6 +252,12 @@ git push
 - Navidrome hosted on PikaPods
 
 **Gotcha**: When adding env vars on Railway/Vercel, watch for leading spaces in variable names — both platforms silently accept them, causing cryptic build failures like `"empty key"` errors in Docker.
+
+## React 19 Gotchas
+
+- **Stale closures in `requestAnimationFrame` loops**: `useCallback` captures state values at creation time. Long-running rAF loops (e.g., PawButton's 8-second hold timer) will see stale values. Fix: store mutable values in `useRef` and update via `useEffect`.
+- **No `ref.current` assignment during render**: React 19 strict mode forbids `myRef.current = value` in the render path. Move to `useEffect`.
+- **Inline `transform` vs CSS `@keyframes` conflict**: If a CSS animation sets `transform` and you also set inline `transform` on the same element, only one wins. Fix: apply positional transforms (e.g., `translateX`) on a wrapper, animations on an inner element.
 
 ## Common Development Patterns
 
@@ -319,13 +339,23 @@ Server → 201 { message: "Account created successfully" }
 | `jam_repeat` | Repeat mode (`on` / `off`) |
 | `jam_community` | Last-used community name for room creation |
 
+## Linting
+
+**ESLint 9 flat config** (`client/eslint.config.js`): Uses `defineConfig` from `eslint/config` (not legacy `.eslintrc`). Includes `react-hooks` and `react-refresh` plugins. Custom rule: `no-unused-vars` ignores uppercase/underscore-prefixed variables (`varsIgnorePattern: '^[A-Z_]'`).
+
+```bash
+cd client && npx eslint src/      # Lint all client source
+```
+
 ## Testing
 
-No automated tests yet. Manual testing with the HTML test client (`server/test-client.html`) or full stack (two browser windows). See `SECURITY.md` for security measures.
+No automated tests yet. Manual testing with the HTML test client (`server/test-client.html`) or full stack (two browser windows). `cat-preview.html` in project root previews all 9 cat avatars at multiple sizes. See `SECURITY.md` for security measures.
 
-## Planned: User Uploads
+## Planned Features
 
-Design doc: `docs/plans/2026-02-11-user-uploads-design.md`
+Design docs in `docs/plans/`:
+
+### User Uploads (`2026-02-11-user-uploads-design.md`)
 
 Registered users will be able to upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP, where Navidrome indexes them. Key design decisions:
 - **Stream-through**: Upload pipes directly from HTTP to SFTP (no temp files on Railway)
@@ -334,4 +364,8 @@ Registered users will be able to upload audio files through the web client. File
 - **File limits**: 200MB max, allowed formats: mp3, flac, ogg, opus, m4a, wav, aac
 - **Storage path**: `/music/jam-uploads/<username>/` on PikaPods
 - **Metadata**: `.uploads-meta.json` on PikaPods tracks upload dates and permanent flags
+
+### Likes/Dislikes → Navidrome Favorites (`2026-02-14-likes-dislikes-design.md`, `2026-02-14-likes-dislikes-impl.md`)
+
+Track reactions sync to Navidrome's native favorites via `star.view`/`unstar.view` Subsonic API. Uploads with net positive likes become exempt from 30-day auto-cleanup.
 

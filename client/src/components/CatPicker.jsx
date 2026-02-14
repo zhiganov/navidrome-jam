@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { CATS, getCatSvg } from './catData';
+import { CATS } from './catData';
+import { AvatarIcon } from './AvatarIcon';
 
 function CatPicker({ onSelect, catSelections, currentUserId }) {
   const [hoveredCat, setHoveredCat] = useState(null);
@@ -21,7 +22,7 @@ function CatPicker({ onSelect, catSelections, currentUserId }) {
 
   return (
     <div className="cat-picker">
-      <div className="cat-picker-title">Choose your cat!</div>
+      <div className="cat-picker-title">Choose your buddy!</div>
       <div className="cat-grid">
         {CATS.map((cat) => {
           const isTaken = takenCats[cat.id];
@@ -36,10 +37,9 @@ function CatPicker({ onSelect, catSelections, currentUserId }) {
               disabled={isTaken}
               title={isTaken ? `${cat.name} (taken)` : cat.name}
             >
-              <div
-                className="cat-svg"
-                dangerouslySetInnerHTML={{ __html: getCatSvg(cat, 48) }}
-              />
+              <div className="cat-svg">
+                <AvatarIcon avatar={cat} size={48} uniqueId={`pick-${cat.id}`} />
+              </div>
               <span className="cat-name">{cat.name}</span>
               {isTaken && <span className="cat-taken-badge">taken</span>}
             </button>

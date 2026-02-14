@@ -2000,7 +2000,7 @@ body {
   border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
   border-radius: 2px;
   overflow: hidden;
-  min-height: 48px;
+  min-height: 56px;
 }
 
 .strip-cat {
@@ -2109,16 +2109,17 @@ body {
   }
 }
 
-/* Celebrating cats — animate inner svg on climax */
+/* Celebrating avatars — looping dance while climax is active */
 .strip-cat.celebrating .strip-cat-svg {
-  animation: strip-celebrate 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55) 1;
+  animation: strip-celebrate 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
 }
 
 @keyframes strip-celebrate {
   0% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.4) rotate(-15deg); }
-  50% { transform: scale(1.3) rotate(10deg); }
-  75% { transform: scale(1.35) rotate(-5deg); }
+  15% { transform: scale(1.3) rotate(-12deg); }
+  30% { transform: scale(1.15) rotate(8deg); }
+  50% { transform: scale(1.25) rotate(-6deg); }
+  70% { transform: scale(1.1) rotate(4deg); }
   100% { transform: scale(1) rotate(0deg); }
 }
 
@@ -2135,14 +2136,14 @@ body {
   box-shadow: 0 0 8px var(--valentine-hot), 0 -2px 12px rgba(255, 20, 147, 0.3);
 }
 
-/* Climax burst hearts inside the strip */
+/* Climax burst hearts inside the strip — looping */
 .strip-climax-heart {
   position: absolute;
   bottom: 30%;
   font-size: var(--burst-size, 14px);
   color: var(--valentine-hot);
   opacity: 0;
-  animation: strip-burst 1.8s ease-out forwards;
+  animation: strip-burst 2.4s ease-out infinite;
   animation-delay: var(--burst-delay, 0s);
   pointer-events: none;
   z-index: 5;
@@ -2151,30 +2152,34 @@ body {
 
 @keyframes strip-burst {
   0% { transform: translateY(0) scale(0); opacity: 0; }
-  15% { transform: translateY(-10px) scale(1.5); opacity: 1; }
-  40% { transform: translateY(-30px) translateX(var(--burst-drift, 0px)) scale(1); opacity: 0.9; }
-  100% { transform: translateY(-70px) translateX(var(--burst-drift, 0px)) scale(0.3) rotate(25deg); opacity: 0; }
+  12% { transform: translateY(-8px) scale(1.3); opacity: 1; }
+  35% { transform: translateY(-25px) translateX(var(--burst-drift, 0px)) scale(0.9); opacity: 0.7; }
+  100% { transform: translateY(-60px) translateX(var(--burst-drift, 0px)) scale(0.2) rotate(20deg); opacity: 0; }
 }
 
-/* Climax flash inside the strip */
+/* Climax glow inside the strip — pulsing */
 .strip-climax-flash {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 4;
-  animation: strip-flash 1.2s ease-out forwards;
   border-radius: 2px;
+  animation: strip-flash-pulse 1.8s ease-in-out infinite;
 }
 
-@keyframes strip-flash {
-  0% { background: rgba(255, 215, 0, 0.5); }
-  20% { background: rgba(255, 20, 147, 0.3); }
-  100% { background: transparent; }
+@keyframes strip-flash-pulse {
+  0%, 100% { background: rgba(255, 20, 147, 0.08); }
+  50% { background: rgba(255, 20, 147, 0.2); }
 }
 
-/* Climax state on the whole strip */
+/* Climax state on the whole strip — pulsing glow */
 .cat-dance-strip.climax {
-  box-shadow: 0 0 40px rgba(255, 20, 147, 0.8), 0 0 80px rgba(255, 215, 0, 0.4) !important;
+  animation: strip-glow-pulse 1.5s ease-in-out infinite !important;
+}
+
+@keyframes strip-glow-pulse {
+  0%, 100% { box-shadow: 0 0 25px rgba(255, 20, 147, 0.6), 0 0 50px rgba(255, 215, 0, 0.2); }
+  50% { box-shadow: 0 0 45px rgba(255, 20, 147, 0.9), 0 0 90px rgba(255, 215, 0, 0.5); }
 }
 
 /* ==================
@@ -2337,6 +2342,7 @@ header h1 {
 
 /* ==================
    PAW CLIMAX CELEBRATION
+   Persistent while both users hold — no timeout
    ================== */
 .paw-climax-overlay {
   position: fixed;
@@ -2344,42 +2350,49 @@ header h1 {
   pointer-events: none;
   z-index: 300;
   overflow: hidden;
-  animation: climax-bg 4s ease-out forwards;
+  background: rgba(255, 20, 147, 0.12);
+  animation: climax-entrance 0.4s ease-out forwards,
+             climax-bg-pulse 2.5s ease-in-out 0.4s infinite;
 }
 
-@keyframes climax-bg {
-  0% { background: rgba(255, 20, 147, 0.35); }
-  15% { background: rgba(255, 20, 147, 0.15); }
-  100% { background: transparent; }
+@keyframes climax-entrance {
+  0% { background: rgba(255, 255, 255, 0.5); }
+  100% { background: rgba(255, 20, 147, 0.12); }
+}
+
+@keyframes climax-bg-pulse {
+  0%, 100% { background: rgba(255, 20, 147, 0.10); }
+  50% { background: rgba(255, 20, 147, 0.20); }
 }
 
 .climax-heart {
   position: absolute;
-  bottom: 40%;
+  bottom: -10%;
   left: var(--ch-x, 50%);
   font-size: var(--ch-size, 18px);
   color: var(--valentine-hot);
   opacity: 0;
-  animation: climax-burst 2.5s ease-out forwards;
+  animation: climax-float var(--ch-duration, 2.8s) ease-in-out infinite;
   animation-delay: var(--ch-delay, 0s);
   filter: drop-shadow(0 0 4px rgba(255, 20, 147, 0.6));
+  will-change: transform, opacity;
 }
 
-@keyframes climax-burst {
+@keyframes climax-float {
   0% {
-    transform: translateY(0) scale(0);
+    transform: translateY(0) translateX(0) scale(0.3);
     opacity: 0;
   }
-  12% {
-    transform: translateY(-20px) scale(1.3);
-    opacity: 1;
-  }
-  30% {
-    transform: translateY(-80px) translateX(var(--ch-drift, 0px)) scale(1);
+  10% {
+    transform: translateY(-10vh) scale(1.1);
     opacity: 0.9;
   }
+  50% {
+    transform: translateY(-55vh) translateX(var(--ch-drift, 0px)) scale(0.9);
+    opacity: 0.7;
+  }
   100% {
-    transform: translateY(-300px) translateX(var(--ch-drift, 0px)) scale(0.4) rotate(30deg);
+    transform: translateY(-110vh) translateX(var(--ch-drift, 0px)) scale(0.4) rotate(25deg);
     opacity: 0;
   }
 }
@@ -2390,20 +2403,36 @@ header h1 {
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
   font-family: 'VT323', monospace;
-  font-size: 72px;
+  font-size: 56px;
   color: var(--valentine-gold);
+  white-space: nowrap;
   text-shadow:
     0 0 20px var(--valentine-hot),
     0 0 40px var(--valentine-rose),
     3px 3px 0 var(--valentine-deep);
-  animation: climax-text-pop 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: climax-text-pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+             climax-text-glow 2s ease-in-out 0.8s infinite;
   letter-spacing: 4px;
 }
 
 @keyframes climax-text-pop {
   0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
-  15% { transform: translate(-50%, -50%) scale(1.4) rotate(5deg); opacity: 1; }
-  30% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
-  70% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(0.8) rotate(-5deg); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(1.15) rotate(3deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes climax-text-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 20px var(--valentine-hot),
+      0 0 40px var(--valentine-rose),
+      3px 3px 0 var(--valentine-deep);
+  }
+  50% {
+    text-shadow:
+      0 0 30px var(--valentine-hot),
+      0 0 60px var(--valentine-rose),
+      0 0 80px rgba(255, 215, 0, 0.3),
+      3px 3px 0 var(--valentine-deep);
+  }
 }

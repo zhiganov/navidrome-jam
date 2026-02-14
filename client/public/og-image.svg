@@ -1,164 +1,200 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="titlebar" x1="0%" y1="0%" x2="100%">
-      <stop offset="0%" stop-color="#000080"/>
-      <stop offset="100%" stop-color="#1084d0"/>
+      <stop offset="0%" stop-color="#8b0040"/>
+      <stop offset="100%" stop-color="#ff69b4"/>
     </linearGradient>
     <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%">
       <stop offset="0%" stop-color="transparent"/>
-      <stop offset="15%" stop-color="#00ffff"/>
-      <stop offset="50%" stop-color="#ff00ff"/>
-      <stop offset="85%" stop-color="#ffff00"/>
+      <stop offset="15%" stop-color="#ff69b4"/>
+      <stop offset="50%" stop-color="#ff1493"/>
+      <stop offset="85%" stop-color="#ffd700"/>
       <stop offset="100%" stop-color="transparent"/>
-    </linearGradient>
-    <linearGradient id="winamp-bg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#2a2a3e"/>
-      <stop offset="100%" stop-color="#1a1a2e"/>
     </linearGradient>
   </defs>
 
-  <!-- Starfield background -->
-  <rect width="1200" height="630" fill="#000022"/>
-  <circle cx="80" cy="60" r="1.2" fill="#fff" opacity=".7"/>
-  <circle cx="220" cy="130" r="1" fill="#fff" opacity=".5"/>
-  <circle cx="370" cy="45" r="1.5" fill="#aaddff" opacity=".6"/>
-  <circle cx="510" cy="180" r="1" fill="#fff" opacity=".4"/>
-  <circle cx="690" cy="70" r="1.3" fill="#fff" opacity=".6"/>
-  <circle cx="850" cy="150" r="1" fill="#aaddff" opacity=".5"/>
-  <circle cx="1000" cy="55" r="1.2" fill="#fff" opacity=".7"/>
-  <circle cx="1130" cy="120" r="1" fill="#fff" opacity=".4"/>
-  <circle cx="150" cy="520" r="1" fill="#fff" opacity=".5"/>
-  <circle cx="340" cy="570" r="1.5" fill="#aaddff" opacity=".6"/>
-  <circle cx="560" cy="540" r="1" fill="#fff" opacity=".7"/>
-  <circle cx="780" cy="580" r="1.2" fill="#fff" opacity=".4"/>
-  <circle cx="950" cy="530" r="1" fill="#aaddff" opacity=".5"/>
-  <circle cx="1100" cy="560" r="1.3" fill="#fff" opacity=".6"/>
-  <circle cx="60" cy="340" r="1" fill="#fff" opacity=".5"/>
-  <circle cx="1150" cy="300" r="1" fill="#fff" opacity=".6"/>
+  <!-- Dark valentine background -->
+  <rect width="1200" height="630" fill="#1a0011"/>
+  <!-- Pink sparkle dots -->
+  <circle cx="80" cy="60" r="1.5" fill="#ff69b4" opacity=".5"/>
+  <circle cx="220" cy="130" r="1" fill="#ffb3c6" opacity=".4"/>
+  <circle cx="370" cy="45" r="2" fill="#ff1493" opacity=".3"/>
+  <circle cx="510" cy="180" r="1" fill="#ff69b4" opacity=".4"/>
+  <circle cx="690" cy="70" r="1.5" fill="#ffb3c6" opacity=".5"/>
+  <circle cx="850" cy="150" r="1" fill="#ff1493" opacity=".4"/>
+  <circle cx="1000" cy="55" r="1.5" fill="#ff69b4" opacity=".5"/>
+  <circle cx="1130" cy="120" r="1" fill="#ffb3c6" opacity=".3"/>
+  <circle cx="150" cy="520" r="1" fill="#ff1493" opacity=".4"/>
+  <circle cx="340" cy="570" r="2" fill="#ff69b4" opacity=".3"/>
+  <circle cx="560" cy="540" r="1" fill="#ffb3c6" opacity=".5"/>
+  <circle cx="780" cy="580" r="1.5" fill="#ff1493" opacity=".3"/>
+  <circle cx="950" cy="530" r="1" fill="#ff69b4" opacity=".4"/>
+  <circle cx="1100" cy="560" r="1.5" fill="#ffb3c6" opacity=".3"/>
+  <circle cx="60" cy="340" r="1" fill="#ff69b4" opacity=".4"/>
+  <circle cx="1150" cy="300" r="1" fill="#ff1493" opacity=".3"/>
+
+  <!-- Floating hearts — decorative -->
+  <text x="70" y="100" font-size="24" fill="#ff1493" opacity=".25" transform="rotate(-15 70 100)">♥</text>
+  <text x="1100" y="80" font-size="18" fill="#ff69b4" opacity=".2" transform="rotate(10 1100 80)">♥</text>
+  <text x="90" y="500" font-size="20" fill="#ffb3c6" opacity=".2" transform="rotate(8 90 500)">♥</text>
+  <text x="1080" y="520" font-size="26" fill="#ff1493" opacity=".15" transform="rotate(-12 1080 520)">♥</text>
+  <text x="180" y="280" font-size="16" fill="#ff69b4" opacity=".15">♥</text>
+  <text x="1020" y="320" font-size="14" fill="#ffb3c6" opacity=".2">♥</text>
 
   <!-- Main Win98 window — outer bevel -->
-  <rect x="140" y="60" width="920" height="480" fill="#c0c0c0"/>
-  <rect x="140" y="60" width="919" height="2" fill="#fff"/>
-  <rect x="140" y="60" width="2" height="479" fill="#fff"/>
-  <rect x="142" y="62" width="916" height="1" fill="#dfdfdf"/>
-  <rect x="142" y="62" width="1" height="476" fill="#dfdfdf"/>
-  <rect x="1058" y="62" width="2" height="478" fill="#000"/>
-  <rect x="142" y="538" width="918" height="2" fill="#000"/>
-  <rect x="1057" y="63" width="1" height="475" fill="#808080"/>
-  <rect x="143" y="537" width="915" height="1" fill="#808080"/>
+  <rect x="140" y="50" width="920" height="500" fill="#c0c0c0"/>
+  <rect x="140" y="50" width="919" height="2" fill="#fff"/>
+  <rect x="140" y="50" width="2" height="499" fill="#fff"/>
+  <rect x="142" y="52" width="916" height="1" fill="#dfdfdf"/>
+  <rect x="142" y="52" width="1" height="496" fill="#dfdfdf"/>
+  <rect x="1058" y="52" width="2" height="498" fill="#000"/>
+  <rect x="142" y="548" width="918" height="2" fill="#000"/>
+  <rect x="1057" y="53" width="1" height="495" fill="#808080"/>
+  <rect x="143" y="547" width="915" height="1" fill="#808080"/>
 
-  <!-- Titlebar -->
-  <rect x="144" y="64" width="912" height="28" fill="url(#titlebar)"/>
-  <text x="156" y="84" font-family="Tahoma, Verdana, sans-serif" font-size="14" fill="#fff" font-weight="bold">Navidrome Jam</text>
+  <!-- Valentine Titlebar -->
+  <rect x="144" y="54" width="912" height="28" fill="url(#titlebar)"/>
+  <text x="156" y="74" font-family="Tahoma, Verdana, sans-serif" font-size="14" fill="#fff" font-weight="bold">♥ Jam With Boo</text>
   <!-- Window buttons -->
-  <rect x="1012" y="68" width="18" height="18" fill="#c0c0c0" stroke="#fff" stroke-width="1"/>
-  <text x="1017" y="82" font-family="Tahoma" font-size="12" fill="#000">_</text>
-  <rect x="1034" y="68" width="18" height="18" fill="#c0c0c0" stroke="#fff" stroke-width="1"/>
-  <text x="1038" y="83" font-family="Tahoma" font-size="13" fill="#000">X</text>
+  <rect x="1012" y="58" width="18" height="18" fill="#c0c0c0" stroke="#fff" stroke-width="1"/>
+  <text x="1017" y="72" font-family="Tahoma" font-size="12" fill="#000">_</text>
+  <rect x="1034" y="58" width="18" height="18" fill="#c0c0c0" stroke="#fff" stroke-width="1"/>
+  <text x="1038" y="73" font-family="Tahoma" font-size="13" fill="#000">X</text>
 
-  <!-- Window body -->
-  <rect x="148" y="96" width="904" height="436" fill="#c0c0c0"/>
+  <!-- Window body — dark valentine -->
+  <rect x="148" y="86" width="904" height="456" fill="#1a0011"/>
 
   <!-- Large title text -->
-  <text x="600" y="188" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="72" fill="#00ffff" letter-spacing="4">Navidrome Jam</text>
+  <text x="600" y="170" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="72" fill="#ffd700" letter-spacing="4">
+    <tspan>Jam With Boo</tspan>
+  </text>
+  <text x="602" y="172" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="72" fill="#ff1493" letter-spacing="4" opacity=".3">
+    <tspan>Jam With Boo</tspan>
+  </text>
 
   <!-- Subtitle -->
-  <text x="600" y="232" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="28" fill="#000" letter-spacing="2">Listen to music together</text>
+  <text x="600" y="210" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="26" fill="#ffb3c6" letter-spacing="2">Listen to music together</text>
 
-  <!-- Rainbow divider -->
-  <rect x="250" y="252" width="700" height="3" fill="url(#rainbow)"/>
+  <!-- Rainbow divider — pink/gold -->
+  <rect x="250" y="230" width="700" height="3" fill="url(#rainbow)"/>
 
-  <!-- Winamp-style player panel — recessed dark area -->
-  <rect x="250" y="278" width="700" height="100" fill="#1a1a2e"/>
-  <rect x="250" y="278" width="700" height="2" fill="#808080"/>
-  <rect x="250" y="278" width="2" height="100" fill="#808080"/>
-  <rect x="948" y="278" width="2" height="100" fill="#fff"/>
-  <rect x="250" y="376" width="700" height="2" fill="#fff"/>
+  <!-- Dance strip — dark recessed panel with kawaii characters -->
+  <rect x="220" y="252" width="760" height="90" fill="#2d0020"/>
+  <rect x="220" y="252" width="760" height="2" fill="#808080"/>
+  <rect x="220" y="252" width="2" height="90" fill="#808080"/>
+  <rect x="978" y="252" width="2" height="90" fill="#fff"/>
+  <rect x="220" y="340" width="760" height="2" fill="#fff"/>
+  <!-- Glow effect on strip -->
+  <rect x="222" y="254" width="756" height="86" fill="none" stroke="#ff1493" stroke-width="1" opacity=".4" rx="1"/>
 
-  <!-- Track info inside player -->
-  <text x="270" y="305" font-family="'VT323', 'Courier New', monospace" font-size="18" fill="#00ff00">Now Playing:</text>
-  <text x="270" y="330" font-family="'VT323', 'Courier New', monospace" font-size="22" fill="#00ffff">Your FLAC Library - Synced With Friends</text>
+  <!-- Kawaii character 1: Cat (Boo) — simplified SVG -->
+  <g transform="translate(290, 268)">
+    <ellipse cx="25" cy="30" rx="20" ry="18" fill="#ffb3c6"/>
+    <polygon points="8,18 12,4 18,16" fill="#ffb3c6"/>
+    <polygon points="32,18 38,4 42,16" fill="#ffb3c6"/>
+    <circle cx="18" cy="28" r="4" fill="#1a0011"/>
+    <circle cx="32" cy="28" r="4" fill="#1a0011"/>
+    <circle cx="19" cy="27" r="1.5" fill="#fff"/>
+    <circle cx="33" cy="27" r="1.5" fill="#fff"/>
+    <ellipse cx="25" cy="34" rx="2" ry="1.5" fill="#ff69b4"/>
+    <!-- Hearts for lovestruck mood -->
+    <text x="6" y="10" font-size="8" fill="#ff1493">♥</text>
+    <text x="38" y="12" font-size="6" fill="#ff1493">♥</text>
+  </g>
 
-  <!-- Fake seek bar -->
-  <rect x="270" y="345" width="660" height="6" fill="#000" rx="1"/>
-  <rect x="270" y="345" width="420" height="6" fill="#00ff00" rx="1"/>
+  <!-- Kawaii character 2: Ghost (Casper) -->
+  <g transform="translate(400, 265)">
+    <path d="M25,10 C38,10 45,24 45,38 C45,50 42,55 38,55 L35,48 L30,55 L25,48 L20,55 L15,48 L12,55 C8,55 5,50 5,38 C5,24 12,10 25,10Z" fill="#c8b6ff"/>
+    <circle cx="18" cy="30" r="3.5" fill="#1a0011"/>
+    <circle cx="32" cy="30" r="3.5" fill="#1a0011"/>
+    <circle cx="19" cy="29" r="1.5" fill="#fff"/>
+    <circle cx="33" cy="29" r="1.5" fill="#fff"/>
+    <path d="M22,36 Q25,39 28,36" fill="none" stroke="#1a0011" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 
-  <!-- Transport controls (prev / play / next) -->
-  <!-- Prev button -->
-  <rect x="420" y="358" width="32" height="16" fill="#c0c0c0"/>
-  <rect x="420" y="358" width="31" height="1" fill="#fff"/>
-  <rect x="420" y="358" width="1" height="15" fill="#fff"/>
-  <rect x="451" y="358" width="1" height="16" fill="#000"/>
-  <rect x="420" y="373" width="32" height="1" fill="#000"/>
-  <polygon points="430,362 430,370 425,366" fill="#000"/>
-  <rect x="424" y="362" width="2" height="9" fill="#000"/>
+  <!-- Kawaii character 3: Planet (Saturn) -->
+  <g transform="translate(510, 270)">
+    <circle cx="25" cy="25" r="18" fill="#7ecdc6"/>
+    <ellipse cx="25" cy="25" rx="30" ry="6" fill="none" stroke="#7ecdc6" stroke-width="4" opacity=".6" transform="rotate(-20 25 25)"/>
+    <circle cx="18" cy="22" r="3" fill="#1a0011"/>
+    <circle cx="32" cy="22" r="3" fill="#1a0011"/>
+    <circle cx="19" cy="21" r="1.2" fill="#fff"/>
+    <circle cx="33" cy="21" r="1.2" fill="#fff"/>
+    <path d="M22,30 Q25,33 28,30" fill="none" stroke="#1a0011" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 
-  <!-- Play button -->
-  <rect x="456" y="358" width="38" height="16" fill="#c0c0c0"/>
-  <rect x="456" y="358" width="37" height="1" fill="#fff"/>
-  <rect x="456" y="358" width="1" height="15" fill="#fff"/>
-  <rect x="493" y="358" width="1" height="16" fill="#000"/>
-  <rect x="456" y="373" width="38" height="1" fill="#000"/>
-  <polygon points="469,361 469,372 481,366.5" fill="#000"/>
+  <!-- Kawaii character 4: Ice Cream (Sundae) -->
+  <g transform="translate(620, 262)">
+    <circle cx="25" cy="18" r="14" fill="#ff8fab"/>
+    <polygon points="13,28 25,56 37,28" fill="#f0d080"/>
+    <circle cx="18" cy="16" r="3" fill="#1a0011"/>
+    <circle cx="32" cy="16" r="3" fill="#1a0011"/>
+    <circle cx="19" cy="15" r="1.2" fill="#fff"/>
+    <circle cx="33" cy="15" r="1.2" fill="#fff"/>
+    <path d="M21,22 Q25,26 29,22" fill="none" stroke="#1a0011" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 
-  <!-- Next button -->
-  <rect x="498" y="358" width="32" height="16" fill="#c0c0c0"/>
-  <rect x="498" y="358" width="31" height="1" fill="#fff"/>
-  <rect x="498" y="358" width="1" height="15" fill="#fff"/>
-  <rect x="529" y="358" width="1" height="16" fill="#000"/>
-  <rect x="498" y="373" width="32" height="1" fill="#000"/>
-  <polygon points="508,362 508,370 517,366" fill="#000"/>
-  <rect x="517" y="362" width="2" height="9" fill="#000"/>
+  <!-- Kawaii character 5: Mug (Mocha) -->
+  <g transform="translate(730, 270)">
+    <rect x="8" y="8" width="30" height="34" rx="4" fill="#e8b84a"/>
+    <path d="M38,16 C48,16 48,32 38,32" fill="none" stroke="#e8b84a" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="18" cy="22" r="3" fill="#1a0011"/>
+    <circle cx="30" cy="22" r="3" fill="#1a0011"/>
+    <circle cx="19" cy="21" r="1.2" fill="#fff"/>
+    <circle cx="31" cy="21" r="1.2" fill="#fff"/>
+    <path d="M21,30 Q24,33 27,30" fill="none" stroke="#1a0011" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 
-  <!-- Repeat button (active) -->
-  <rect x="536" y="358" width="28" height="16" fill="#a0a0a0"/>
-  <rect x="536" y="358" width="27" height="1" fill="#000"/>
-  <rect x="536" y="358" width="1" height="15" fill="#000"/>
-  <rect x="563" y="358" width="1" height="16" fill="#fff"/>
-  <rect x="536" y="373" width="28" height="1" fill="#fff"/>
-  <!-- Repeat arrows in green -->
-  <rect x="543" y="362" width="14" height="2" fill="#006000"/>
-  <polygon points="556,360 556,365 559,362.5" fill="#006000"/>
-  <rect x="543" y="370" width="14" height="2" fill="#006000"/>
-  <polygon points="544,369 544,373 541,371" fill="#006000"/>
-  <rect x="543" y="362" width="2" height="5" fill="#006000"/>
-  <rect x="555" y="367" width="2" height="5" fill="#006000"/>
+  <!-- Kawaii character 6: Browser (Tab) -->
+  <g transform="translate(840, 270)">
+    <rect x="4" y="4" width="42" height="38" rx="3" fill="#72bcd4"/>
+    <rect x="4" y="4" width="42" height="10" rx="3" fill="#5aa0b8"/>
+    <circle cx="10" cy="9" r="2" fill="#ff6b6b"/>
+    <circle cx="17" cy="9" r="2" fill="#ffd93d"/>
+    <circle cx="24" cy="9" r="2" fill="#6bff6b"/>
+    <circle cx="20" cy="28" r="3" fill="#1a0011"/>
+    <circle cx="32" cy="28" r="3" fill="#1a0011"/>
+    <circle cx="21" cy="27" r="1.2" fill="#fff"/>
+    <circle cx="33" cy="27" r="1.2" fill="#fff"/>
+    <path d="M23,34 Q26,37 29,34" fill="none" stroke="#1a0011" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
 
-  <!-- Volume -->
-  <text x="590" y="372" font-family="'VT323', 'Courier New', monospace" font-size="14" fill="#808080">Vol:</text>
-  <rect x="620" y="367" width="60" height="4" fill="#000"/>
-  <rect x="620" y="367" width="45" height="4" fill="#00ff00"/>
+  <!-- Floating hearts between characters -->
+  <text x="370" y="290" font-size="14" fill="#ff1493" opacity=".6">♥</text>
+  <text x="480" y="300" font-size="10" fill="#ffd700" opacity=".5">♥</text>
+  <text x="590" y="285" font-size="12" fill="#ff69b4" opacity=".5">♥</text>
+  <text x="700" y="295" font-size="14" fill="#ff1493" opacity=".6">♥</text>
+  <text x="810" y="288" font-size="10" fill="#ffd700" opacity=".5">♥</text>
 
-  <!-- Time display -->
-  <text x="880" y="372" font-family="'VT323', 'Courier New', monospace" font-size="16" fill="#00ff00">2:34 / 4:12</text>
+  <!-- Feature pills — valentine style -->
+  <rect x="260" y="365" width="130" height="28" fill="#2d0020" stroke="#ff69b4" stroke-width="1" rx="2"/>
+  <text x="325" y="384" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="14" fill="#ffb3c6">Kawaii Avatars</text>
 
-  <!-- Feature pills / badges -->
-  <rect x="300" y="404" width="120" height="26" fill="#fff" stroke="#808080" stroke-width="1" rx="1"/>
-  <text x="360" y="422" text-anchor="middle" font-family="Tahoma, Verdana, sans-serif" font-size="12" fill="#000080" font-weight="bold">FLAC Support</text>
+  <rect x="410" y="365" width="130" height="28" fill="#2d0020" stroke="#ff69b4" stroke-width="1" rx="2"/>
+  <text x="475" y="384" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="14" fill="#ffb3c6">Real-time Sync</text>
 
-  <rect x="440" y="404" width="120" height="26" fill="#fff" stroke="#808080" stroke-width="1" rx="1"/>
-  <text x="500" y="422" text-anchor="middle" font-family="Tahoma, Verdana, sans-serif" font-size="12" fill="#000080" font-weight="bold">Real-time Sync</text>
+  <rect x="560" y="365" width="130" height="28" fill="#2d0020" stroke="#ff69b4" stroke-width="1" rx="2"/>
+  <text x="625" y="384" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="14" fill="#ffb3c6">FLAC Support</text>
 
-  <rect x="580" y="404" width="120" height="26" fill="#fff" stroke="#808080" stroke-width="1" rx="1"/>
-  <text x="640" y="422" text-anchor="middle" font-family="Tahoma, Verdana, sans-serif" font-size="12" fill="#000080" font-weight="bold">Shared Queue</text>
+  <rect x="710" y="365" width="130" height="28" fill="#2d0020" stroke="#ff69b4" stroke-width="1" rx="2"/>
+  <text x="775" y="384" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="14" fill="#ffb3c6">Paw Magic ♥</text>
 
-  <rect x="720" y="404" width="120" height="26" fill="#fff" stroke="#808080" stroke-width="1" rx="1"/>
-  <text x="780" y="422" text-anchor="middle" font-family="Tahoma, Verdana, sans-serif" font-size="12" fill="#000080" font-weight="bold">Co-host Mode</text>
+  <!-- Tagline -->
+  <text x="600" y="430" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="22" fill="#ff69b4" letter-spacing="1">synchronized music with your favorite buddies</text>
 
   <!-- URL display -->
-  <text x="600" y="462" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="24" fill="#0000ff" text-decoration="underline">jam.zhgnv.com</text>
+  <text x="600" y="465" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="26" fill="#ffd700" letter-spacing="2">jam.zhgnv.com</text>
 
-  <!-- Status bar at bottom -->
-  <rect x="148" y="490" width="904" height="20" fill="#c0c0c0"/>
-  <rect x="148" y="490" width="904" height="1" fill="#808080"/>
-  <rect x="148" y="490" width="1" height="20" fill="#808080"/>
-  <text x="158" y="504" font-family="Tahoma, Verdana, sans-serif" font-size="11" fill="#000">Connected | Room: A3F1B2 | 3 listeners</text>
-  <text x="920" y="504" font-family="Tahoma, Verdana, sans-serif" font-size="11" fill="#000">HOST</text>
+  <!-- Status bar -->
+  <rect x="148" y="498" width="904" height="20" fill="#8b0040"/>
+  <rect x="148" y="498" width="904" height="1" fill="#660030"/>
+  <text x="158" y="512" font-family="Tahoma, Verdana, sans-serif" font-size="11" fill="#ffb3c6">Connected | 2 buddies listening ♥</text>
+  <text x="920" y="512" font-family="Tahoma, Verdana, sans-serif" font-size="11" fill="#ffd700">HOST</text>
 
   <!-- Retro footer text -->
-  <text x="600" y="560" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="16" fill="#808080">* * * Best viewed in Netscape Navigator 4.0 at 800x600 * * *</text>
+  <text x="600" y="568" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="15" fill="#ff69b4" opacity=".5">Valentine's Edition — Navidrome Jam</text>
 
-  <!-- Visitor counter -->
-  <rect x="540" y="572" width="120" height="20" fill="#000" rx="2"/>
-  <text x="600" y="588" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="16" fill="#00ff00">&#9733; 00420 &#9733;</text>
+  <!-- Heart visitor counter -->
+  <rect x="540" y="580" width="120" height="20" fill="#2d0020" rx="2"/>
+  <text x="600" y="596" text-anchor="middle" font-family="'VT323', 'Courier New', monospace" font-size="16" fill="#ff1493">♥ 00214 ♥</text>
 </svg>

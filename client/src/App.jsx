@@ -5,8 +5,19 @@ import SyncedAudioPlayer from './components/SyncedAudioPlayer';
 import CatPicker from './components/CatPicker';
 import CatDanceFloor from './components/CatDanceFloor';
 import PawButton from './components/PawButton';
-import { CATS, getCatSvg } from './components/catData';
+import { CATS } from './components/catData';
+import { AvatarIcon } from './components/AvatarIcon';
 import './App.css';
+
+// Deterministic heart positions for full-screen climax overlay (no Math.random in render)
+const CLIMAX_SCREEN_HEARTS = Array.from({ length: 28 }, (_, i) => ({
+  id: `screen-${i}`,
+  x: 3 + ((i * 31 + 7) % 94),
+  delay: (i * 0.18) % 3.2,
+  size: 16 + ((i * 19 + 11) % 18),
+  drift: -35 + ((i * 43 + 5) % 70),
+  duration: 2.2 + ((i * 13 + 3) % 12) * 0.15,
+}));
 
 function App() {
   // Get client instances from context
@@ -717,13 +728,8 @@ function App() {
     setHoldProgress(progress);
   }, []);
 
-  // Paw climax celebration state
-  const [pawClimax, setPawClimax] = useState(false);
-
-  const handlePawClimax = useCallback(() => {
-    setPawClimax(true);
-    setTimeout(() => setPawClimax(false), 4000);
-  }, []);
+  // Paw climax — derived: active as long as both users keep holding after 8s
+  const pawClimax = holdProgress >= 1 && pawHolders.length >= 2;
 
   const handleLike = useCallback(() => {
     if (!currentTrack) return;
@@ -1058,7 +1064,7 @@ function App() {
                 onClick={() => setShowCatPicker(true)}
                 style={{ marginBottom: 6, fontSize: 10, width: '100%' }}
               >
-                Change Cat
+                Change Avatar
               </button>
             )}
             <ul className="users-list">
@@ -1070,10 +1076,9 @@ function App() {
                 return (
                   <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
                     {userCat && (
-                      <span
-                        className="user-cat-face"
-                        dangerouslySetInnerHTML={{ __html: getCatSvg(userCat, 32) }}
-                      />
+                      <span className="user-cat-face">
+                        <AvatarIcon avatar={userCat} size={32} uniqueId={`ulist-${user.id}`} />
+                      </span>
                     )}
                     <div className="user-info-col">
                       <span className="user-name">{user.username}</span>
@@ -1221,7 +1226,6 @@ function App() {
                 <PawButton
                   jamClient={jamClient}
                   pawHolders={pawHolders}
-                  onClimax={handlePawClimax}
                   onHoldProgress={handleHoldProgress}
                 />
               </div>
@@ -1326,10 +1330,9 @@ function App() {
                       return (
                         <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
                           {userCat && (
-                            <span
-                              className="user-cat-face"
-                              dangerouslySetInnerHTML={{ __html: getCatSvg(userCat, 32) }}
-                            />
+                            <span className="user-cat-face">
+                              <AvatarIcon avatar={userCat} size={32} uniqueId={`mulist-${user.id}`} />
+                            </span>
                           )}
                           <div className="user-info-col">
                             <span className="user-name">{user.username}</span>
@@ -1723,7 +1726,7 @@ function App() {
         <div className="cat-picker-overlay">
           <div className="cat-picker-modal">
             <div className="win98-titlebar">
-              <span className="win98-titlebar-text">Choose Your Cat</span>
+              <span className="win98-titlebar-text">Choose Your Buddy</span>
             </div>
             <div className="win98-body">
               <CatPicker
@@ -1739,24 +1742,25 @@ function App() {
       {/* Magic screen flash */}
       {magicFlash && <div className="magic-screen-flash" />}
 
-      {/* Paw climax celebration — hearts burst across the screen */}
+      {/* Paw climax celebration — persistent while both users hold */}
       {pawClimax && (
         <div className="paw-climax-overlay">
-          {Array.from({ length: 24 }).map((_, i) => (
+          {CLIMAX_SCREEN_HEARTS.map(h => (
             <span
-              key={i}
+              key={h.id}
               className="climax-heart"
               style={{
-                '--ch-x': `${5 + Math.random() * 90}%`,
-                '--ch-delay': `${i * 0.08}s`,
-                '--ch-size': `${14 + Math.random() * 20}px`,
-                '--ch-drift': `${-30 + Math.random() * 60}px`,
+                '--ch-x': `${h.x}%`,
+                '--ch-delay': `${h.delay}s`,
+                '--ch-size': `${h.size}px`,
+                '--ch-drift': `${h.drift}px`,
+                '--ch-duration': `${h.duration}s`,
               }}
             >
               &#10084;
             </span>
           ))}
-          <div className="climax-text">BOO!</div>
+          <div className="climax-text">WILL YOU BE MY BOO?</div>
         </div>
       )}
     </div>
