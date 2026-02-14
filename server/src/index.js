@@ -10,9 +10,12 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+const clientUrl = process.env.CLIENT_URL || '*';
+const corsOrigin = clientUrl === '*' ? '*' : clientUrl.split(',').map(u => u.trim());
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || '*',
+    origin: corsOrigin,
     methods: ['GET', 'POST']
   }
 });
