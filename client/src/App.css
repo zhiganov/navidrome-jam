@@ -33,6 +33,7 @@ body {
   font-size: 11px;
   background: var(--bg-dark);
   color: var(--text-dark);
+  overflow-x: hidden;
 }
 
 /* Tiled starfield background */
@@ -400,6 +401,8 @@ body {
   text-align: center;
   color: var(--win-dark);
   font-size: 10px;
+  overflow-wrap: break-word;
+  word-break: break-all;
 }
 
 /* ==================
@@ -1991,6 +1994,15 @@ body {
 
   .music-tabs {
     flex-wrap: wrap;
+  }
+
+  .under-construction {
+    font-size: 11px;
+  }
+
+  .geocities-footer {
+    padding: 12px 8px;
+    overflow-wrap: break-word;
   }
 }
 
