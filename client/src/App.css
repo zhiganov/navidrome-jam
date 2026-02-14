@@ -191,6 +191,7 @@ body {
   border: 1px solid var(--win-dark);
   margin: 8px 0;
   padding: 8px;
+  min-width: 0; /* Override browser default min-inline-size: min-content */
 }
 
 .win98-fieldset legend {
@@ -285,6 +286,8 @@ body {
 .login-container {
   width: 100%;
   max-width: 420px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .login-container .win98-body {
@@ -368,6 +371,7 @@ body {
 
 .form-row .win98-input {
   flex: 1;
+  min-width: 0;
 }
 
 .form-actions {
@@ -428,6 +432,8 @@ body {
 .room-container {
   width: 100%;
   max-width: 420px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .room-container h1 {
@@ -464,6 +470,7 @@ body {
 
 .room-input-group .win98-input {
   flex: 1;
+  min-width: 0; /* Override browser default input intrinsic width in flex */
   text-transform: uppercase;
   letter-spacing: 3px;
   text-align: center;
