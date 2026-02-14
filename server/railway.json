@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "providers": ["node"],
+      "buildImage": "ghcr.io/railwayapp/nixpacks:ubuntu-1745885067",
+      "phases": {
+        "install": {
+          "cmds": ["npm install"]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "node src/index.js",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
