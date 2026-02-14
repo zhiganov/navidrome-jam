@@ -18,11 +18,11 @@ The system consists of three independent components:
 
 **Server**: express ^4.18.2, socket.io ^4.7.2, express-rate-limit ^8.2.1, cors ^2.8.5, dotenv ^16.4.5 (ES modules, no TypeScript)
 
-**Client**: react ^19.2.0, socket.io-client ^4.8.3, crypto-js ^4.2.0 (MD5 hashing for Subsonic auth), vite ^7.2.4, eslint ^9.39.1
+**Client**: react ^19.2.0, socket.io-client ^4.8.3, crypto-js ^4.2.0 (MD5 hashing for Subsonic auth), react-kawaii ^1.6.0 (avatar illustrations), vite ^7.2.4, eslint ^9.39.1
 
 **Critical architectural decision**: Clients stream audio directly from Navidrome, NOT through the sync server. The sync server only broadcasts playback commands (play/pause/seek/timestamp). This design keeps the sync server lightweight and allows Navidrome to handle all media delivery.
 
-**Third-party assets**: Avatar illustrations use [react-kawaii](https://github.com/elizabetdev/react-kawaii) (MIT). 9 characters (Cat, Ghost, Planet, IceCream, Mug, Backpack, SpeechBubble, Chocolate, Browser) with different colors and moods. Renders as inline SVG React components — no `dangerouslySetInnerHTML`.
+**Third-party assets**: Avatar illustrations use [react-kawaii](https://github.com/elizabetdev/react-kawaii) (MIT). 9 characters (Cat, Ghost, Planet, IceCream, Mug, Backpack, SpeechBubble, Chocolate, Browser) with different colors and moods. React-kawaii renders as inline SVG React components. The paw icon (`getPawSvg()` in `catData.js`) is a hand-drawn SVG rendered via `dangerouslySetInnerHTML` in `PawButton.jsx`.
 
 ### Communication Flow
 
@@ -52,6 +52,7 @@ The client uses Navidrome's **Subsonic API** for music playback (stable, documen
 - `getAlbum.view`, `getArtist.view`, `getSong.view` - Metadata
 - `stream.view` - Audio streaming URL (clients use this directly)
 - `scrobble.view` - Mark songs as played
+- `star.view`, `unstar.view` - Like/unlike tracks (syncs to Navidrome favorites)
 
 **Server-side registration** (Native API): The server authenticates as admin via `POST /auth/login` (JWT), then creates users via `POST /api/user` with `x-nd-authorization: Bearer <token>` header. This enables invite-code-based self-service registration without exposing admin credentials to the client.
 
@@ -141,7 +142,7 @@ Single-page app with three screens in `App.jsx`: Login → Room Selection → Ja
 - `AvatarIcon.jsx` — Renders the correct react-kawaii character: `<AvatarIcon avatar={cat} size={40} uniqueId="ctx-id" />`. Pass unique `uniqueId` per render context to avoid SVG ID collisions.
 - `CatPicker.jsx` — Avatar selection overlay (48px). Emits `select-cat` to server.
 - `CatDanceFloor.jsx` — Strip of dancing avatars above the now-playing bar. Receives `catSelections`, `isPlaying`, `pawMagicLevel`, `holdProgress`, `pawClimax`. Avatars converge as hold progress increases; climax triggers heart burst and flash.
-- `PawButton.jsx` — Hold-to-activate button. 8-second hold timer with `requestAnimationFrame`. Reports progress via `onHoldProgress` callback (lifted to App.jsx). Fires `onClimax` when progress=1 AND 2+ holders (uses `useRef` for current holder count to avoid stale closure in rAF loop).
+- `PawButton.jsx` — Hold-to-activate button (36x32px, matching transport buttons). 8-second hold timer with `requestAnimationFrame`. Reports progress via `onHoldProgress` callback (lifted to App.jsx). Climax is derived state in App.jsx: `pawClimax = holdProgress >= 1 && pawHolders.length >= 2` — persistent as long as 2+ users hold at full progress, no timer-based reset.
 
 ### Synchronization Protocol
 
@@ -184,16 +185,28 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `paw-state` | Server → Client | `{ pawHolders }` | — |
 | `error` | Server → Client | `{ message }` | — |
 
+## Branch Strategy
+
+| Branch | Domain | Purpose |
+|--------|--------|---------|
+| `main` | `jam.zhgnv.com` | Original Navidrome Jam |
+| `feature/jam-with-boo` | `boo.zhgnv.com` | Valentine's Day edition ("Jam With Boo") — react-kawaii avatars, paw hold climax, Valentine theme |
+
+**Do NOT merge `feature/jam-with-boo` into `main`** — they are separate products with different OG metadata, favicons, and features. Vercel deploys each branch to its own domain via branch domain configuration.
+
 ## Deployment
 
 This project supports multiple deployment strategies:
 
 ### Vercel + Railway (Current Production Setup)
-- **Client**: Vercel (personal account, auto-deploys on push to main) — https://jam.zhgnv.com
+- **Client**: Vercel (personal account) — auto-deploys on push
+  - `main` → `jam.zhgnv.com`
+  - `feature/jam-with-boo` → `boo.zhgnv.com` (configured via Vercel dashboard → Domains → Git Branch)
   - Build: `cd client && npm install && npm run build` → outputs to `client/dist/`
   - SPA rewrites: all routes → `/index.html` (configured in `vercel.json`)
   - Asset caching: `/assets/*` gets `Cache-Control: public, max-age=31536000, immutable`
   - GitHub integration: `zhiganov/navidrome-jam` → deploys automatically, no CLI needed
+  - OG images must be PNG (not SVG) for Facebook/Twitter/Telegram compatibility. Convert with `@resvg/resvg-js`
 - **Server**: Railway — https://navidrome-jam-production.up.railway.app
   - GitHub integration: `zhiganov/navidrome-jam` → auto-deploys on push to main (root: `/server`, watch: `server/**`)
   - Nixpacks builder: `cd server && npm install` (install), `cd server && node src/index.js` (start)
@@ -217,13 +230,16 @@ This project supports multiple deployment strategies:
 
 ### Deploy Commands
 
-Both client and server auto-deploy on push to `main`:
-- **Client** → Vercel (GitHub integration)
-- **Server** → Railway (GitHub integration, watches `server/**`)
+Both client and server auto-deploy on push:
+- **Client** → Vercel (GitHub integration, deploys all branches with matching domain config)
+- **Server** → Railway (GitHub integration, watches `server/**`, deploys from `main`)
 
 ```bash
-# Just push — both deploy automatically
+# Push main — deploys both client (jam.zhgnv.com) and server
 git push
+
+# Push feature branch — deploys client only (boo.zhgnv.com)
+git push origin feature/jam-with-boo
 ```
 
 ## Environment Configuration
@@ -248,7 +264,7 @@ git push
 
 ### Production (Current)
 - **Client** (Vercel): `VITE_NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, `VITE_JAM_SERVER_URL=https://navidrome-jam-production.up.railway.app`
-- **Server** (Railway): `CLIENT_URL=https://jam.zhgnv.com`, `NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, plus admin credentials and invite codes
+- **Server** (Railway): `CLIENT_URL=https://jam.zhgnv.com,https://boo.zhgnv.com`, `NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, plus admin credentials and invite codes
 - Navidrome hosted on PikaPods
 
 **Gotcha**: When adding env vars on Railway/Vercel, watch for leading spaces in variable names — both platforms silently accept them, causing cryptic build failures like `"empty key"` errors in Docker.
