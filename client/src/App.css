@@ -1056,7 +1056,7 @@ body {
 
 /* Previous: |◀◀ */
 .prev-icon {
-  width: 14px;
+  width: 12px;
   height: 12px;
 }
 .prev-icon::before {
@@ -1123,7 +1123,7 @@ body {
 
 /* Next: ▶▶| */
 .next-icon {
-  width: 14px;
+  width: 12px;
   height: 12px;
 }
 .next-icon::before {
