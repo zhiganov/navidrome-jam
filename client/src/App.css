@@ -1164,22 +1164,24 @@ body {
 }
 
 /*
- * Repeat icon — two curved arrows forming a loop (clockwise)
- * Grid: 11 cols × 9 rows (22×18px), 2px per cell
+ * Repeat icon — rectangular loop with chevron arrowheads
+ * Grid: 10 cols × 9 rows (20×18px), 2px per cell
  *
- *     ►             arrowhead top-right (points right)
- *   .████████.      top bar
- *   █........█      sides
- *   █........█      sides
- *   █........█      sides
- *   .████████.      bottom bar
- *         ◄         arrowhead bottom-left (points left)
+ *   ........█.    right arrow wing (above)
+ *   .█████████    top bar → tip protrudes right
+ *   .█......█.    sides
+ *   .█......█.    sides
+ *   .█......█.    sides
+ *   .█......█.    sides
+ *   ██......█.    left arrow wing (above) + right side
+ *   █████████.    bottom bar ← tip protrudes left
+ *   █.........    left arrow wing (below)
  *
- * ::before = top arrow (right-pointing) + right side
- * ::after  = bottom arrow (left-pointing) + left side
+ * ::before = right arrowhead wing + top bar + right side
+ * ::after  = left side + left arrowhead + bottom bar
  */
 .repeat-icon {
-  width: 22px;
+  width: 20px;
   height: 18px;
 }
 
@@ -1187,34 +1189,27 @@ body {
   content: '';
   position: absolute;
   top: 0;
-  left: 4px;
+  left: 16px;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* arrowhead pointing right: row 0 */
-    12px 0 0 var(--text-dark),
-    14px 0 0 var(--text-dark),
-    16px 0 0 var(--text-dark),
-    18px 0 0 var(--text-dark),
     /* top bar: row 1 */
+    -14px 2px 0 var(--text-dark),
+    -12px 2px 0 var(--text-dark),
+    -10px 2px 0 var(--text-dark),
+    -8px 2px 0 var(--text-dark),
+    -6px 2px 0 var(--text-dark),
+    -4px 2px 0 var(--text-dark),
+    -2px 2px 0 var(--text-dark),
     0 2px 0 var(--text-dark),
     2px 2px 0 var(--text-dark),
-    4px 2px 0 var(--text-dark),
-    6px 2px 0 var(--text-dark),
-    8px 2px 0 var(--text-dark),
-    10px 2px 0 var(--text-dark),
-    12px 2px 0 var(--text-dark),
-    14px 2px 0 var(--text-dark),
-    /* arrowhead wing: row 2 */
-    14px 2px 0 var(--text-dark),
-    16px 2px 0 var(--text-dark),
-    /* right side: rows 2-5 */
-    14px 4px 0 var(--text-dark),
-    14px 6px 0 var(--text-dark),
-    14px 8px 0 var(--text-dark),
-    14px 10px 0 var(--text-dark),
-    14px 12px 0 var(--text-dark);
+    /* right side: rows 2-6 */
+    0 4px 0 var(--text-dark),
+    0 6px 0 var(--text-dark),
+    0 8px 0 var(--text-dark),
+    0 10px 0 var(--text-dark),
+    0 12px 0 var(--text-dark);
 }
 
 .repeat-icon::after {
@@ -1226,73 +1221,63 @@ body {
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* arrowhead pointing left: row 8 (bottom) */
-    2px 0 0 var(--text-dark),
-    4px 0 0 var(--text-dark),
-    6px 0 0 var(--text-dark),
+    /* left side: rows 2-5 */
+    2px -12px 0 var(--text-dark),
+    2px -10px 0 var(--text-dark),
+    2px -8px 0 var(--text-dark),
+    2px -6px 0 var(--text-dark),
+    /* left arrow wing above + left side row 6 */
+    0 -4px 0 var(--text-dark),
+    2px -4px 0 var(--text-dark),
     /* bottom bar: row 7 */
+    0 -2px 0 var(--text-dark),
+    2px -2px 0 var(--text-dark),
     4px -2px 0 var(--text-dark),
     6px -2px 0 var(--text-dark),
     8px -2px 0 var(--text-dark),
     10px -2px 0 var(--text-dark),
     12px -2px 0 var(--text-dark),
     14px -2px 0 var(--text-dark),
-    16px -2px 0 var(--text-dark),
-    18px -2px 0 var(--text-dark),
-    /* arrowhead wing on bottom-left */
-    2px -2px 0 var(--text-dark),
-    /* left side: rows 2-5 */
-    4px -4px 0 var(--text-dark),
-    4px -6px 0 var(--text-dark),
-    4px -8px 0 var(--text-dark),
-    4px -10px 0 var(--text-dark),
-    4px -12px 0 var(--text-dark);
+    16px -2px 0 var(--text-dark);
 }
 
 .repeat-active .repeat-icon::before {
   background: #006000;
   box-shadow:
-    12px 0 0 #006000,
-    14px 0 0 #006000,
-    16px 0 0 #006000,
-    18px 0 0 #006000,
+    -14px 2px 0 #006000,
+    -12px 2px 0 #006000,
+    -10px 2px 0 #006000,
+    -8px 2px 0 #006000,
+    -6px 2px 0 #006000,
+    -4px 2px 0 #006000,
+    -2px 2px 0 #006000,
     0 2px 0 #006000,
     2px 2px 0 #006000,
-    4px 2px 0 #006000,
-    6px 2px 0 #006000,
-    8px 2px 0 #006000,
-    10px 2px 0 #006000,
-    12px 2px 0 #006000,
-    14px 2px 0 #006000,
-    14px 2px 0 #006000,
-    16px 2px 0 #006000,
-    14px 4px 0 #006000,
-    14px 6px 0 #006000,
-    14px 8px 0 #006000,
-    14px 10px 0 #006000,
-    14px 12px 0 #006000;
+    0 4px 0 #006000,
+    0 6px 0 #006000,
+    0 8px 0 #006000,
+    0 10px 0 #006000,
+    0 12px 0 #006000;
 }
 
 .repeat-active .repeat-icon::after {
   background: #006000;
   box-shadow:
-    2px 0 0 #006000,
-    4px 0 0 #006000,
-    6px 0 0 #006000,
+    2px -12px 0 #006000,
+    2px -10px 0 #006000,
+    2px -8px 0 #006000,
+    2px -6px 0 #006000,
+    0 -4px 0 #006000,
+    2px -4px 0 #006000,
+    0 -2px 0 #006000,
+    2px -2px 0 #006000,
     4px -2px 0 #006000,
     6px -2px 0 #006000,
     8px -2px 0 #006000,
     10px -2px 0 #006000,
     12px -2px 0 #006000,
     14px -2px 0 #006000,
-    16px -2px 0 #006000,
-    18px -2px 0 #006000,
-    2px -2px 0 #006000,
-    4px -4px 0 #006000,
-    4px -6px 0 #006000,
-    4px -8px 0 #006000,
-    4px -10px 0 #006000,
-    4px -12px 0 #006000;
+    16px -2px 0 #006000;
 }
 
 /* Transport separator — thin vertical line between transport and reaction groups */
@@ -1340,31 +1325,31 @@ body {
 }
 
 /*
- * Thumbs-up icon — recognizable hand with thumb pointing up
- * Grid: 8 cols × 9 rows (16×18px), 2px per cell
+ * Thumbs-up icon — hand with thumb pointing up, offset left
+ * Grid: 7 cols × 9 rows (14×18px), 2px per cell
  *
- *   ...██...    thumb tip
- *   ...██...    thumb shaft
- *   ...██...    thumb shaft
- *   .████...    thumb + palm top
- *   █████...    palm
- *   .█████..    fingers (4 stacked)
- *   .█████..    fingers
- *   .█████..    fingers
- *   ..████..    fist bottom
+ *   .██....    thumb tip (left-offset)
+ *   .██....    thumb shaft
+ *   .██....    thumb shaft
+ *   █████..    knuckle (thumb meets fist)
+ *   .█████.    fist
+ *   .█████.    fist
+ *   .█████.    fist
+ *   ..███..    narrowing
+ *   ..██...    wrist
  *
- * ::before = thumb (top part)
- * ::after  = palm + fingers (bottom part)
+ * ::before = thumb + knuckle (rows 0-3)
+ * ::after  = fist + wrist (rows 4-8)
  */
 .like-icon {
-  width: 16px;
+  width: 14px;
   height: 18px;
 }
 
 .like-icon::before {
   content: '';
   position: absolute;
-  left: 6px;
+  left: 2px;
   top: 0;
   width: 2px;
   height: 2px;
@@ -1377,50 +1362,47 @@ body {
     /* row 2: thumb shaft */
     0 4px 0 var(--text-dark),
     2px 4px 0 var(--text-dark),
-    /* row 3: thumb + palm top */
-    -4px 6px 0 var(--text-dark),
+    /* row 3: knuckle */
     -2px 6px 0 var(--text-dark),
     0 6px 0 var(--text-dark),
-    2px 6px 0 var(--text-dark);
+    2px 6px 0 var(--text-dark),
+    4px 6px 0 var(--text-dark),
+    6px 6px 0 var(--text-dark);
 }
 
 .like-icon::after {
   content: '';
   position: absolute;
-  left: 0;
+  left: 2px;
   top: 8px;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* row 4: palm wide */
+    /* row 4: fist */
     2px 0 0 var(--text-dark),
     4px 0 0 var(--text-dark),
     6px 0 0 var(--text-dark),
     8px 0 0 var(--text-dark),
-    /* row 5: fingers */
+    /* row 5: fist */
+    0 2px 0 var(--text-dark),
     2px 2px 0 var(--text-dark),
     4px 2px 0 var(--text-dark),
     6px 2px 0 var(--text-dark),
     8px 2px 0 var(--text-dark),
-    10px 2px 0 var(--text-dark),
-    /* row 6: fingers */
+    /* row 6: fist */
+    0 4px 0 var(--text-dark),
     2px 4px 0 var(--text-dark),
     4px 4px 0 var(--text-dark),
     6px 4px 0 var(--text-dark),
     8px 4px 0 var(--text-dark),
-    10px 4px 0 var(--text-dark),
-    /* row 7: fingers */
+    /* row 7: narrowing */
     2px 6px 0 var(--text-dark),
     4px 6px 0 var(--text-dark),
     6px 6px 0 var(--text-dark),
-    8px 6px 0 var(--text-dark),
-    10px 6px 0 var(--text-dark),
-    /* row 8: fist bottom */
-    4px 8px 0 var(--text-dark),
-    6px 8px 0 var(--text-dark),
-    8px 8px 0 var(--text-dark),
-    10px 8px 0 var(--text-dark);
+    /* row 8: wrist */
+    2px 8px 0 var(--text-dark),
+    4px 8px 0 var(--text-dark);
 }
 
 .like-btn.active .like-icon::before {
@@ -1431,10 +1413,11 @@ body {
     2px 2px 0 #006000,
     0 4px 0 #006000,
     2px 4px 0 #006000,
-    -4px 6px 0 #006000,
     -2px 6px 0 #006000,
     0 6px 0 #006000,
-    2px 6px 0 #006000;
+    2px 6px 0 #006000,
+    4px 6px 0 #006000,
+    6px 6px 0 #006000;
 }
 
 .like-btn.active .like-icon::after {
@@ -1444,46 +1427,42 @@ body {
     4px 0 0 #006000,
     6px 0 0 #006000,
     8px 0 0 #006000,
+    0 2px 0 #006000,
     2px 2px 0 #006000,
     4px 2px 0 #006000,
     6px 2px 0 #006000,
     8px 2px 0 #006000,
-    10px 2px 0 #006000,
+    0 4px 0 #006000,
     2px 4px 0 #006000,
     4px 4px 0 #006000,
     6px 4px 0 #006000,
     8px 4px 0 #006000,
-    10px 4px 0 #006000,
     2px 6px 0 #006000,
     4px 6px 0 #006000,
     6px 6px 0 #006000,
-    8px 6px 0 #006000,
-    10px 6px 0 #006000,
-    4px 8px 0 #006000,
-    6px 8px 0 #006000,
-    8px 8px 0 #006000,
-    10px 8px 0 #006000;
+    2px 8px 0 #006000,
+    4px 8px 0 #006000;
 }
 
 /*
  * Thumbs-down icon — mirrored thumbs-up (thumb points down)
- * Grid: 8 cols × 9 rows (16×18px), 2px per cell
+ * Grid: 7 cols × 9 rows (14×18px), 2px per cell
  *
- *   ..████..    fist top
- *   .█████..    fingers
- *   .█████..    fingers
- *   .█████..    fingers
- *   █████...    palm
- *   .████...    thumb + palm bottom
- *   ...██...    thumb shaft
- *   ...██...    thumb shaft
- *   ...██...    thumb tip
+ *   ..██...    wrist
+ *   ..███..    widening
+ *   .█████.    fist
+ *   .█████.    fist
+ *   .█████.    fist
+ *   █████..    knuckle (thumb meets fist)
+ *   .██....    thumb shaft
+ *   .██....    thumb shaft
+ *   .██....    thumb tip
  *
- * ::before = fist + fingers (top)
- * ::after  = thumb (bottom)
+ * ::before = wrist + fist (rows 0-4)
+ * ::after  = knuckle + thumb (rows 5-8)
  */
 .dislike-icon {
-  width: 16px;
+  width: 14px;
   height: 18px;
 }
 
@@ -1496,71 +1475,64 @@ body {
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* row 0: fist top */
+    /* row 0: wrist */
     2px 0 0 var(--text-dark),
-    4px 0 0 var(--text-dark),
-    6px 0 0 var(--text-dark),
-    /* row 1: fingers */
-    -2px 2px 0 var(--text-dark),
+    /* row 1: widening */
     0 2px 0 var(--text-dark),
     2px 2px 0 var(--text-dark),
     4px 2px 0 var(--text-dark),
-    6px 2px 0 var(--text-dark),
-    /* row 2: fingers */
+    /* row 2: fist */
     -2px 4px 0 var(--text-dark),
     0 4px 0 var(--text-dark),
     2px 4px 0 var(--text-dark),
     4px 4px 0 var(--text-dark),
     6px 4px 0 var(--text-dark),
-    /* row 3: fingers */
+    /* row 3: fist */
     -2px 6px 0 var(--text-dark),
     0 6px 0 var(--text-dark),
     2px 6px 0 var(--text-dark),
     4px 6px 0 var(--text-dark),
     6px 6px 0 var(--text-dark),
-    /* row 4: palm wide */
-    -4px 8px 0 var(--text-dark),
+    /* row 4: fist */
     -2px 8px 0 var(--text-dark),
     0 8px 0 var(--text-dark),
     2px 8px 0 var(--text-dark),
-    4px 8px 0 var(--text-dark);
+    4px 8px 0 var(--text-dark),
+    6px 8px 0 var(--text-dark);
 }
 
 .dislike-icon::after {
   content: '';
   position: absolute;
-  left: 2px;
+  left: 0;
   top: 10px;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* row 5: thumb + palm bottom */
+    /* row 5: knuckle */
     2px 0 0 var(--text-dark),
     4px 0 0 var(--text-dark),
     6px 0 0 var(--text-dark),
+    8px 0 0 var(--text-dark),
     /* row 6: thumb shaft */
+    2px 2px 0 var(--text-dark),
     4px 2px 0 var(--text-dark),
-    6px 2px 0 var(--text-dark),
     /* row 7: thumb shaft */
+    2px 4px 0 var(--text-dark),
     4px 4px 0 var(--text-dark),
-    6px 4px 0 var(--text-dark),
     /* row 8: thumb tip */
-    4px 6px 0 var(--text-dark),
-    6px 6px 0 var(--text-dark);
+    2px 6px 0 var(--text-dark),
+    4px 6px 0 var(--text-dark);
 }
 
 .dislike-btn.active .dislike-icon::before {
   background: #990000;
   box-shadow:
     2px 0 0 #990000,
-    4px 0 0 #990000,
-    6px 0 0 #990000,
-    -2px 2px 0 #990000,
     0 2px 0 #990000,
     2px 2px 0 #990000,
     4px 2px 0 #990000,
-    6px 2px 0 #990000,
     -2px 4px 0 #990000,
     0 4px 0 #990000,
     2px 4px 0 #990000,
@@ -1571,11 +1543,11 @@ body {
     2px 6px 0 #990000,
     4px 6px 0 #990000,
     6px 6px 0 #990000,
-    -4px 8px 0 #990000,
     -2px 8px 0 #990000,
     0 8px 0 #990000,
     2px 8px 0 #990000,
-    4px 8px 0 #990000;
+    4px 8px 0 #990000,
+    6px 8px 0 #990000;
 }
 
 .dislike-btn.active .dislike-icon::after {
@@ -1584,12 +1556,13 @@ body {
     2px 0 0 #990000,
     4px 0 0 #990000,
     6px 0 0 #990000,
+    8px 0 0 #990000,
+    2px 2px 0 #990000,
     4px 2px 0 #990000,
-    6px 2px 0 #990000,
+    2px 4px 0 #990000,
     4px 4px 0 #990000,
-    6px 4px 0 #990000,
-    4px 6px 0 #990000,
-    6px 6px 0 #990000;
+    2px 6px 0 #990000,
+    4px 6px 0 #990000;
 }
 
 /* Search Panel */
