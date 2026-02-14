@@ -1224,13 +1224,13 @@ body {
   color: #990000;
 }
 
-/* Thumbs-up icon — hand silhouette with distinct thumb + fist via CSS mask */
+/* Thumbs-up icon — outlined hand shape (thumb + fist) via CSS mask */
 .like-icon {
   width: 16px;
   height: 18px;
   background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18'%3E%3Cpath d='M6.5 0.5C9 0.5 9.5 2 9.5 4V7H12.5Q14.5 7 14.5 9V15.5Q14.5 17.5 12.5 17.5H3.5Q1.5 17.5 1.5 15.5V9Q1.5 7 3.5 7H4.5V4C4.5 2 4 0.5 6.5 0.5Z' fill='black'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18'%3E%3Cpath d='M6.5 0.5C9 0.5 9.5 2 9.5 4V7H12.5Q14.5 7 14.5 9V15.5Q14.5 17.5 12.5 17.5H3.5Q1.5 17.5 1.5 15.5V9Q1.5 7 3.5 7H4.5V4C4.5 2 4 0.5 6.5 0.5Z' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M6.5 1C8.5 1 9 2.5 9 4V7H12Q14 7 14 9V15Q14 17 12 17H4Q2 17 2 15V9Q2 7 4 7H5V4C5 2.5 4.5 1 6.5 1Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M6.5 1C8.5 1 9 2.5 9 4V7H12Q14 7 14 9V15Q14 17 12 17H4Q2 17 2 15V9Q2 7 4 7H5V4C5 2.5 4.5 1 6.5 1Z'/%3E%3C/svg%3E");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -1241,13 +1241,13 @@ body {
   background-color: #006000;
 }
 
-/* Thumbs-down icon — mirrored hand silhouette via CSS mask */
+/* Thumbs-down icon — outlined mirrored hand shape via CSS mask */
 .dislike-icon {
   width: 16px;
   height: 18px;
   background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18'%3E%3Cpath d='M6.5 17.5C4 17.5 4.5 16 4.5 14V11H3.5Q1.5 11 1.5 9V2.5Q1.5 0.5 3.5 0.5H12.5Q14.5 0.5 14.5 2.5V9Q14.5 11 12.5 11H9.5V14C9.5 16 9 17.5 6.5 17.5Z' fill='black'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18'%3E%3Cpath d='M6.5 17.5C4 17.5 4.5 16 4.5 14V11H3.5Q1.5 11 1.5 9V2.5Q1.5 0.5 3.5 0.5H12.5Q14.5 0.5 14.5 2.5V9Q14.5 11 12.5 11H9.5V14C9.5 16 9 17.5 6.5 17.5Z' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M6.5 17C4.5 17 5 15.5 5 14V11H4Q2 11 2 9V3Q2 1 4 1H12Q14 1 14 3V9Q14 11 12 11H9V14C9 15.5 8.5 17 6.5 17Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Cpath d='M6.5 17C4.5 17 5 15.5 5 14V11H4Q2 11 2 9V3Q2 1 4 1H12Q14 1 14 3V9Q14 11 12 11H9V14C9 15.5 8.5 17 6.5 17Z'/%3E%3C/svg%3E");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
