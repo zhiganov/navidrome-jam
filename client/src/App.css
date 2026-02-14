@@ -1842,6 +1842,9 @@ body {
   font-size: 10px;
   color: #808080;
   font-family: 'Tahoma', 'Verdana', sans-serif;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .geocities-footer a {
@@ -1934,7 +1937,7 @@ body {
 
   .login-screen,
   .room-screen {
-    padding: 12px;
+    padding: 16px 24px;
   }
 
   .login-container,
