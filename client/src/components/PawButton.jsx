@@ -76,7 +76,7 @@ function PawButton({ jamClient, pawHolders, onHoldProgress }) {
     >
       <span
         className="paw-icon"
-        dangerouslySetInnerHTML={{ __html: getPawSvg(22) }}
+        dangerouslySetInnerHTML={{ __html: getPawSvg(20) }}
       />
       {holderCount > 0 && (
         <span className="paw-count">{holderCount}</span>

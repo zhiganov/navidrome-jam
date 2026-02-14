@@ -2191,7 +2191,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 36px;
-  height: 36px;
+  height: 32px;
   background: var(--win-bg);
   border: 2px solid;
   border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
@@ -2403,16 +2403,18 @@ header h1 {
   left: 50%;
   transform: translate(-50%, -50%) scale(0);
   font-family: 'VT323', monospace;
-  font-size: 56px;
+  font-size: clamp(28px, 8vw, 56px);
   color: var(--valentine-gold);
-  white-space: nowrap;
+  text-align: center;
+  width: 90%;
+  max-width: 600px;
   text-shadow:
     0 0 20px var(--valentine-hot),
     0 0 40px var(--valentine-rose),
     3px 3px 0 var(--valentine-deep);
   animation: climax-text-pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
              climax-text-glow 2s ease-in-out 0.8s infinite;
-  letter-spacing: 4px;
+  letter-spacing: clamp(1px, 0.5vw, 4px);
 }
 
 @keyframes climax-text-pop {
