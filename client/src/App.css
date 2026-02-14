@@ -1226,185 +1226,217 @@ body {
     0 -6px 0 #006000;
 }
 
-/* Reaction Buttons (Like/Dislike) — inside the dark now-playing panel */
+/* Reaction Buttons (Like/Dislike) — Winamp-style, matches transport controls */
 .reaction-buttons {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   margin-left: auto;
   padding-left: 8px;
+  flex-shrink: 0;
 }
 
 .reaction-btn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 6px;
-  background: #2a2a3e;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px 0 4px;
+  background: var(--win-bg);
   border: 2px solid;
-  border-color: #4a4a5e #1a1a2e #1a1a2e #4a4a5e;
+  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
   cursor: pointer;
   font-family: 'VT323', monospace;
   font-size: 15px;
-  color: #808080;
-  min-width: 48px;
-}
-
-.reaction-btn:hover {
-  background: #3a3a4e;
+  color: var(--text-dark);
 }
 
 .reaction-btn:active {
-  border-color: #1a1a2e #4a4a5e #4a4a5e #1a1a2e;
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
 }
 
+/* Active (pressed) state — same technique as .repeat-active */
 .reaction-btn.active {
-  border-color: #1a1a2e #4a4a5e #4a4a5e #1a1a2e;
-  background: #1e1e30;
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
+  background: #a0a0a0;
 }
 
 .like-btn.active {
-  color: var(--lime);
+  background: #a0c0a0;
 }
 
 .dislike-btn.active {
-  color: var(--red);
+  background: #c0a0a0;
 }
 
 .reaction-count {
-  min-width: 10px;
+  min-width: 8px;
   text-align: center;
+  line-height: 1;
 }
 
-/* Reaction icons — pixel-art thumbs via box-shadow */
+.like-btn.active .reaction-count {
+  color: #006000;
+}
+
+.dislike-btn.active .reaction-count {
+  color: #990000;
+}
+
+/*
+ * Reaction icons — pixel-art via box-shadow, same technique as .repeat-icon
+ * Grid: 2px per pixel, drawn with ::before pseudo-element
+ */
 .reaction-icon {
-  display: inline-block;
+  display: block;
   position: relative;
-  width: 12px;
+}
+
+/*
+ * Thumbs-up pixel art (10x12, 2px grid):
+ *
+ *     ██          <- thumb tip
+ *     ██          <- thumb
+ *   ████          <- thumb meets palm
+ *   ██████████    <- fingers (widest)
+ *   ██████████    <- fingers
+ *   ████████      <- base of fist
+ *
+ * Reads clearly as a hand with thumb pointing up.
+ */
+.like-icon {
+  width: 10px;
   height: 12px;
 }
 
-/*
- * Thumbs-up pixel art (12x12 grid, 2px pixels):
- *
- *       ██
- *       ██
- *     ████
- *   ████████
- *   ████████
- *   ██████
- */
 .like-icon::before {
   content: '';
   position: absolute;
-  bottom: 0;
   left: 0;
+  bottom: 0;
   width: 2px;
   height: 2px;
-  background: currentColor;
+  background: var(--text-dark);
   box-shadow:
-    /* Fist — bottom row */
-    2px 0 0 currentColor,
-    4px 0 0 currentColor,
-    /* Fist — second row */
-    0 -2px 0 currentColor,
-    2px -2px 0 currentColor,
-    4px -2px 0 currentColor,
-    6px -2px 0 currentColor,
-    /* Fist — third row */
-    0 -4px 0 currentColor,
-    2px -4px 0 currentColor,
-    4px -4px 0 currentColor,
-    6px -4px 0 currentColor,
-    /* Palm — connects to thumb */
-    2px -6px 0 currentColor,
-    4px -6px 0 currentColor,
-    /* Thumb — vertical */
-    4px -8px 0 currentColor,
-    4px -10px 0 currentColor;
+    /* Row 1 (bottom) — base of fist, 4 wide */
+    2px 0 0 var(--text-dark),
+    4px 0 0 var(--text-dark),
+    6px 0 0 var(--text-dark),
+    /* Row 2 — fingers, 5 wide */
+    0 -2px 0 var(--text-dark),
+    2px -2px 0 var(--text-dark),
+    4px -2px 0 var(--text-dark),
+    6px -2px 0 var(--text-dark),
+    8px -2px 0 var(--text-dark),
+    /* Row 3 — fingers, 5 wide */
+    0 -4px 0 var(--text-dark),
+    2px -4px 0 var(--text-dark),
+    4px -4px 0 var(--text-dark),
+    6px -4px 0 var(--text-dark),
+    8px -4px 0 var(--text-dark),
+    /* Row 4 — thumb meets palm, 2 wide */
+    0 -6px 0 var(--text-dark),
+    2px -6px 0 var(--text-dark),
+    /* Row 5 — thumb, 1 wide */
+    2px -8px 0 var(--text-dark),
+    /* Row 6 (top) — thumb tip, 1 wide */
+    2px -10px 0 var(--text-dark);
+}
+
+/* Active like — green icon, matching repeat-active's #006000 */
+.like-btn.active .like-icon::before {
+  background: #006000;
+  box-shadow:
+    2px 0 0 #006000,
+    4px 0 0 #006000,
+    6px 0 0 #006000,
+    0 -2px 0 #006000,
+    2px -2px 0 #006000,
+    4px -2px 0 #006000,
+    6px -2px 0 #006000,
+    8px -2px 0 #006000,
+    0 -4px 0 #006000,
+    2px -4px 0 #006000,
+    4px -4px 0 #006000,
+    6px -4px 0 #006000,
+    8px -4px 0 #006000,
+    0 -6px 0 #006000,
+    2px -6px 0 #006000,
+    2px -8px 0 #006000,
+    2px -10px 0 #006000;
 }
 
 /*
- * Thumbs-down pixel art (mirrored vertically):
+ * Thumbs-down pixel art (vertical mirror of thumbs-up):
+ *
+ *   ████████      <- base of fist
+ *   ██████████    <- fingers
+ *   ██████████    <- fingers (widest)
+ *   ████          <- thumb meets palm
+ *     ██          <- thumb
+ *     ██          <- thumb tip
  */
+.dislike-icon {
+  width: 10px;
+  height: 12px;
+}
+
 .dislike-icon::before {
   content: '';
   position: absolute;
-  top: 0;
   left: 0;
+  top: 0;
   width: 2px;
   height: 2px;
-  background: currentColor;
+  background: var(--text-dark);
   box-shadow:
-    /* Fist — top row */
-    2px 0 0 currentColor,
-    4px 0 0 currentColor,
-    /* Fist — second row */
-    0 2px 0 currentColor,
-    2px 2px 0 currentColor,
-    4px 2px 0 currentColor,
-    6px 2px 0 currentColor,
-    /* Fist — third row */
-    0 4px 0 currentColor,
-    2px 4px 0 currentColor,
-    4px 4px 0 currentColor,
-    6px 4px 0 currentColor,
-    /* Palm — connects to thumb */
-    2px 6px 0 currentColor,
-    4px 6px 0 currentColor,
-    /* Thumb — vertical pointing down */
-    4px 8px 0 currentColor,
-    4px 10px 0 currentColor;
+    /* Row 1 (top) — base of fist, 4 wide */
+    2px 0 0 var(--text-dark),
+    4px 0 0 var(--text-dark),
+    6px 0 0 var(--text-dark),
+    /* Row 2 — fingers, 5 wide */
+    0 2px 0 var(--text-dark),
+    2px 2px 0 var(--text-dark),
+    4px 2px 0 var(--text-dark),
+    6px 2px 0 var(--text-dark),
+    8px 2px 0 var(--text-dark),
+    /* Row 3 — fingers, 5 wide */
+    0 4px 0 var(--text-dark),
+    2px 4px 0 var(--text-dark),
+    4px 4px 0 var(--text-dark),
+    6px 4px 0 var(--text-dark),
+    8px 4px 0 var(--text-dark),
+    /* Row 4 — thumb meets palm, 2 wide */
+    0 6px 0 var(--text-dark),
+    2px 6px 0 var(--text-dark),
+    /* Row 5 — thumb, 1 wide */
+    2px 8px 0 var(--text-dark),
+    /* Row 6 (bottom) — thumb tip, 1 wide */
+    2px 10px 0 var(--text-dark);
 }
 
-/* Active state icon color overrides for the pixel art */
-.like-btn.active .like-icon::before {
-  background: var(--lime);
-  box-shadow:
-    2px 0 0 var(--lime),
-    4px 0 0 var(--lime),
-    0 -2px 0 var(--lime),
-    2px -2px 0 var(--lime),
-    4px -2px 0 var(--lime),
-    6px -2px 0 var(--lime),
-    0 -4px 0 var(--lime),
-    2px -4px 0 var(--lime),
-    4px -4px 0 var(--lime),
-    6px -4px 0 var(--lime),
-    2px -6px 0 var(--lime),
-    4px -6px 0 var(--lime),
-    4px -8px 0 var(--lime),
-    4px -10px 0 var(--lime);
-}
-
+/* Active dislike — red icon */
 .dislike-btn.active .dislike-icon::before {
-  background: var(--red);
+  background: #990000;
   box-shadow:
-    2px 0 0 var(--red),
-    4px 0 0 var(--red),
-    0 2px 0 var(--red),
-    2px 2px 0 var(--red),
-    4px 2px 0 var(--red),
-    6px 2px 0 var(--red),
-    0 4px 0 var(--red),
-    2px 4px 0 var(--red),
-    4px 4px 0 var(--red),
-    6px 4px 0 var(--red),
-    2px 6px 0 var(--red),
-    4px 6px 0 var(--red),
-    4px 8px 0 var(--red),
-    4px 10px 0 var(--red);
-}
-
-/* Mobile: reaction buttons go horizontal below track info */
-@media (max-width: 768px) {
-  .reaction-buttons {
-    flex-direction: row;
-    margin-left: 0;
-    padding-left: 0;
-    padding-top: 4px;
-  }
+    2px 0 0 #990000,
+    4px 0 0 #990000,
+    6px 0 0 #990000,
+    0 2px 0 #990000,
+    2px 2px 0 #990000,
+    4px 2px 0 #990000,
+    6px 2px 0 #990000,
+    8px 2px 0 #990000,
+    0 4px 0 #990000,
+    2px 4px 0 #990000,
+    4px 4px 0 #990000,
+    6px 4px 0 #990000,
+    8px 4px 0 #990000,
+    0 6px 0 #990000,
+    2px 6px 0 #990000,
+    2px 8px 0 #990000,
+    2px 10px 0 #990000;
 }
 
 /* Search Panel */
@@ -1940,6 +1972,13 @@ body {
     width: 100%;
     height: auto;
     aspect-ratio: 1;
+  }
+
+  .reaction-buttons {
+    flex-direction: row;
+    margin-left: 0;
+    padding-left: 0;
+    padding-top: 4px;
   }
 
   .header-info {
