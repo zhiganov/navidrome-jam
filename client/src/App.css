@@ -679,10 +679,31 @@ body {
   margin: 0;
 }
 
-.users-list li {
-  padding: 3px 4px;
+.user-cat-face {
+  flex-shrink: 0;
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+
+.user-cat-face svg {
+  display: block;
+}
+
+.user-info-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.users-list li {
+  padding: 4px;
+  display: flex;
+  gap: 6px;
   align-items: center;
   font-size: 11px;
   border-bottom: 1px solid #d0d0d0;
@@ -2151,9 +2172,15 @@ body {
   100% { box-shadow: 0 0 20px rgba(255, 20, 147, 0.8), 0 0 40px rgba(255, 105, 180, 0.3); }
 }
 
-.paw-emoji {
-  font-size: 18px;
-  line-height: 1;
+.paw-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.paw-icon svg {
+  display: block;
 }
 
 .paw-count {

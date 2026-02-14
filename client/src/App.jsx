@@ -5,6 +5,7 @@ import SyncedAudioPlayer from './components/SyncedAudioPlayer';
 import CatPicker from './components/CatPicker';
 import CatDanceFloor from './components/CatDanceFloor';
 import PawButton from './components/PawButton';
+import { CATS, getCatSvg } from './components/catData';
 import './App.css';
 
 function App() {
@@ -1045,32 +1046,42 @@ function App() {
               {currentRoom.users?.map((user) => {
                 const userIsHost = user.id === currentRoom.hostId;
                 const userIsCoHost = (currentRoom.coHosts || []).includes(user.id);
+                const userCatId = catSelections[user.id];
+                const userCat = userCatId !== undefined ? CATS[userCatId] : null;
                 return (
                   <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
-                    <span className="user-name">{user.username}</span>
-                    <span className="user-badges">
-                      {userIsHost && <span className="badge badge-host">HOST</span>}
-                      {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
-                      {isHost && !userIsHost && (
-                        userIsCoHost ? (
-                          <button
-                            className="user-action-btn demote-btn"
-                            onClick={() => jamClient.demoteCoHost(user.id)}
-                            title="Remove co-host"
-                          >
-                            &minus;
-                          </button>
-                        ) : (
-                          <button
-                            className="user-action-btn promote-btn"
-                            onClick={() => jamClient.promoteCoHost(user.id)}
-                            title="Make co-host"
-                          >
-                            +
-                          </button>
-                        )
-                      )}
-                    </span>
+                    {userCat && (
+                      <span
+                        className="user-cat-face"
+                        dangerouslySetInnerHTML={{ __html: getCatSvg(userCat, 32) }}
+                      />
+                    )}
+                    <div className="user-info-col">
+                      <span className="user-name">{user.username}</span>
+                      <span className="user-badges">
+                        {userIsHost && <span className="badge badge-host">HOST</span>}
+                        {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
+                        {isHost && !userIsHost && (
+                          userIsCoHost ? (
+                            <button
+                              className="user-action-btn demote-btn"
+                              onClick={() => jamClient.demoteCoHost(user.id)}
+                              title="Remove co-host"
+                            >
+                              &minus;
+                            </button>
+                          ) : (
+                            <button
+                              className="user-action-btn promote-btn"
+                              onClick={() => jamClient.promoteCoHost(user.id)}
+                              title="Make co-host"
+                            >
+                              +
+                            </button>
+                          )
+                        )}
+                      </span>
+                    </div>
                   </li>
                 );
               })}
@@ -1284,32 +1295,42 @@ function App() {
                     {currentRoom.users?.map((user) => {
                       const userIsHost = user.id === currentRoom.hostId;
                       const userIsCoHost = (currentRoom.coHosts || []).includes(user.id);
+                      const userCatId = catSelections[user.id];
+                      const userCat = userCatId !== undefined ? CATS[userCatId] : null;
                       return (
                         <li key={user.id} className={userIsHost ? 'host' : userIsCoHost ? 'cohost' : ''}>
-                          <span className="user-name">{user.username}</span>
-                          <span className="user-badges">
-                            {userIsHost && <span className="badge badge-host">HOST</span>}
-                            {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
-                            {isHost && !userIsHost && (
-                              userIsCoHost ? (
-                                <button
-                                  className="user-action-btn demote-btn"
-                                  onClick={() => jamClient.demoteCoHost(user.id)}
-                                  title="Remove co-host"
-                                >
-                                  &minus;
-                                </button>
-                              ) : (
-                                <button
-                                  className="user-action-btn promote-btn"
-                                  onClick={() => jamClient.promoteCoHost(user.id)}
-                                  title="Make co-host"
-                                >
-                                  +
-                                </button>
-                              )
-                            )}
-                          </span>
+                          {userCat && (
+                            <span
+                              className="user-cat-face"
+                              dangerouslySetInnerHTML={{ __html: getCatSvg(userCat, 32) }}
+                            />
+                          )}
+                          <div className="user-info-col">
+                            <span className="user-name">{user.username}</span>
+                            <span className="user-badges">
+                              {userIsHost && <span className="badge badge-host">HOST</span>}
+                              {userIsCoHost && <span className="badge badge-cohost">CO-HOST</span>}
+                              {isHost && !userIsHost && (
+                                userIsCoHost ? (
+                                  <button
+                                    className="user-action-btn demote-btn"
+                                    onClick={() => jamClient.demoteCoHost(user.id)}
+                                    title="Remove co-host"
+                                  >
+                                    &minus;
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="user-action-btn promote-btn"
+                                    onClick={() => jamClient.promoteCoHost(user.id)}
+                                    title="Make co-host"
+                                  >
+                                    +
+                                  </button>
+                                )
+                              )}
+                            </span>
+                          </div>
                         </li>
                       );
                     })}

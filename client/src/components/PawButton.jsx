@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { getPawSvg } from './catData';
 
 function PawButton({ jamClient, pawHolders }) {
   const [isHolding, setIsHolding] = useState(false);
@@ -16,9 +17,9 @@ function PawButton({ jamClient, pawHolders }) {
 
     jamClient.pawHold();
 
-    // Animate progress ring
+    // Animate progress ring — 8 seconds for full dramatic buildup
     const startTime = Date.now();
-    const duration = 2000; // 2 seconds to fill
+    const duration = 8000;
 
     const animate = () => {
       if (!isHoldingRef.current) return;
@@ -70,7 +71,10 @@ function PawButton({ jamClient, pawHolders }) {
         '--hold-progress': holdProgress,
       }}
     >
-      <span className="paw-emoji">&#128062;</span>
+      <span
+        className="paw-icon"
+        dangerouslySetInnerHTML={{ __html: getPawSvg(22) }}
+      />
       {holderCount > 0 && (
         <span className="paw-count">{holderCount}</span>
       )}
