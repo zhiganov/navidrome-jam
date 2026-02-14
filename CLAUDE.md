@@ -177,6 +177,7 @@ This project supports multiple deployment strategies:
   - Asset caching: `/assets/*` gets `Cache-Control: public, max-age=31536000, immutable`
   - GitHub integration: `zhiganov/navidrome-jam` → deploys automatically, no CLI needed
 - **Server**: Railway — https://navidrome-jam-production.up.railway.app
+  - GitHub integration: `zhiganov/navidrome-jam` → auto-deploys on push to main (root: `/server`, watch: `server/**`)
   - Nixpacks builder: `cd server && npm install` (install), `cd server && node src/index.js` (start)
   - Restart policy: ON_FAILURE with max 10 retries (configured in `railway.json`)
   - Railway project: `b4f46e75-3c65-4606-a8ee-2b7ded7b7109`
@@ -198,11 +199,12 @@ This project supports multiple deployment strategies:
 
 ### Deploy Commands
 
-```bash
-# Server → Railway (manual deploy from project root)
-npx @railway/cli up --detach
+Both client and server auto-deploy on push to `main`:
+- **Client** → Vercel (GitHub integration)
+- **Server** → Railway (GitHub integration, watches `server/**`)
 
-# Client → Vercel (auto-deploys on git push to main)
+```bash
+# Just push — both deploy automatically
 git push
 ```
 
