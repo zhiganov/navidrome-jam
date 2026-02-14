@@ -284,7 +284,7 @@ body {
 
 .login-container {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
 }
 
 .login-container .win98-body {
@@ -1939,7 +1939,7 @@ body {
 
   .login-container,
   .room-container {
-    max-width: calc(100vw - 24px);
+    max-width: 100%;
   }
 }
 
