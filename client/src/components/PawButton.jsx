@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { getPawSvg } from './catData';
 
-function PawButton({ jamClient, pawHolders, onClimax }) {
+function PawButton({ jamClient, pawHolders, onClimax, onHoldProgress }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const progressRef = useRef(null);
@@ -9,6 +9,10 @@ function PawButton({ jamClient, pawHolders, onClimax }) {
   const climaxFiredRef = useRef(false);
 
   const holderCount = pawHolders?.length || 0;
+  const holderCountRef = useRef(holderCount);
+  useEffect(() => {
+    holderCountRef.current = holderCount;
+  }, [holderCount]);
 
   const startHold = useCallback(() => {
     if (isHoldingRef.current) return;
@@ -28,9 +32,10 @@ function PawButton({ jamClient, pawHolders, onClimax }) {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       setHoldProgress(progress);
+      onHoldProgress?.(progress);
 
-      // Fire climax when progress hits 1.0 and 2+ holders
-      if (progress >= 1 && !climaxFiredRef.current && holderCount >= 2) {
+      // Fire climax when progress hits 1.0 and 2+ holders (use ref for current count)
+      if (progress >= 1 && !climaxFiredRef.current && holderCountRef.current >= 2) {
         climaxFiredRef.current = true;
         onClimax?.();
       }
@@ -40,20 +45,21 @@ function PawButton({ jamClient, pawHolders, onClimax }) {
       }
     };
     progressRef.current = requestAnimationFrame(animate);
-  }, [jamClient, holderCount, onClimax]);
+  }, [jamClient, onClimax, onHoldProgress]);
 
   const endHold = useCallback(() => {
     if (!isHoldingRef.current) return;
     isHoldingRef.current = false;
     setIsHolding(false);
     setHoldProgress(0);
+    onHoldProgress?.(0);
 
     if (progressRef.current) {
       cancelAnimationFrame(progressRef.current);
     }
 
     jamClient.pawRelease();
-  }, [jamClient]);
+  }, [jamClient, onHoldProgress]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -86,19 +92,6 @@ function PawButton({ jamClient, pawHolders, onClimax }) {
       />
       {holderCount > 0 && (
         <span className="paw-count">{holderCount}</span>
-      )}
-      {isHolding && (
-        <svg className="paw-progress-ring" viewBox="0 0 40 40">
-          <circle
-            cx="20" cy="20" r="18"
-            fill="none"
-            stroke="var(--valentine-accent, #ff1493)"
-            strokeWidth="3"
-            strokeDasharray={`${holdProgress * 113} 113`}
-            strokeLinecap="round"
-            transform="rotate(-90 20 20)"
-          />
-        </svg>
       )}
     </button>
   );

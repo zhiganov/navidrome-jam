@@ -138,10 +138,14 @@ function App() {
 
     const handleUserJoined = ({ room }) => {
       setCurrentRoom(room);
+      setCatSelections(room.catSelections || {});
+      setPawHolders(room.pawHolders || []);
     };
 
     const handleUserLeft = ({ room, newHost }) => {
       setCurrentRoom(room);
+      setCatSelections(room.catSelections || {});
+      setPawHolders(room.pawHolders || []);
       const cohost = (room.coHosts || []).includes(jamClient.userId);
       setCanControl(room.hostId === jamClient.userId || cohost);
       if (newHost === jamClient.userId) {
@@ -706,6 +710,13 @@ function App() {
   const catCount = Object.keys(catSelections).length;
   const showDanceStrip = catCount >= 2;
 
+  // Paw hold progress (lifted from PawButton for dance strip feedback)
+  const [holdProgress, setHoldProgress] = useState(0);
+
+  const handleHoldProgress = useCallback((progress) => {
+    setHoldProgress(progress);
+  }, []);
+
   // Paw climax celebration state
   const [pawClimax, setPawClimax] = useState(false);
 
@@ -1116,6 +1127,8 @@ function App() {
                     catSelections={catSelections}
                     isPlaying={isPlaying}
                     pawMagicLevel={pawMagicLevel}
+                    holdProgress={holdProgress}
+                    pawClimax={pawClimax}
                   />
                 )}
                 <div className="now-playing">
@@ -1209,6 +1222,7 @@ function App() {
                   jamClient={jamClient}
                   pawHolders={pawHolders}
                   onClimax={handlePawClimax}
+                  onHoldProgress={handleHoldProgress}
                 />
               </div>
             )}
