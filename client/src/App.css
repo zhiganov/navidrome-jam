@@ -1923,6 +1923,16 @@ body {
     padding: 12px 8px;
     overflow-wrap: break-word;
   }
+
+  .login-screen,
+  .room-screen {
+    padding: 12px;
+  }
+
+  .login-container,
+  .room-container {
+    max-width: calc(100vw - 24px);
+  }
 }
 
 /* Community select dropdown */
