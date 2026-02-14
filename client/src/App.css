@@ -1143,57 +1143,55 @@ body {
   background: #a0a0a0;
 }
 
-/* Repeat icon — pixel-art loop arrows via box-shadow */
+/*
+ * Repeat icon — rectangular loop with directional corners
+ * Grid: 7 cols × 5 rows (14×10px), 2px per cell
+ *
+ *   .██████■    top bar + right-extension (clockwise hint)
+ *   █.....█    sides
+ *   █.....█    sides
+ *   █.....█    sides
+ *   ■██████.    bottom bar + left-extension (clockwise hint)
+ */
 .repeat-icon {
   width: 14px;
   height: 10px;
 }
 
-/* Top arrow: ——→ pointing right */
 .repeat-icon::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 1px;
+  left: 2px;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* Top horizontal bar */
     2px 0 0 var(--text-dark),
     4px 0 0 var(--text-dark),
     6px 0 0 var(--text-dark),
     8px 0 0 var(--text-dark),
-    /* Right arrowhead */
-    8px -2px 0 var(--text-dark),
     10px 0 0 var(--text-dark),
-    8px 2px 0 var(--text-dark),
-    /* Left vertical connector going down */
-    0 2px 0 var(--text-dark),
-    0 4px 0 var(--text-dark),
-    0 6px 0 var(--text-dark);
+    -2px 2px 0 var(--text-dark),
+    -2px 4px 0 var(--text-dark),
+    -2px 6px 0 var(--text-dark);
 }
 
-/* Bottom arrow: ←—— pointing left */
 .repeat-icon::after {
   content: '';
   position: absolute;
   bottom: 0;
-  right: 1px;
+  right: 0;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* Bottom horizontal bar */
     -2px 0 0 var(--text-dark),
     -4px 0 0 var(--text-dark),
     -6px 0 0 var(--text-dark),
     -8px 0 0 var(--text-dark),
-    /* Left arrowhead */
-    -8px -2px 0 var(--text-dark),
     -10px 0 0 var(--text-dark),
-    -8px 2px 0 var(--text-dark),
-    /* Right vertical connector going up */
+    -12px 0 0 var(--text-dark),
     0 -2px 0 var(--text-dark),
     0 -4px 0 var(--text-dark),
     0 -6px 0 var(--text-dark);
@@ -1206,12 +1204,10 @@ body {
     4px 0 0 #006000,
     6px 0 0 #006000,
     8px 0 0 #006000,
-    8px -2px 0 #006000,
     10px 0 0 #006000,
-    8px 2px 0 #006000,
-    0 2px 0 #006000,
-    0 4px 0 #006000,
-    0 6px 0 #006000;
+    -2px 2px 0 #006000,
+    -2px 4px 0 #006000,
+    -2px 6px 0 #006000;
 }
 
 .repeat-active .repeat-icon::after {
@@ -1221,62 +1217,44 @@ body {
     -4px 0 0 #006000,
     -6px 0 0 #006000,
     -8px 0 0 #006000,
-    -8px -2px 0 #006000,
     -10px 0 0 #006000,
-    -8px 2px 0 #006000,
+    -12px 0 0 #006000,
     0 -2px 0 #006000,
     0 -4px 0 #006000,
     0 -6px 0 #006000;
 }
 
-/* Reaction Buttons (Like/Dislike) — Winamp-style, matches transport controls */
-.reaction-buttons {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+/* Transport separator — thin vertical line between transport and reaction groups */
+.transport-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--win-dark);
+  margin: 0 4px;
+  align-self: center;
+  opacity: 0.6;
+}
+
+/* Reaction buttons in transport bar — like/dislike */
+.like-btn,
+.dislike-btn {
   gap: 3px;
-  margin-left: auto;
-  padding-left: 8px;
-  flex-shrink: 0;
-}
-
-.reaction-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 6px 0 4px;
-  background: var(--win-bg);
-  border: 2px solid;
-  border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
-  cursor: pointer;
-  font-family: 'VT323', monospace;
-  font-size: 15px;
-  color: var(--text-dark);
-}
-
-.reaction-btn:active {
-  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
-}
-
-/* Active (pressed) state — same technique as .repeat-active */
-.reaction-btn.active {
-  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
-  background: #a0a0a0;
 }
 
 .like-btn.active {
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
   background: #a0c0a0;
 }
 
 .dislike-btn.active {
+  border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
   background: #c0a0a0;
 }
 
 .reaction-count {
-  min-width: 8px;
-  text-align: center;
+  font-family: 'VT323', monospace;
+  font-size: 13px;
   line-height: 1;
+  color: var(--text-dark);
 }
 
 .like-btn.active .reaction-count {
@@ -1288,158 +1266,99 @@ body {
 }
 
 /*
- * Reaction icons — pixel-art via box-shadow, same technique as .repeat-icon
- * Grid: 2px per pixel, drawn with ::before pseudo-element
- */
-.reaction-icon {
-  display: block;
-  position: relative;
-}
-
-/*
- * Thumbs-up pixel art (10x12, 2px grid):
+ * Like icon — upward arrow (▲ with stem)
+ * Grid: 5 cols × 4 rows (10×8px)
  *
- *     ██          <- thumb tip
- *     ██          <- thumb
- *   ████          <- thumb meets palm
- *   ██████████    <- fingers (widest)
- *   ██████████    <- fingers
- *   ████████      <- base of fist
- *
- * Reads clearly as a hand with thumb pointing up.
+ *   ..█..    tip
+ *   .███.    mid
+ *   █████    base (widest)
+ *   ..█..    stem
  */
 .like-icon {
   width: 10px;
-  height: 12px;
+  height: 8px;
 }
 
 .like-icon::before {
   content: '';
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 2px;
-  height: 2px;
-  background: var(--text-dark);
-  box-shadow:
-    /* Row 1 (bottom) — base of fist, 4 wide */
-    2px 0 0 var(--text-dark),
-    4px 0 0 var(--text-dark),
-    6px 0 0 var(--text-dark),
-    /* Row 2 — fingers, 5 wide */
-    0 -2px 0 var(--text-dark),
-    2px -2px 0 var(--text-dark),
-    4px -2px 0 var(--text-dark),
-    6px -2px 0 var(--text-dark),
-    8px -2px 0 var(--text-dark),
-    /* Row 3 — fingers, 5 wide */
-    0 -4px 0 var(--text-dark),
-    2px -4px 0 var(--text-dark),
-    4px -4px 0 var(--text-dark),
-    6px -4px 0 var(--text-dark),
-    8px -4px 0 var(--text-dark),
-    /* Row 4 — thumb meets palm, 2 wide */
-    0 -6px 0 var(--text-dark),
-    2px -6px 0 var(--text-dark),
-    /* Row 5 — thumb, 1 wide */
-    2px -8px 0 var(--text-dark),
-    /* Row 6 (top) — thumb tip, 1 wide */
-    2px -10px 0 var(--text-dark);
-}
-
-/* Active like — green icon, matching repeat-active's #006000 */
-.like-btn.active .like-icon::before {
-  background: #006000;
-  box-shadow:
-    2px 0 0 #006000,
-    4px 0 0 #006000,
-    6px 0 0 #006000,
-    0 -2px 0 #006000,
-    2px -2px 0 #006000,
-    4px -2px 0 #006000,
-    6px -2px 0 #006000,
-    8px -2px 0 #006000,
-    0 -4px 0 #006000,
-    2px -4px 0 #006000,
-    4px -4px 0 #006000,
-    6px -4px 0 #006000,
-    8px -4px 0 #006000,
-    0 -6px 0 #006000,
-    2px -6px 0 #006000,
-    2px -8px 0 #006000,
-    2px -10px 0 #006000;
-}
-
-/*
- * Thumbs-down pixel art (vertical mirror of thumbs-up):
- *
- *   ████████      <- base of fist
- *   ██████████    <- fingers
- *   ██████████    <- fingers (widest)
- *   ████          <- thumb meets palm
- *     ██          <- thumb
- *     ██          <- thumb tip
- */
-.dislike-icon {
-  width: 10px;
-  height: 12px;
-}
-
-.dislike-icon::before {
-  content: '';
-  position: absolute;
-  left: 0;
+  left: 4px;
   top: 0;
   width: 2px;
   height: 2px;
   background: var(--text-dark);
   box-shadow:
-    /* Row 1 (top) — base of fist, 4 wide */
-    2px 0 0 var(--text-dark),
-    4px 0 0 var(--text-dark),
-    6px 0 0 var(--text-dark),
-    /* Row 2 — fingers, 5 wide */
+    -2px 2px 0 var(--text-dark),
     0 2px 0 var(--text-dark),
     2px 2px 0 var(--text-dark),
-    4px 2px 0 var(--text-dark),
-    6px 2px 0 var(--text-dark),
-    8px 2px 0 var(--text-dark),
-    /* Row 3 — fingers, 5 wide */
+    -4px 4px 0 var(--text-dark),
+    -2px 4px 0 var(--text-dark),
     0 4px 0 var(--text-dark),
     2px 4px 0 var(--text-dark),
     4px 4px 0 var(--text-dark),
-    6px 4px 0 var(--text-dark),
-    8px 4px 0 var(--text-dark),
-    /* Row 4 — thumb meets palm, 2 wide */
-    0 6px 0 var(--text-dark),
-    2px 6px 0 var(--text-dark),
-    /* Row 5 — thumb, 1 wide */
-    2px 8px 0 var(--text-dark),
-    /* Row 6 (bottom) — thumb tip, 1 wide */
-    2px 10px 0 var(--text-dark);
+    0 6px 0 var(--text-dark);
 }
 
-/* Active dislike — red icon */
+.like-btn.active .like-icon::before {
+  background: #006000;
+  box-shadow:
+    -2px 2px 0 #006000,
+    0 2px 0 #006000,
+    2px 2px 0 #006000,
+    -4px 4px 0 #006000,
+    -2px 4px 0 #006000,
+    0 4px 0 #006000,
+    2px 4px 0 #006000,
+    4px 4px 0 #006000,
+    0 6px 0 #006000;
+}
+
+/*
+ * Dislike icon — downward arrow (▼ with stem)
+ * Grid: 5 cols × 4 rows (10×8px)
+ *
+ *   ..█..    stem
+ *   █████    top (widest)
+ *   .███.    mid
+ *   ..█..    tip
+ */
+.dislike-icon {
+  width: 10px;
+  height: 8px;
+}
+
+.dislike-icon::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  background: var(--text-dark);
+  box-shadow:
+    -4px 2px 0 var(--text-dark),
+    -2px 2px 0 var(--text-dark),
+    0 2px 0 var(--text-dark),
+    2px 2px 0 var(--text-dark),
+    4px 2px 0 var(--text-dark),
+    -2px 4px 0 var(--text-dark),
+    0 4px 0 var(--text-dark),
+    2px 4px 0 var(--text-dark),
+    0 6px 0 var(--text-dark);
+}
+
 .dislike-btn.active .dislike-icon::before {
   background: #990000;
   box-shadow:
-    2px 0 0 #990000,
-    4px 0 0 #990000,
-    6px 0 0 #990000,
+    -4px 2px 0 #990000,
+    -2px 2px 0 #990000,
     0 2px 0 #990000,
     2px 2px 0 #990000,
     4px 2px 0 #990000,
-    6px 2px 0 #990000,
-    8px 2px 0 #990000,
+    -2px 4px 0 #990000,
     0 4px 0 #990000,
     2px 4px 0 #990000,
-    4px 4px 0 #990000,
-    6px 4px 0 #990000,
-    8px 4px 0 #990000,
-    0 6px 0 #990000,
-    2px 6px 0 #990000,
-    2px 8px 0 #990000,
-    2px 10px 0 #990000;
+    0 6px 0 #990000;
 }
 
 /* Search Panel */
@@ -1975,13 +1894,6 @@ body {
     width: 100%;
     height: auto;
     aspect-ratio: 1;
-  }
-
-  .reaction-buttons {
-    flex-direction: row;
-    margin-left: 0;
-    padding-left: 0;
-    padding-top: 4px;
   }
 
   .header-info {

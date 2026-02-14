@@ -1041,24 +1041,6 @@ function App() {
                   <p>{currentTrack.artist}</p>
                   <p className="album">{currentTrack.album}</p>
                 </div>
-                <div className="reaction-buttons">
-                  <button
-                    className={`reaction-btn like-btn${userReaction === 'like' ? ' active' : ''}`}
-                    onClick={handleLike}
-                    title={userReaction === 'like' ? 'Remove like' : 'Like this track'}
-                  >
-                    <span className="reaction-icon like-icon"></span>
-                    <span className="reaction-count">{trackReactions.likes}</span>
-                  </button>
-                  <button
-                    className={`reaction-btn dislike-btn${userReaction === 'dislike' ? ' active' : ''}`}
-                    onClick={handleDislike}
-                    title={userReaction === 'dislike' ? 'Remove dislike' : 'Dislike this track'}
-                  >
-                    <span className="reaction-icon dislike-icon"></span>
-                    <span className="reaction-count">{trackReactions.dislikes}</span>
-                  </button>
-                </div>
               </div>
             )}
 
@@ -1075,44 +1057,65 @@ function App() {
               />
             )}
 
-            {canControl && (
+            {currentTrack && (
               <div className="transport-controls">
+                {canControl && (
+                  <>
+                    <button
+                      className="transport-btn"
+                      onClick={handlePrevTrack}
+                      disabled={!currentTrack}
+                      title={playHistory.length > 0 ? "Previous track" : "Restart track"}
+                    >
+                      <span className="transport-icon prev-icon"></span>
+                    </button>
+                    <button
+                      className="transport-btn transport-play-btn"
+                      onClick={handlePlayPause}
+                      disabled={!currentTrack}
+                    >
+                      {isPlaying
+                        ? <span className="transport-icon pause-icon"></span>
+                        : <span className="transport-icon play-icon"></span>
+                      }
+                    </button>
+                    <button
+                      className="transport-btn"
+                      onClick={handleNextTrack}
+                      disabled={!currentTrack || queue.length === 0}
+                      title="Next track"
+                    >
+                      <span className="transport-icon next-icon"></span>
+                    </button>
+                    <button
+                      className={`transport-btn repeat-btn${repeatMode ? ' repeat-active' : ''}`}
+                      onClick={() => {
+                        const next = !repeatMode;
+                        setRepeatMode(next);
+                        localStorage.setItem('jam_repeat', next ? 'on' : 'off');
+                      }}
+                      title={repeatMode ? 'Repeat: ON' : 'Repeat: OFF'}
+                    >
+                      <span className="transport-icon repeat-icon"></span>
+                    </button>
+                    <div className="transport-separator"></div>
+                  </>
+                )}
                 <button
-                  className="transport-btn"
-                  onClick={handlePrevTrack}
-                  disabled={!currentTrack}
-                  title={playHistory.length > 0 ? "Previous track" : "Restart track"}
+                  className={`transport-btn like-btn${userReaction === 'like' ? ' active' : ''}`}
+                  onClick={handleLike}
+                  title={userReaction === 'like' ? 'Remove like' : 'Like this track'}
                 >
-                  <span className="transport-icon prev-icon"></span>
+                  <span className="transport-icon like-icon"></span>
+                  {trackReactions.likes > 0 && <span className="reaction-count">{trackReactions.likes}</span>}
                 </button>
                 <button
-                  className="transport-btn transport-play-btn"
-                  onClick={handlePlayPause}
-                  disabled={!currentTrack}
+                  className={`transport-btn dislike-btn${userReaction === 'dislike' ? ' active' : ''}`}
+                  onClick={handleDislike}
+                  title={userReaction === 'dislike' ? 'Remove dislike' : 'Dislike this track'}
                 >
-                  {isPlaying
-                    ? <span className="transport-icon pause-icon"></span>
-                    : <span className="transport-icon play-icon"></span>
-                  }
-                </button>
-                <button
-                  className="transport-btn"
-                  onClick={handleNextTrack}
-                  disabled={!currentTrack || queue.length === 0}
-                  title="Next track"
-                >
-                  <span className="transport-icon next-icon"></span>
-                </button>
-                <button
-                  className={`transport-btn repeat-btn${repeatMode ? ' repeat-active' : ''}`}
-                  onClick={() => {
-                    const next = !repeatMode;
-                    setRepeatMode(next);
-                    localStorage.setItem('jam_repeat', next ? 'on' : 'off');
-                  }}
-                  title={repeatMode ? 'Repeat: ON' : 'Repeat: OFF'}
-                >
-                  <span className="transport-icon repeat-icon"></span>
+                  <span className="transport-icon dislike-icon"></span>
+                  {trackReactions.dislikes > 0 && <span className="reaction-count">{trackReactions.dislikes}</span>}
                 </button>
               </div>
             )}
