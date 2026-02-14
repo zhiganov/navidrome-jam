@@ -6,19 +6,31 @@ export class RoomManager {
   }
 
   /**
-   * Generate a random room code (6 characters)
+   * Generate a random room code (8 hex characters = 4.3 billion combinations)
    */
   generateRoomCode() {
-    return randomBytes(3).toString('hex').toUpperCase();
+    return randomBytes(4).toString('hex').toUpperCase();
   }
 
   /**
    * Create a new room
    */
   createRoom(roomId = null, hostName = 'Host', community = null) {
-    const id = roomId || this.generateRoomCode();
+    let id = roomId;
 
-    if (this.rooms.has(id)) {
+    if (!id) {
+      // Retry up to 5 times if generated code collides
+      for (let i = 0; i < 5; i++) {
+        const candidate = this.generateRoomCode();
+        if (!this.rooms.has(candidate)) {
+          id = candidate;
+          break;
+        }
+      }
+      if (!id) {
+        throw new Error('Failed to generate unique room code');
+      }
+    } else if (this.rooms.has(id)) {
       throw new Error('Room already exists');
     }
 

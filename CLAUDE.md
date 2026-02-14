@@ -294,16 +294,24 @@ Server → POST navidrome/api/user { userName, password, isAdmin: false }
 Server → 201 { message: "Account created successfully" }
 ```
 
-### Client localStorage Keys
+### Client Storage Keys
+
+**sessionStorage** (cleared on tab close):
+
+| Key | Purpose |
+|-----|---------|
+| `navidrome_username` | Navidrome username for session restore |
+| `navidrome_token` | MD5(password + salt) for Subsonic auth |
+| `navidrome_salt` | Random salt used in token generation |
+
+**localStorage** (persistent preferences):
 
 | Key | Purpose |
 |-----|---------|
 | `jam_user_id` | Persistent user ID (`user-<random>`) for WebSocket identity |
-| `navidrome_username` | Navidrome username for session restore |
-| `navidrome_token` | MD5(password + salt) for Subsonic auth |
-| `navidrome_salt` | Random salt used in token generation |
 | `audio_volume` | Last-used volume level (0.0–1.0) |
 | `jam_repeat` | Repeat mode (`on` / `off`) |
+| `jam_community` | Last-used community name for room creation |
 
 ## Testing
 

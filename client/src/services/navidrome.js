@@ -3,14 +3,8 @@ import CryptoJS from 'crypto-js';
 /**
  * Navidrome Subsonic API Client
  *
- * SECURITY CONSIDERATIONS:
- * - Authentication tokens are stored in localStorage for session persistence
- * - localStorage is vulnerable to XSS attacks, but this is an acceptable trade-off:
- *   1. Users authenticate with their personal Navidrome instance
- *   2. httpOnly cookies would require server-side session management
- *   3. Music player apps have lower security requirements than financial apps
- * - Stored credentials are validated on restore to detect tampering/expiry
- * - Users should ensure their Navidrome instance is served over HTTPS
+ * SECURITY: Credentials stored in sessionStorage (cleared on tab close).
+ * Validated on restore to detect tampering/expiry.
  */
 class NavidromeClient {
   constructor(baseUrl) {
@@ -78,30 +72,22 @@ class NavidromeClient {
     this.token = token;
     this.salt = salt;
 
-    // Store in localStorage
-    localStorage.setItem('navidrome_username', username);
-    localStorage.setItem('navidrome_token', token);
-    localStorage.setItem('navidrome_salt', salt);
+    // Store in sessionStorage
+    sessionStorage.setItem('navidrome_username', username);
+    sessionStorage.setItem('navidrome_token', token);
+    sessionStorage.setItem('navidrome_salt', salt);
 
     return data['subsonic-response'];
   }
 
   /**
-   * Restore session from localStorage and validate with Navidrome
-   *
-   * SECURITY NOTE: Credentials are stored in localStorage which is vulnerable to XSS attacks.
-   * This is an acceptable trade-off for this application because:
-   * 1. Users authenticate with their personal Navidrome instance (not a shared service)
-   * 2. The alternative (httpOnly cookies) requires server-side session management
-   * 3. This is a music player, not a banking app - risk profile is lower
-   * 4. We validate stored credentials on restore to detect tampering/expiry
-   *
-   * Mitigation: Always validate stored credentials before use.
+   * Restore session from sessionStorage and validate with Navidrome.
+   * Credentials are cleared when the tab closes.
    */
   async restoreSession() {
-    const username = localStorage.getItem('navidrome_username');
-    const token = localStorage.getItem('navidrome_token');
-    const salt = localStorage.getItem('navidrome_salt');
+    const username = sessionStorage.getItem('navidrome_username');
+    const token = sessionStorage.getItem('navidrome_token');
+    const salt = sessionStorage.getItem('navidrome_salt');
 
     if (!username || !token || !salt) {
       return false;
@@ -150,12 +136,12 @@ class NavidromeClient {
   }
 
   /**
-   * Clear stored credentials from localStorage
+   * Clear stored credentials from sessionStorage
    */
   clearStoredCredentials() {
-    localStorage.removeItem('navidrome_username');
-    localStorage.removeItem('navidrome_token');
-    localStorage.removeItem('navidrome_salt');
+    sessionStorage.removeItem('navidrome_username');
+    sessionStorage.removeItem('navidrome_token');
+    sessionStorage.removeItem('navidrome_salt');
   }
 
   /**

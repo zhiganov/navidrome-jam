@@ -37,8 +37,8 @@ function validateRoomId(roomId) {
     return { valid: false, error: 'roomId must be a string' };
   }
 
-  if (roomId.length > 6) {
-    return { valid: false, error: 'roomId must be at most 6 characters' };
+  if (roomId.length > 8) {
+    return { valid: false, error: 'roomId must be at most 8 characters' };
   }
 
   if (!/^[a-zA-Z0-9]+$/.test(roomId)) {
@@ -805,8 +805,8 @@ fetchCodes();
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  let currentRoomId = null;
-  let currentUserId = null;
+  socket.data.roomId = null;
+  socket.data.userId = null;
 
   // Join a room
   socket.on('join-room', ({ roomId, userId, username }) => {
@@ -834,15 +834,15 @@ io.on('connection', (socket) => {
       }
 
       // Leave previous room if any
-      if (currentRoomId) {
-        socket.leave(currentRoomId);
-        roomManager.removeUser(currentRoomId, currentUserId);
+      if (socket.data.roomId) {
+        socket.leave(socket.data.roomId);
+        roomManager.removeUser(socket.data.roomId, socket.data.userId);
       }
 
       // Join new room
       socket.join(roomId);
-      currentRoomId = roomId;
-      currentUserId = userId;
+      socket.data.roomId = roomId;
+      socket.data.userId = userId;
 
       const user = roomManager.addUser(roomId, {
         id: userId,
@@ -877,7 +877,7 @@ io.on('connection', (socket) => {
   socket.on('play', ({ roomId, trackId, position = 0 }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+      if (!room || !roomManager.canControl(roomId, socket.data.userId)) {
         socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
@@ -901,7 +901,7 @@ io.on('connection', (socket) => {
   socket.on('pause', ({ roomId, position }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+      if (!room || !roomManager.canControl(roomId, socket.data.userId)) {
         socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
@@ -924,7 +924,7 @@ io.on('connection', (socket) => {
   socket.on('seek', ({ roomId, position }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+      if (!room || !roomManager.canControl(roomId, socket.data.userId)) {
         socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can control playback' });
         return;
       }
@@ -946,7 +946,7 @@ io.on('connection', (socket) => {
   socket.on('update-queue', ({ roomId, queue }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || !roomManager.canControl(roomId, currentUserId)) {
+      if (!room || !roomManager.canControl(roomId, socket.data.userId)) {
         socket.emit('error', { message: 'Unauthorized: Only host or co-hosts can update queue' });
         return;
       }
@@ -984,7 +984,7 @@ io.on('connection', (socket) => {
   socket.on('promote-cohost', ({ roomId, userId }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
+      if (!room || room.hostId !== socket.data.userId) {
         socket.emit('error', { message: 'Unauthorized: Only host can promote co-hosts' });
         return;
       }
@@ -995,7 +995,7 @@ io.on('connection', (socket) => {
       }
 
       // Can't promote yourself or someone not in the room
-      if (userId === currentUserId) return;
+      if (userId === socket.data.userId) return;
       if (!room.users.find(u => u.id === userId)) {
         socket.emit('error', { message: 'User not found in room' });
         return;
@@ -1014,7 +1014,7 @@ io.on('connection', (socket) => {
   socket.on('demote-cohost', ({ roomId, userId }) => {
     try {
       const room = roomManager.getRoom(roomId);
-      if (!room || room.hostId !== currentUserId) {
+      if (!room || room.hostId !== socket.data.userId) {
         socket.emit('error', { message: 'Unauthorized: Only host can demote co-hosts' });
         return;
       }
@@ -1032,30 +1032,30 @@ io.on('connection', (socket) => {
 
   // Leave room explicitly (without disconnecting)
   socket.on('leave-room', () => {
-    if (currentRoomId && currentUserId) {
+    if (socket.data.roomId && socket.data.userId) {
       try {
-        const room = roomManager.getRoom(currentRoomId);
-        const wasHost = room?.hostId === currentUserId;
+        const room = roomManager.getRoom(socket.data.roomId);
+        const wasHost = room?.hostId === socket.data.userId;
 
-        socket.leave(currentRoomId);
-        roomManager.removeUser(currentRoomId, currentUserId);
+        socket.leave(socket.data.roomId);
+        roomManager.removeUser(socket.data.roomId, socket.data.userId);
 
-        const updatedRoom = roomManager.getRoom(currentRoomId);
+        const updatedRoom = roomManager.getRoom(socket.data.roomId);
 
         if (updatedRoom) {
           // Notify others in the room
-          io.to(currentRoomId).emit('user-left', {
-            userId: currentUserId,
+          io.to(socket.data.roomId).emit('user-left', {
+            userId: socket.data.userId,
             room: updatedRoom,
             newHost: wasHost ? updatedRoom.hostId : null
           });
         } else {
-          console.log(`Room ${currentRoomId} deleted (empty)`);
+          console.log(`Room ${socket.data.roomId} deleted (empty)`);
         }
 
-        console.log(`User ${currentUserId} left room ${currentRoomId}`);
-        currentRoomId = null;
-        currentUserId = null;
+        console.log(`User ${socket.data.userId} left room ${socket.data.roomId}`);
+        socket.data.roomId = null;
+        socket.data.userId = null;
       } catch (error) {
         console.error('Error leaving room:', error);
       }
@@ -1065,7 +1065,7 @@ io.on('connection', (socket) => {
   // Heartbeat for presence tracking
   socket.on('heartbeat', ({ roomId, position }) => {
     try {
-      roomManager.updateUserPosition(roomId, currentUserId, position);
+      roomManager.updateUserPosition(roomId, socket.data.userId, position);
     } catch (error) {
       // Silent fail - heartbeats are not critical
     }
@@ -1075,25 +1075,25 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
 
-    if (currentRoomId && currentUserId) {
+    if (socket.data.roomId && socket.data.userId) {
       try {
-        const room = roomManager.getRoom(currentRoomId);
-        const wasHost = room?.hostId === currentUserId;
+        const room = roomManager.getRoom(socket.data.roomId);
+        const wasHost = room?.hostId === socket.data.userId;
 
-        roomManager.removeUser(currentRoomId, currentUserId);
+        roomManager.removeUser(socket.data.roomId, socket.data.userId);
 
-        const updatedRoom = roomManager.getRoom(currentRoomId);
+        const updatedRoom = roomManager.getRoom(socket.data.roomId);
 
         if (updatedRoom) {
           // Notify others in the room
-          io.to(currentRoomId).emit('user-left', {
-            userId: currentUserId,
+          io.to(socket.data.roomId).emit('user-left', {
+            userId: socket.data.userId,
             room: updatedRoom,
             newHost: wasHost ? updatedRoom.hostId : null
           });
         } else {
           // Room was deleted (no users left)
-          console.log(`Room ${currentRoomId} deleted (empty)`);
+          console.log(`Room ${socket.data.roomId} deleted (empty)`);
         }
       } catch (error) {
         console.error('Error handling disconnect:', error);
