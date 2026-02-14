@@ -1163,21 +1163,18 @@ body {
   background: #a0a0a0;
 }
 
-/* Repeat icon — SVG loop arrows via CSS mask */
+/* Repeat icon — green loop arrows with dark outline (Win98 toolbar style) */
 .repeat-icon {
   width: 22px;
   height: 18px;
-  background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h13v8M14 3l3 3-3 3M20 14H7V6M10 17l-3-3 3-3' stroke='%23000' stroke-width='4'/%3E%3Cpath d='M4 6h13v8M14 3l3 3-3 3M20 14H7V6M10 17l-3-3 3-3' stroke='%232d7e2d' stroke-width='2'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .repeat-active .repeat-icon {
-  background-color: #006000;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h13v8M14 3l3 3-3 3M20 14H7V6M10 17l-3-3 3-3' stroke='%23004400' stroke-width='4'/%3E%3Cpath d='M4 6h13v8M14 3l3 3-3 3M20 14H7V6M10 17l-3-3 3-3' stroke='%2300cc00' stroke-width='2'/%3E%3C/svg%3E");
 }
 
 /* Transport separator — thin vertical line between transport and reaction groups */
@@ -1224,38 +1221,32 @@ body {
   color: #990000;
 }
 
-/* Thumbs-up icon — SVG hand silhouette via CSS mask */
+/* Thumbs-up icon — gold hand with dark outline (Win98 toolbar style) */
 .like-icon {
   width: 16px;
   height: 18px;
-  background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='black'%3E%3Cpath d='M2 9V3a3 3 0 016 0v6h5a2 2 0 012 2v4a2 2 0 01-2 2H2a2 2 0 01-2-2v-4a2 2 0 012-2z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='black'%3E%3Cpath d='M2 9V3a3 3 0 016 0v6h5a2 2 0 012 2v4a2 2 0 01-2 2H2a2 2 0 01-2-2v-4a2 2 0 012-2z'/%3E%3C/svg%3E");
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 20'%3E%3Cpath d='M3 10V4a3 3 0 016 0v6h5a2 2 0 012 2v4a2 2 0 01-2 2H3a2 2 0 01-2-2v-4a2 2 0 012-2z' fill='%23daa520' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .like-btn.active .like-icon {
-  background-color: #006000;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 20'%3E%3Cpath d='M3 10V4a3 3 0 016 0v6h5a2 2 0 012 2v4a2 2 0 01-2 2H3a2 2 0 01-2-2v-4a2 2 0 012-2z' fill='%2322aa22' stroke='%23004400' stroke-width='1.5'/%3E%3C/svg%3E");
 }
 
-/* Thumbs-down icon — vertically mirrored thumbs-up via CSS mask */
+/* Thumbs-down icon — gold hand with dark outline, mirrored (Win98 toolbar style) */
 .dislike-icon {
   width: 16px;
   height: 18px;
-  background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='black'%3E%3Cpath d='M2 8v6a3 3 0 006 0V8h5a2 2 0 002-2V2a2 2 0 00-2-2H2A2 2 0 000 2v4a2 2 0 002 2z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='black'%3E%3Cpath d='M2 8v6a3 3 0 006 0V8h5a2 2 0 002-2V2a2 2 0 00-2-2H2A2 2 0 000 2v4a2 2 0 002 2z'/%3E%3C/svg%3E");
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 20'%3E%3Cpath d='M3 9v6a3 3 0 006 0V9h5a2 2 0 002-2V3a2 2 0 00-2-2H3A2 2 0 001 3v4a2 2 0 002 2z' fill='%23daa520' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .dislike-btn.active .dislike-icon {
-  background-color: #990000;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 20'%3E%3Cpath d='M3 9v6a3 3 0 006 0V9h5a2 2 0 002-2V3a2 2 0 00-2-2H3A2 2 0 001 3v4a2 2 0 002 2z' fill='%23cc2222' stroke='%23440000' stroke-width='1.5'/%3E%3C/svg%3E");
 }
 
 /* Search Panel */
