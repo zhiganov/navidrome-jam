@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavidrome } from './contexts/NavidromeContext';
 import { useJam } from './contexts/JamContext';
 import SyncedAudioPlayer from './components/SyncedAudioPlayer';
+import CatPicker from './components/CatPicker';
+import CatDanceFloor from './components/CatDanceFloor';
+import PawButton from './components/PawButton';
 import './App.css';
 
 function App() {
@@ -62,6 +65,12 @@ function App() {
     return localStorage.getItem('jam_repeat') === 'on';
   });
 
+  // Cat & paw state (Jam With Boo)
+  const [catSelections, setCatSelections] = useState({});
+  const [pawHolders, setPawHolders] = useState([]);
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const [magicFlash, setMagicFlash] = useState(false);
+
   // Restore session on mount
   useEffect(() => {
     const restoreSession = async () => {
@@ -94,6 +103,15 @@ function App() {
       setQueue(room.queue || []);
       setIsJoiningRoom(false);
       setIsCreatingRoom(false);
+
+      // Load cat and paw state from room
+      setCatSelections(room.catSelections || {});
+      setPawHolders(room.pawHolders || []);
+
+      // Show cat picker if user hasn't selected a cat yet
+      if (!room.catSelections?.[jamClient.userId]) {
+        setShowCatPicker(true);
+      }
 
       // On join, load and sync to current playback state
       const ps = room.playbackState;
@@ -154,6 +172,19 @@ function App() {
       setUserReaction(myReaction);
     };
 
+    const handleCatUpdated = ({ catSelections: selections }) => {
+      setCatSelections(selections);
+    };
+
+    const handlePawState = ({ pawHolders: holders }) => {
+      setPawHolders(holders);
+      // Trigger screen flash when 2+ holders start simultaneously
+      if (holders.length >= 2) {
+        setMagicFlash(true);
+        setTimeout(() => setMagicFlash(false), 800);
+      }
+    };
+
     const handleDisconnected = () => {
       setIsConnected(false);
       setCurrentRoom(null);
@@ -168,6 +199,8 @@ function App() {
     jamClient.on('error', handleError);
     jamClient.on('disconnected', handleDisconnected);
     jamClient.on('track-reactions', handleTrackReactions);
+    jamClient.on('cat-updated', handleCatUpdated);
+    jamClient.on('paw-state', handlePawState);
 
     return () => {
       jamClient.off('room-state', handleRoomState);
@@ -179,6 +212,8 @@ function App() {
       jamClient.off('error', handleError);
       jamClient.off('disconnected', handleDisconnected);
       jamClient.off('track-reactions', handleTrackReactions);
+      jamClient.off('cat-updated', handleCatUpdated);
+      jamClient.off('paw-state', handlePawState);
       jamClient.disconnect();
     };
   }, []);
@@ -581,6 +616,9 @@ function App() {
     setIsPlaying(false);
     setTrackReactions({ likes: 0, dislikes: 0 });
     setUserReaction(null);
+    setCatSelections({});
+    setPawHolders([]);
+    setShowCatPicker(false);
 
     console.log('Left room');
   };
@@ -655,6 +693,18 @@ function App() {
     setIsPlaying(!paused);
   }, []);
 
+  const handleSelectCat = useCallback((catId) => {
+    jamClient.selectCat(catId);
+    setShowCatPicker(false);
+  }, [jamClient]);
+
+  // Calculate paw magic level
+  const pawMagicLevel = pawHolders.length >= 3 ? 3 : pawHolders.length >= 2 ? 2 : 0;
+
+  // Should we show dancing cats instead of album art?
+  const catCount = Object.keys(catSelections).length;
+  const showDancingCats = catCount >= 2;
+
   const handleLike = useCallback(() => {
     if (!currentTrack) return;
 
@@ -693,15 +743,15 @@ function App() {
       <div className="app login-screen">
         <div className="login-container win98-window">
           <div className="win98-titlebar">
-            <span className="win98-titlebar-text">Navidrome Jam - Welcome</span>
+            <span className="win98-titlebar-text">Jam With Boo - Welcome</span>
             <div className="win98-titlebar-buttons">
               <button className="win98-titlebar-btn">_</button>
               <button className="win98-titlebar-btn">X</button>
             </div>
           </div>
           <div className="win98-body">
-            <h1>Navidrome Jam</h1>
-            <div className="login-subtitle">~ The Music Lounge ~</div>
+            <h1>Jam With Boo</h1>
+            <div className="login-subtitle">~ Valentine&apos;s Music Lounge ~</div>
 
             <hr className="retro-divider" />
 
@@ -836,14 +886,14 @@ function App() {
       <div className="app room-screen">
         <div className="room-container win98-window">
           <div className="win98-titlebar">
-            <span className="win98-titlebar-text">Navidrome Jam - Room Select</span>
+            <span className="win98-titlebar-text">Jam With Boo - Room Select</span>
             <div className="win98-titlebar-buttons">
               <button className="win98-titlebar-btn">_</button>
               <button className="win98-titlebar-btn">X</button>
             </div>
           </div>
           <div className="win98-body">
-            <h1>Navidrome Jam</h1>
+            <h1>Jam With Boo</h1>
             <p>Welcome, {username}!</p>
 
             <hr className="retro-divider" />
@@ -951,7 +1001,7 @@ function App() {
         <div className="geocities-footer">
           <div className="marquee-container">
             <span className="marquee-text">
-              ~*~ Welcome to the Navidrome Jam Music Lounge! Listen together with friends! ~*~
+              ~*~ Welcome to Jam With Boo! Listen together with your cats! ~*~
             </span>
           </div>
           <a href="https://github.com/zhiganov/navidrome-jam" target="_blank" rel="noopener" className="github-badge">&#9733; Source Code on GitHub &#9733;</a>
@@ -964,7 +1014,7 @@ function App() {
   return (
     <div className="app jam-screen">
       <header>
-        <h1>Navidrome Jam</h1>
+        <h1>Jam With Boo</h1>
         <div className="header-info">
           <span>Room: {currentRoom.id}</span>
           <span>{isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}</span>
@@ -982,6 +1032,15 @@ function App() {
             Users ({currentRoom.users?.length || 0})
           </div>
           <div className="panel-body">
+            {catSelections[jamClient.userId] !== undefined && (
+              <button
+                className="win98-btn"
+                onClick={() => setShowCatPicker(true)}
+                style={{ marginBottom: 6, fontSize: 10, width: '100%' }}
+              >
+                Change Cat
+              </button>
+            )}
             <ul className="users-list">
               {currentRoom.users?.map((user) => {
                 const userIsHost = user.id === currentRoom.hostId;
@@ -1033,9 +1092,15 @@ function App() {
 
             {currentTrack && (
               <div className="now-playing">
-                {currentTrack.coverArt && (
+                {showDancingCats ? (
+                  <CatDanceFloor
+                    catSelections={catSelections}
+                    isPlaying={isPlaying}
+                    pawMagicLevel={pawMagicLevel}
+                  />
+                ) : currentTrack.coverArt ? (
                   <img src={currentTrack.coverArt} alt="Album art" className="cover-art" />
-                )}
+                ) : null}
                 <div className="track-info">
                   <h2>{currentTrack.title}</h2>
                   <p>{currentTrack.artist}</p>
@@ -1117,6 +1182,11 @@ function App() {
                   <span className="transport-icon dislike-icon"></span>
                   {trackReactions.dislikes > 0 && <span className="reaction-count">{trackReactions.dislikes}</span>}
                 </button>
+                <div className="transport-separator"></div>
+                <PawButton
+                  jamClient={jamClient}
+                  pawHolders={pawHolders}
+                />
               </div>
             )}
 
@@ -1600,6 +1670,27 @@ function App() {
           {isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}
         </div>
       </div>
+
+      {/* Cat picker modal */}
+      {showCatPicker && (
+        <div className="cat-picker-overlay">
+          <div className="cat-picker-modal">
+            <div className="win98-titlebar">
+              <span className="win98-titlebar-text">Choose Your Cat</span>
+            </div>
+            <div className="win98-body">
+              <CatPicker
+                onSelect={handleSelectCat}
+                catSelections={catSelections}
+                currentUserId={jamClient.userId}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Magic screen flash */}
+      {magicFlash && <div className="magic-screen-flash" />}
     </div>
   );
 }

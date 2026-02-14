@@ -49,6 +49,8 @@ export class RoomManager {
         timestamp: Date.now()
       },
       reactions: {},
+      catSelections: {}, // userId -> catId (0-8)
+      pawHolders: new Set(), // Set of userIds currently holding paw
       createdAt: Date.now()
     };
 
@@ -141,6 +143,9 @@ export class RoomManager {
     room.users = room.users.filter(u => u.id !== userId);
     // Remove from co-hosts if they were one
     room.coHosts = room.coHosts.filter(id => id !== userId);
+    // Clean up cat selection and paw hold
+    delete room.catSelections[userId];
+    room.pawHolders.delete(userId);
 
     // If room is empty, delete it
     if (room.users.length === 0) {
@@ -240,6 +245,55 @@ export class RoomManager {
     }
 
     return { likes, dislikes, reactions: trackReactions };
+  }
+
+  /**
+   * Select a cat avatar for a user in a room
+   */
+  selectCat(roomId, userId, catId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    if (catId < 0 || catId > 8) throw new Error('Invalid cat ID');
+    room.catSelections[userId] = catId;
+    return room.catSelections;
+  }
+
+  /**
+   * Get cat selections for a room
+   */
+  getCatSelections(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return {};
+    return room.catSelections;
+  }
+
+  /**
+   * Set a user as holding the paw button
+   */
+  setPawHold(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    room.pawHolders.add(userId);
+    return Array.from(room.pawHolders);
+  }
+
+  /**
+   * Release a user's paw hold
+   */
+  releasePaw(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) throw new Error('Room not found');
+    room.pawHolders.delete(userId);
+    return Array.from(room.pawHolders);
+  }
+
+  /**
+   * Get current paw holders
+   */
+  getPawHolders(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return [];
+    return Array.from(room.pawHolders);
   }
 
   /**

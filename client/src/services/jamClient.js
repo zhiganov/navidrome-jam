@@ -97,6 +97,16 @@ class JamClient {
       this.emit('track-reactions', data);
     });
 
+    this.socket.on('cat-updated', (data) => {
+      console.log('Cat updated:', data);
+      this.emit('cat-updated', data);
+    });
+
+    this.socket.on('paw-state', (data) => {
+      console.log('Paw state:', data);
+      this.emit('paw-state', data);
+    });
+
     this.socket.on('error', ({ message }) => {
       console.error('Server error:', message);
       this.emit('error', message);
@@ -314,6 +324,39 @@ class JamClient {
     this.socket.emit('remove-reaction', {
       roomId: this.currentRoomId,
       trackId
+    });
+  }
+
+  /**
+   * Select a cat avatar
+   */
+  selectCat(catId) {
+    if (!this.currentRoomId) {
+      throw new Error('Not in a room');
+    }
+    this.socket.emit('select-cat', {
+      roomId: this.currentRoomId,
+      catId
+    });
+  }
+
+  /**
+   * Signal paw button hold
+   */
+  pawHold() {
+    if (!this.currentRoomId) return;
+    this.socket.emit('paw-hold', {
+      roomId: this.currentRoomId
+    });
+  }
+
+  /**
+   * Signal paw button release
+   */
+  pawRelease() {
+    if (!this.currentRoomId) return;
+    this.socket.emit('paw-release', {
+      roomId: this.currentRoomId
     });
   }
 

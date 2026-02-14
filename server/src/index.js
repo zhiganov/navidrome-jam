@@ -801,6 +801,12 @@ fetchCodes();
 </html>`;
 }
 
+// Serialize room for JSON transport (converts Sets to arrays)
+function serializeRoom(room) {
+  if (!room) return room;
+  return { ...room, pawHolders: Array.from(room.pawHolders) };
+}
+
 // WebSocket connection handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -853,7 +859,7 @@ io.on('connection', (socket) => {
 
       // Send current room state to the joining user
       const currentRoom = roomManager.getRoom(roomId);
-      socket.emit('room-state', { room: currentRoom });
+      socket.emit('room-state', { room: serializeRoom(currentRoom) });
 
       // If there's an active track, send sync so the player starts playback
       if (currentRoom.playbackState.trackId) {
@@ -872,7 +878,7 @@ io.on('connection', (socket) => {
       // Notify others in the room
       socket.to(roomId).emit('user-joined', {
         user,
-        room: currentRoom
+        room: serializeRoom(currentRoom)
       });
 
       console.log(`User ${username} (${userId}) joined room ${roomId}`);
@@ -1011,7 +1017,7 @@ io.on('connection', (socket) => {
       }
 
       roomManager.addCoHost(roomId, userId);
-      io.to(roomId).emit('cohost-updated', { room: roomManager.getRoom(roomId) });
+      io.to(roomId).emit('cohost-updated', { room: serializeRoom(roomManager.getRoom(roomId)) });
       console.log(`Room ${roomId}: ${userId} promoted to co-host`);
     } catch (error) {
       console.error('Error promoting co-host:', error);
@@ -1031,7 +1037,7 @@ io.on('connection', (socket) => {
       if (!userId || typeof userId !== 'string') return;
 
       roomManager.removeCoHost(roomId, userId);
-      io.to(roomId).emit('cohost-updated', { room: roomManager.getRoom(roomId) });
+      io.to(roomId).emit('cohost-updated', { room: serializeRoom(roomManager.getRoom(roomId)) });
       console.log(`Room ${roomId}: ${userId} demoted from co-host`);
     } catch (error) {
       console.error('Error demoting co-host:', error);
@@ -1102,6 +1108,58 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Select a cat avatar
+  socket.on('select-cat', ({ roomId, catId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+      if (typeof catId !== 'number' || catId < 0 || catId > 8) {
+        socket.emit('error', { message: 'Invalid cat ID' });
+        return;
+      }
+
+      const selections = roomManager.selectCat(roomId, socket.data.userId, catId);
+      io.to(roomId).emit('cat-updated', { catSelections: selections });
+    } catch (error) {
+      console.error('Error selecting cat:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Paw button hold
+  socket.on('paw-hold', ({ roomId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+
+      const holders = roomManager.setPawHold(roomId, socket.data.userId);
+      io.to(roomId).emit('paw-state', { pawHolders: holders });
+    } catch (error) {
+      console.error('Error paw hold:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
+  // Paw button release
+  socket.on('paw-release', ({ roomId }) => {
+    try {
+      if (!socket.data.roomId || socket.data.roomId !== roomId) {
+        socket.emit('error', { message: 'Not in this room' });
+        return;
+      }
+
+      const holders = roomManager.releasePaw(roomId, socket.data.userId);
+      io.to(roomId).emit('paw-state', { pawHolders: holders });
+    } catch (error) {
+      console.error('Error paw release:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Leave room explicitly (without disconnecting)
   socket.on('leave-room', () => {
     if (socket.data.roomId && socket.data.userId) {
@@ -1118,7 +1176,7 @@ io.on('connection', (socket) => {
           // Notify others in the room
           io.to(socket.data.roomId).emit('user-left', {
             userId: socket.data.userId,
-            room: updatedRoom,
+            room: serializeRoom(updatedRoom),
             newHost: wasHost ? updatedRoom.hostId : null
           });
         } else {
@@ -1160,7 +1218,7 @@ io.on('connection', (socket) => {
           // Notify others in the room
           io.to(socket.data.roomId).emit('user-left', {
             userId: socket.data.userId,
-            room: updatedRoom,
+            room: serializeRoom(updatedRoom),
             newHost: wasHost ? updatedRoom.hostId : null
           });
         } else {
