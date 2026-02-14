@@ -1168,8 +1168,8 @@ body {
   width: 22px;
   height: 18px;
   background-color: var(--text-dark);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 18' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h13v8'/%3E%3Cpolyline points='13,2 16,5 13,8'/%3E%3Cpath d='M19 13H6V5'/%3E%3Cpolyline points='9,16 6,13 9,10'/%3E%3C/svg%3E");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
