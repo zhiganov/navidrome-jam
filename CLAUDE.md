@@ -132,7 +132,7 @@ Single-page app with three screens in `App.jsx`: Login → Room Selection → Ja
 - `services/jamClient.js` — Socket.io wrapper with custom event emitter (manual `listeners` map, not Node EventEmitter). Room creation and registration use REST; everything else uses WebSocket.
 - `contexts/NavidromeContext.jsx` and `JamContext.jsx` — React Context providers that create/destroy client instances on mount/unmount. Required to prevent duplicate listeners during Vite hot-reload.
 
-**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport control icons are CSS-only `box-shadow` pixel art — no icon fonts or SVGs.
+**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport icons (prev/play/pause/next) use CSS borders for triangles and bars. Repeat, like, and dislike icons use SVG via CSS `mask-image` data URIs — monochrome by default (`background-color: var(--text-dark)`), colored when active. Like/dislike paths are from Bootstrap Icons (`hand-thumbs-up-fill`); repeat is Lucide-style arrows.
 
 ### Synchronization Protocol
 
