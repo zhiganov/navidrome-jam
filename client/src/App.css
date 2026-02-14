@@ -4,8 +4,14 @@
 
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 :root {
@@ -39,6 +45,7 @@ body {
 /* Tiled starfield background */
 .app {
   min-height: 100vh;
+  overflow-x: hidden;
   background-color: #000022;
   background-image:
     radial-gradient(1px 1px at 10% 20%, #ffffff44, transparent),
@@ -1796,23 +1803,23 @@ body {
   flex: 3;
 }
 
-/* Scrollbar — Win98 style */
-::-webkit-scrollbar {
+/* Scrollbar — Win98 style (scoped to jam screen panels only) */
+.jam-screen ::-webkit-scrollbar {
   width: 16px;
   height: 16px;
 }
 
-::-webkit-scrollbar-track {
+.jam-screen ::-webkit-scrollbar-track {
   background: repeating-conic-gradient(var(--win-bg) 0% 25%, #ffffff 0% 50%) 50% / 2px 2px;
 }
 
-::-webkit-scrollbar-thumb {
+.jam-screen ::-webkit-scrollbar-thumb {
   background: var(--win-bg);
   border: 2px solid;
   border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
 }
 
-::-webkit-scrollbar-button {
+.jam-screen ::-webkit-scrollbar-button {
   background: var(--win-bg);
   border: 2px solid;
   border-color: var(--win-light) var(--win-darkest) var(--win-darkest) var(--win-light);
