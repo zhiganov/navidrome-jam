@@ -287,7 +287,6 @@ body {
   width: 100%;
   max-width: 420px;
   min-width: 0;
-  overflow: hidden;
 }
 
 .login-container .win98-body {
@@ -433,7 +432,6 @@ body {
   width: 100%;
   max-width: 420px;
   min-width: 0;
-  overflow: hidden;
 }
 
 .room-container h1 {
