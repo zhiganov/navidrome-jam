@@ -1876,19 +1876,34 @@ body {
   flex: 3;
 }
 
-/* Community select in status bar — hidden on desktop (shown in header instead) */
-.status-bar-community {
+/* Mobile community bar — own row above status bar, hidden on desktop */
+.mobile-community-bar {
   display: none;
+  background: var(--win-bg);
+  border-top: 1px solid var(--win-light);
+  border-bottom: 1px solid var(--win-dark);
+  padding: 3px 8px;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Tahoma', sans-serif;
+  color: var(--text-dark);
 }
 
-.status-community-select {
+.mobile-community-bar label {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.mobile-community-select {
+  flex: 1;
   font-family: 'Tahoma', sans-serif;
   font-size: 11px;
   background: var(--input-bg);
   color: var(--text-dark);
-  border: none;
-  padding: 0;
-  width: 100%;
+  border: 1px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  padding: 2px 4px;
   cursor: pointer;
 }
 
@@ -2008,8 +2023,8 @@ body {
     display: none;
   }
 
-  .status-bar-community {
-    display: block;
+  .mobile-community-bar {
+    display: flex;
   }
 
   .player-panel .panel-body {

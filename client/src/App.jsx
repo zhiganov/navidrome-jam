@@ -1847,6 +1847,25 @@ function App() {
         </aside>
       </div>
 
+      {communities.length > 0 && isHost && (
+        <div className="mobile-community-bar">
+          <label>Community:</label>
+          <select
+            className="mobile-community-select"
+            value={currentRoom.community || ''}
+            onChange={(e) => {
+              localStorage.setItem('jam_community', e.target.value);
+              jamClient.updateCommunity(e.target.value);
+            }}
+          >
+            <option value="">None</option>
+            {communities.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="status-bar">
         <div className="status-bar-section">
           {currentTrack ? `Playing: ${currentTrack.title} - ${currentTrack.artist}` : 'Ready'}
@@ -1857,23 +1876,6 @@ function App() {
         <div className="status-bar-section">
           {isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}
         </div>
-        {communities.length > 0 && isHost && (
-          <div className="status-bar-section status-bar-community">
-            <select
-              className="status-community-select"
-              value={currentRoom.community || ''}
-              onChange={(e) => {
-                localStorage.setItem('jam_community', e.target.value);
-                jamClient.updateCommunity(e.target.value);
-              }}
-            >
-              <option value="">No community</option>
-              {communities.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
     </div>
   );
