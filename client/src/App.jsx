@@ -1231,7 +1231,6 @@ function App() {
                   title={likeActive ? 'Remove like' : 'Like this track'}
                 >
                   <span className="transport-icon like-icon"></span>
-                  {trackReactions.likes > 0 && <span className="reaction-count">{trackReactions.likes}</span>}
                 </button>
               </div>
             )}
