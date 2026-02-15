@@ -80,11 +80,19 @@ const NUM_CAT_AVATARS = 9; // IDs 0-8
 const app = express();
 const httpServer = createServer(app);
 const clientUrl = process.env.CLIENT_URL || '*';
-const corsOrigin = clientUrl === '*' ? '*' : clientUrl.split(',').map(u => u.trim());
+const allowedOrigins = clientUrl === '*' ? null : clientUrl.split(',').map(u => u.trim());
 
 const io = new Server(httpServer, {
   cors: {
-    origin: corsOrigin,
+    origin: allowedOrigins
+      ? (origin, cb) => {
+          if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            cb(null, true);
+          } else {
+            cb(new Error('Not allowed by CORS'));
+          }
+        }
+      : '*',
     methods: ['GET', 'POST']
   }
 });
