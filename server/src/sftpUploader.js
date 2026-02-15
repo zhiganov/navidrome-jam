@@ -260,7 +260,28 @@ export class SftpUploader {
   }
 
   /**
+   * Increment or decrement the likes count for an upload.
+   * @param {string} metaKey - The upload key (username/filename)
+   * @param {number} delta - Amount to change (+1 or -1)
+   * @returns {number|null} Updated likes count, or null if not found
+   */
+  async updateLikes(metaKey, delta) {
+    const sftp = await this.connect();
+    try {
+      const meta = await this.readMeta(sftp);
+      if (!meta[metaKey]) return null;
+
+      meta[metaKey].likes = Math.max(0, (meta[metaKey].likes || 0) + delta);
+      await this.writeMeta(sftp, meta);
+      return meta[metaKey].likes;
+    } finally {
+      await sftp.end();
+    }
+  }
+
+  /**
    * Clean up expired uploads (non-permanent, older than 30 days).
+   * Skips files that have likes > 0.
    * Returns list of deleted keys.
    */
   async cleanupExpired() {
@@ -276,6 +297,7 @@ export class SftpUploader {
 
       for (const [key, info] of Object.entries(meta)) {
         if (info.permanent) continue;
+        if (info.likes > 0) continue;
 
         const age = now - new Date(info.uploadedAt).getTime();
         if (age > CLEANUP_MAX_AGE_MS) {
