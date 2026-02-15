@@ -4,11 +4,13 @@ import { randomBytes } from 'crypto';
 const ROOM_CODE_BYTES = 4; // 8 hex chars = 4.3 billion combinations
 const ROOM_CODE_MAX_RETRIES = 5;
 const STALE_USER_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000; // Keep empty rooms alive for 5 minutes
 const NUM_CAT_AVATARS = 9; // IDs 0-8
 
 export class RoomManager {
   constructor() {
     this.rooms = new Map();
+    this.graceTimers = new Map(); // roomId -> timeout handle
   }
 
   /**
@@ -82,7 +84,7 @@ export class RoomManager {
    * List all active rooms (public summary, no sensitive data)
    */
   listRooms() {
-    return Array.from(this.rooms.values()).map(room => ({
+    return Array.from(this.rooms.values()).filter(room => room.users.length > 0).map(room => ({
       id: room.id,
       hostName: room.hostName,
       community: room.community,
@@ -120,7 +122,15 @@ export class RoomManager {
       return user;
     }
 
-    // First user becomes host
+    // Cancel grace timer if room was empty (someone rejoined)
+    if (this.graceTimers.has(roomId)) {
+      clearTimeout(this.graceTimers.get(roomId));
+      this.graceTimers.delete(roomId);
+      delete room.emptiedAt;
+      console.log(`Grace period cancelled for room ${roomId} — user rejoined`);
+    }
+
+    // First user (or first after grace period) becomes host
     if (room.users.length === 0) {
       room.hostId = user.id;
     }
@@ -152,14 +162,24 @@ export class RoomManager {
     delete room.catSelections[userId];
     room.pawHolders.delete(userId);
 
-    // If room is empty, delete it
+    // If room is empty, start grace period instead of deleting immediately
     if (room.users.length === 0) {
-      this.rooms.delete(roomId);
+      console.log(`Room ${roomId} is empty, starting ${EMPTY_ROOM_GRACE_MS / 1000}s grace period`);
+      room.emptiedAt = Date.now();
+      const timer = setTimeout(() => {
+        const currentRoom = this.rooms.get(roomId);
+        if (currentRoom && currentRoom.users.length === 0) {
+          this.rooms.delete(roomId);
+          this.graceTimers.delete(roomId);
+          console.log(`Room ${roomId} deleted after grace period`);
+        }
+      }, EMPTY_ROOM_GRACE_MS);
+      this.graceTimers.set(roomId, timer);
       return;
     }
 
     // If host left, promote first user to host
-    if (wasHost && room.users.length > 0) {
+    if (wasHost) {
       room.hostId = room.users[0].id;
       console.log(`New host for room ${roomId}: ${room.users[0].username}`);
     }
@@ -359,8 +379,23 @@ export class RoomManager {
         u => now - u.lastHeartbeat > timeout
       );
 
+      // Clean up empty rooms past grace period
+      if (room.users.length === 0 && room.emptiedAt && now - room.emptiedAt > EMPTY_ROOM_GRACE_MS) {
+        if (this.graceTimers.has(roomId)) {
+          clearTimeout(this.graceTimers.get(roomId));
+          this.graceTimers.delete(roomId);
+        }
+        this.rooms.delete(roomId);
+        console.log(`Cleaned up empty room past grace period: ${roomId}`);
+        continue;
+      }
+
       if (staleUsers.length === room.users.length) {
         // All users are stale, delete room
+        if (this.graceTimers.has(roomId)) {
+          clearTimeout(this.graceTimers.get(roomId));
+          this.graceTimers.delete(roomId);
+        }
         this.rooms.delete(roomId);
         console.log(`Cleaned up stale room: ${roomId}`);
       } else if (staleUsers.length > 0) {

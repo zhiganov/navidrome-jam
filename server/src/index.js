@@ -2371,13 +2371,15 @@ io.on('connection', (socket) => {
 
         const updatedRoom = roomManager.getRoom(socket.data.roomId);
 
-        if (updatedRoom) {
-          // Notify others in the room
+        if (updatedRoom && updatedRoom.users.length > 0) {
+          // Notify remaining users
           io.to(socket.data.roomId).emit('user-left', {
             userId: socket.data.userId,
             room: serializeRoom(updatedRoom),
             newHost: wasHost ? updatedRoom.hostId : null
           });
+        } else if (updatedRoom) {
+          console.log(`Room ${socket.data.roomId} is empty, grace period started`);
         } else {
           console.log(`Room ${socket.data.roomId} deleted (empty)`);
         }
@@ -2413,15 +2415,17 @@ io.on('connection', (socket) => {
 
         const updatedRoom = roomManager.getRoom(socket.data.roomId);
 
-        if (updatedRoom) {
-          // Notify others in the room
+        if (updatedRoom && updatedRoom.users.length > 0) {
+          // Notify remaining users
           io.to(socket.data.roomId).emit('user-left', {
             userId: socket.data.userId,
             room: serializeRoom(updatedRoom),
             newHost: wasHost ? updatedRoom.hostId : null
           });
+        } else if (updatedRoom) {
+          // Room is empty but kept alive (grace period)
+          console.log(`Room ${socket.data.roomId} is empty, grace period started`);
         } else {
-          // Room was deleted (no users left)
           console.log(`Room ${socket.data.roomId} deleted (empty)`);
         }
       } catch (error) {
