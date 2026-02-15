@@ -1984,7 +1984,7 @@ function App() {
                               <li key={song.id} className="song-item">
                                 <div className="song-info">
                                   <strong>{song.title}</strong>
-                                  <span>{song.artist} &middot; {song.album}{song.duration ? ` &middot; ${formatDuration(song.duration)}` : ''}</span>
+                                  <span>{song.artist} &middot; {song.album}{song.duration ? ` \u00B7 ${formatDuration(song.duration)}` : ''}</span>
                                 </div>
                                 <div className="song-actions">
                                   {canControl && (
