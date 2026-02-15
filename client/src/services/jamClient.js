@@ -387,6 +387,80 @@ class JamClient {
   }
 
   /**
+   * Upload a track via multipart POST. Uses XMLHttpRequest for progress tracking.
+   * @param {File} file - The audio file to upload
+   * @param {{ username: string, token: string, salt: string }} auth - Subsonic auth params
+   * @param {(progress: number) => void} onProgress - Progress callback (0-100)
+   * @returns {Promise<object>} Upload result
+   */
+  uploadTrack(file, auth, onProgress) {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const url = `${this.serverUrl}/api/upload?u=${encodeURIComponent(auth.username)}&t=${encodeURIComponent(auth.token)}&s=${encodeURIComponent(auth.salt)}`;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(data.error || `Upload failed (${xhr.status})`));
+          }
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+      xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+
+      xhr.send(formData);
+    });
+  }
+
+  /**
+   * Get the current user's uploads.
+   * @param {{ username: string, token: string, salt: string }} auth - Subsonic auth params
+   * @returns {Promise<object>} { uploads: [], permanentCount: number, permanentQuota: number }
+   */
+  async getMyUploads(auth) {
+    const url = `${this.serverUrl}/api/uploads/mine?u=${encodeURIComponent(auth.username)}&t=${encodeURIComponent(auth.token)}&s=${encodeURIComponent(auth.salt)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to fetch uploads');
+    }
+    return response.json();
+  }
+
+  /**
+   * Toggle the permanent flag for a user's upload.
+   * @param {string} filename - The filename to toggle
+   * @param {{ username: string, token: string, salt: string }} auth - Subsonic auth params
+   * @returns {Promise<object>} { permanent: boolean }
+   */
+  async togglePermanent(filename, auth) {
+    const url = `${this.serverUrl}/api/uploads/${encodeURIComponent(filename)}/permanent?u=${encodeURIComponent(auth.username)}&t=${encodeURIComponent(auth.token)}&s=${encodeURIComponent(auth.salt)}`;
+    const response = await fetch(url, { method: 'POST' });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to toggle permanent');
+    }
+    return response.json();
+  }
+
+  /**
    * Check if connected
    */
   isConnected() {
