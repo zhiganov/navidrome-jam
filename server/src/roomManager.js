@@ -375,20 +375,23 @@ export class RoomManager {
     const timeout = STALE_USER_TIMEOUT_MS;
 
     for (const [roomId, room] of this.rooms.entries()) {
+      // Skip empty rooms in grace period — the grace timer handles deletion
+      if (room.users.length === 0) {
+        if (room.emptiedAt && now - room.emptiedAt > EMPTY_ROOM_GRACE_MS) {
+          // Past grace period and timer somehow didn't fire — clean up
+          if (this.graceTimers.has(roomId)) {
+            clearTimeout(this.graceTimers.get(roomId));
+            this.graceTimers.delete(roomId);
+          }
+          this.rooms.delete(roomId);
+          console.log(`Cleaned up empty room past grace period: ${roomId}`);
+        }
+        continue;
+      }
+
       const staleUsers = room.users.filter(
         u => now - u.lastHeartbeat > timeout
       );
-
-      // Clean up empty rooms past grace period
-      if (room.users.length === 0 && room.emptiedAt && now - room.emptiedAt > EMPTY_ROOM_GRACE_MS) {
-        if (this.graceTimers.has(roomId)) {
-          clearTimeout(this.graceTimers.get(roomId));
-          this.graceTimers.delete(roomId);
-        }
-        this.rooms.delete(roomId);
-        console.log(`Cleaned up empty room past grace period: ${roomId}`);
-        continue;
-      }
 
       if (staleUsers.length === room.users.length) {
         // All users are stale, delete room

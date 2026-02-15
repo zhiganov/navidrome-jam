@@ -146,9 +146,8 @@ export default function SyncedAudioPlayer({
 
     const sendHeartbeat = () => {
       const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        jamClient.sendHeartbeat(audio.currentTime);
-      }
+      const position = audio ? audio.currentTime : 0;
+      jamClient.sendHeartbeat(position);
     };
 
     heartbeatIntervalRef.current = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
