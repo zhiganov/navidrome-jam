@@ -51,11 +51,9 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - Liked uploads are protected from auto-cleanup
 - Supports FLAC and all formats Navidrome handles
 - **Playlist browsing** — Load Navidrome playlists into the queue
-- Invite-code-based self-service registration with waitlist for overflow
+- Invite-code-based self-service registration
 - Room resilience — 5-minute grace period on disconnect + state snapshots to persistent volume
 - Mobile-friendly layout (Queue/People tabs on ≤1024px screens)
-- Admin dashboard for invite codes, waitlist, uploads, and server stats
-- **Telegram notifications** — Admin notified on waitlist signups with one-click Send Code button
 - Windows 98 / GeoCities retro UI theme
 - **[Jam With Boo](https://boo.zhgnv.com)** — Valentine's edition with kawaii avatars and synchronized paw hold
 
@@ -219,20 +217,18 @@ cd client && npm run dev
 
 ## Changelog
 
-### 2026-02-15 — Playlists, Waitlist, Room Resilience
+### 2026-02-15 — Playlists, Room Resilience
 
 - **Playlist browsing**: Browse and queue Navidrome playlists from the library browser.
-- **Waitlist**: Users without an invite code can join a waitlist with name, email, and optional message. Admin receives Telegram notification with one-click "Send Code" button — sends invite email and removes from waitlist in one tap.
-- **Invite code persistence**: Invite codes, usage history, and deleted codes persist to Railway volume. Deleted codes no longer reappear after server restarts.
 - **Room grace period**: Rooms stay alive for 5 minutes after the last user disconnects (e.g., LTE handoff while driving). Queue, playback position, and room code are preserved for seamless rejoin.
-- **Room state snapshots**: Active rooms snapshot to the persistent volume every 30s and on SIGTERM. Sessions survive server restarts and redeploys (snapshots older than 10 minutes are discarded).
+- **Room state snapshots**: Active rooms snapshot to persistent volume every 30s and on shutdown. Sessions survive server restarts and redeploys.
 - **Community selector**: Moved from room creation dialog to room header bar for easier access.
 
 ### 2026-02-15 — User Uploads, Persistent Likes, Favorites
 
-- **User uploads**: Upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP — no temp files on the server. Navidrome auto-indexes new uploads. 30-day auto-cleanup with permanent flag (50/user). Admin dashboard shows upload stats, file list, and cleanup controls.
+- **User uploads**: Upload audio files through the web client. Files stream to Navidrome via SFTP and are auto-indexed. 30-day auto-cleanup with permanent flag (50/user).
 - **Persistent likes**: Like button syncs to Navidrome favorites via `star.view`/`unstar.view` Subsonic API. Likes persist across rooms and sessions — if you liked a track before, the button stays active when you encounter it again.
-- **Liked upload protection**: Uploaded files with at least one like are exempt from 30-day auto-cleanup. Admin dashboard shows like counts and "LIKED" badges.
+- **Liked upload protection**: Uploaded files with at least one like are exempt from 30-day auto-cleanup.
 - **Favorites browse mode**: New "Favorites" option in the library browser dropdown — shows all your starred tracks from Navidrome.
 - **Recently Played**: Replaced "Random" with "Recently Played" in the browse dropdown (random shuffle button still available on album views).
 - **SVG transport icons**: Replaced CSS pixel art with SVG mask-image icons (Bootstrap Icons for like, Lucide-style for repeat). Monochrome by default, colored when active.
