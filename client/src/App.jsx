@@ -802,9 +802,6 @@ function App() {
       // Remove from local favorites list
       if (favorites) setFavorites(prev => prev ? prev.filter(s => s.id !== currentTrack.id) : prev);
     } else {
-      if (userReaction === 'dislike') {
-        // Switching from dislike to like
-      }
       jamClient.likeTrack(currentTrack.id);
       navidrome.starTrack(currentTrack.id).catch(err => console.error('Star failed:', err));
       setUserReaction('like');
@@ -813,23 +810,6 @@ function App() {
       if (browseMode === 'favorites') loadFavorites();
     }
   }, [currentTrack, userReaction, likeActive, jamClient, navidrome, favorites, browseMode]);
-
-  const handleDislike = useCallback(() => {
-    if (!currentTrack) return;
-
-    if (userReaction === 'dislike') {
-      jamClient.removeReaction(currentTrack.id);
-      setUserReaction(null);
-    } else {
-      if (likeActive) {
-        navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
-        setTrackStarred(false);
-        if (favorites) setFavorites(prev => prev ? prev.filter(s => s.id !== currentTrack.id) : prev);
-      }
-      jamClient.dislikeTrack(currentTrack.id);
-      setUserReaction('dislike');
-    }
-  }, [currentTrack, userReaction, likeActive, jamClient, navidrome, favorites]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -1252,14 +1232,6 @@ function App() {
                 >
                   <span className="transport-icon like-icon"></span>
                   {trackReactions.likes > 0 && <span className="reaction-count">{trackReactions.likes}</span>}
-                </button>
-                <button
-                  className={`transport-btn dislike-btn${userReaction === 'dislike' ? ' active' : ''}`}
-                  onClick={handleDislike}
-                  title={userReaction === 'dislike' ? 'Remove dislike' : 'Dislike this track'}
-                >
-                  <span className="transport-icon dislike-icon"></span>
-                  {trackReactions.dislikes > 0 && <span className="reaction-count">{trackReactions.dislikes}</span>}
                 </button>
               </div>
             )}
