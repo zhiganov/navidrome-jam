@@ -63,10 +63,11 @@ function App() {
 
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
-  const [browseMode, setBrowseMode] = useState('artists'); // artists, albums, recent, random
+  const [browseMode, setBrowseMode] = useState('artists'); // artists, albums, recent, random, favorites
   const [browseView, setBrowseView] = useState('artists');
   const [artists, setArtists] = useState(null);
   const [albumList, setAlbumList] = useState(null);
+  const [favorites, setFavorites] = useState(null);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
@@ -393,16 +394,34 @@ function App() {
 
   const handleBrowseModeChange = (mode) => {
     setBrowseMode(mode);
-    setBrowseView(mode === 'artists' ? 'artists' : 'albumList');
+    setBrowseView(mode === 'artists' ? 'artists' : mode === 'favorites' ? 'favorites' : 'albumList');
     setSelectedArtist(null);
     setSelectedAlbum(null);
     setAlbumList(null);
 
     if (mode === 'artists') {
       loadArtists();
+    } else if (mode === 'favorites') {
+      loadFavorites();
     } else {
       const typeMap = { albums: 'alphabeticalByName', recent: 'newest', random: 'random' };
       loadAlbumList(typeMap[mode]);
+    }
+  };
+
+  const loadFavorites = async () => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getStarred();
+      const songs = result.starred2?.song
+        ? (Array.isArray(result.starred2.song) ? result.starred2.song : [result.starred2.song])
+        : [];
+      setFavorites(songs);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+      setFavorites([]);
+    } finally {
+      setIsLoadingBrowse(false);
     }
   };
 
@@ -780,6 +799,8 @@ function App() {
       navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
       setUserReaction(null);
       setTrackStarred(false);
+      // Remove from local favorites list
+      if (favorites) setFavorites(prev => prev ? prev.filter(s => s.id !== currentTrack.id) : prev);
     } else {
       if (userReaction === 'dislike') {
         // Switching from dislike to like
@@ -788,8 +809,10 @@ function App() {
       navidrome.starTrack(currentTrack.id).catch(err => console.error('Star failed:', err));
       setUserReaction('like');
       setTrackStarred(true);
+      // Refresh favorites if viewing them (new star won't have full metadata locally)
+      if (browseMode === 'favorites') loadFavorites();
     }
-  }, [currentTrack, userReaction, likeActive, jamClient, navidrome]);
+  }, [currentTrack, userReaction, likeActive, jamClient, navidrome, favorites, browseMode]);
 
   const handleDislike = useCallback(() => {
     if (!currentTrack) return;
@@ -801,11 +824,12 @@ function App() {
       if (likeActive) {
         navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
         setTrackStarred(false);
+        if (favorites) setFavorites(prev => prev ? prev.filter(s => s.id !== currentTrack.id) : prev);
       }
       jamClient.dislikeTrack(currentTrack.id);
       setUserReaction('dislike');
     }
-  }, [currentTrack, userReaction, likeActive, jamClient, navidrome]);
+  }, [currentTrack, userReaction, likeActive, jamClient, navidrome, favorites]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -1521,6 +1545,7 @@ function App() {
                       value={browseMode}
                       onChange={(e) => handleBrowseModeChange(e.target.value)}
                     >
+                      <option value="favorites">&#9733; Favorites</option>
                       <option value="artists">Artists</option>
                       <option value="albums">Albums A-Z</option>
                       <option value="recent">Recently Added</option>
@@ -1538,10 +1563,10 @@ function App() {
                   </div>
                   <div className="browse-breadcrumb">
                     <span
-                      className={(browseView === 'artists' || browseView === 'albumList') ? 'current' : 'clickable'}
+                      className={(browseView === 'artists' || browseView === 'albumList' || browseView === 'favorites') ? 'current' : 'clickable'}
                       onClick={() => handleBrowseModeChange(browseMode)}
                     >
-                      Library
+                      {browseMode === 'favorites' ? '★ Favorites' : 'Library'}
                     </span>
                     {selectedArtist && (
                       <>
@@ -1738,6 +1763,62 @@ function App() {
                           >
                             Queue All
                           </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Favorites list */}
+                  {!isLoadingBrowse && browseView === 'favorites' && (
+                    <div className="browse-list favorites-list">
+                      {favorites && favorites.length > 0 ? (
+                        <>
+                          <div className="favorites-header">
+                            <span className="favorites-count">{favorites.length} starred track{favorites.length !== 1 ? 's' : ''}</span>
+                            {canControl && (
+                              <button
+                                className="win98-btn"
+                                style={{ fontSize: 10, padding: '2px 8px' }}
+                                onClick={() => {
+                                  const items = favorites.map(s => ({ id: s.id, title: s.title, artist: s.artist, album: s.album }));
+                                  if (!currentTrack && items.length > 0) {
+                                    const [first, ...rest] = items;
+                                    jamClient.updateQueue([...queue, ...rest]);
+                                    jamClient.play(first.id, 0);
+                                    loadTrack(first.id);
+                                  } else {
+                                    jamClient.updateQueue([...queue, ...items]);
+                                  }
+                                }}
+                              >
+                                Queue All
+                              </button>
+                            )}
+                          </div>
+                          <ul>
+                            {favorites.map((song) => (
+                              <li key={song.id} className="song-item">
+                                <div className="song-info">
+                                  <strong>{song.title}</strong>
+                                  <span>{song.artist} &middot; {song.album}{song.duration ? ` &middot; ${formatDuration(song.duration)}` : ''}</span>
+                                </div>
+                                <div className="song-actions">
+                                  {canControl && (
+                                    <>
+                                      <button onClick={() => handlePlayTrack(song)}>Play</button>
+                                      <button onClick={() => handleAddToQueue(song)}>Queue+</button>
+                                    </>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : (
+                        <div className="browse-empty favorites-empty">
+                          <span className="favorites-empty-star">&#9734;</span>
+                          <p>No favorites yet</p>
+                          <p className="favorites-hint">Like a track during playback to add it here</p>
                         </div>
                       )}
                     </div>
