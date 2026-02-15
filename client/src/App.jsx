@@ -1772,20 +1772,44 @@ function App() {
                         &lt; Back
                       </button>
 
-                      {selectedAlbum.coverArt && (
-                        <div className="browse-album-header">
+                      <div className="browse-album-header">
+                        {selectedAlbum.coverArt && (
                           <img
                             src={navidrome.getCoverArtUrl(selectedAlbum.coverArt, 80)}
                             alt=""
                             className="browse-album-art"
                           />
-                          <div className="browse-album-meta">
-                            <strong>{selectedAlbum.name}</strong>
-                            <span>{selectedArtist?.name}</span>
-                            {selectedAlbum.year && <span>{selectedAlbum.year}</span>}
-                          </div>
+                        )}
+                        <div className="browse-album-meta">
+                          <strong>{selectedAlbum.name}</strong>
+                          <span>{selectedArtist?.name}</span>
+                          {selectedAlbum.year && <span>{selectedAlbum.year}</span>}
+                          {canControl && selectedAlbum.songs.length > 0 && (
+                            <button
+                              className="win98-btn"
+                              style={{ fontSize: 10, padding: '2px 8px', marginTop: 2, alignSelf: 'flex-start' }}
+                              onClick={() => {
+                                const newItems = selectedAlbum.songs.map(song => ({
+                                  id: song.id,
+                                  title: song.title,
+                                  artist: song.artist,
+                                  album: song.album
+                                }));
+                                if (!currentTrack && newItems.length > 0) {
+                                  const [first, ...rest] = newItems;
+                                  jamClient.updateQueue([...queue, ...rest]);
+                                  jamClient.play(first.id, 0);
+                                  loadTrack(first.id);
+                                } else {
+                                  jamClient.updateQueue([...queue, ...newItems]);
+                                }
+                              }}
+                            >
+                              Queue All
+                            </button>
+                          )}
                         </div>
-                      )}
+                      </div>
 
                       {selectedAlbum.songs.length > 0 ? (
                         <ul>
@@ -1818,33 +1842,6 @@ function App() {
                         <div className="browse-empty">No tracks found</div>
                       )}
 
-                      {canControl && selectedAlbum.songs.length > 0 && (
-                        <div className="browse-album-actions">
-                          <button
-                            className="win98-btn"
-                            onClick={() => {
-                              const newItems = selectedAlbum.songs.map(song => ({
-                                id: song.id,
-                                title: song.title,
-                                artist: song.artist,
-                                album: song.album
-                              }));
-
-                              if (!currentTrack && newItems.length > 0) {
-                                // Nothing playing — start the first track, queue the rest
-                                const [first, ...rest] = newItems;
-                                jamClient.updateQueue([...queue, ...rest]);
-                                jamClient.play(first.id, 0);
-                                loadTrack(first.id);
-                              } else {
-                                jamClient.updateQueue([...queue, ...newItems]);
-                              }
-                            }}
-                          >
-                            Queue All
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1983,6 +1980,23 @@ function App() {
         <div className="status-bar-section">
           {isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}
         </div>
+        {communities.length > 0 && isHost && (
+          <div className="status-bar-section status-bar-community">
+            <select
+              className="status-community-select"
+              value={currentRoom.community || ''}
+              onChange={(e) => {
+                localStorage.setItem('jam_community', e.target.value);
+                jamClient.updateCommunity(e.target.value);
+              }}
+            >
+              <option value="">No community</option>
+              {communities.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Cat picker modal */}

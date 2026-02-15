@@ -1647,17 +1647,6 @@ body {
   font-weight: bold;
 }
 
-/* Queue All button */
-.browse-album-actions {
-  padding: 4px 6px;
-  border-top: 1px solid #e0e0e0;
-  background: var(--win-bg);
-}
-
-.browse-album-actions .win98-btn {
-  width: 100%;
-}
-
 /* Favorites */
 .favorites-header {
   display: flex;
@@ -1901,6 +1890,22 @@ body {
   flex: 3;
 }
 
+/* Community select in status bar — hidden on desktop (shown in header instead) */
+.status-bar-community {
+  display: none;
+}
+
+.status-community-select {
+  font-family: 'Tahoma', sans-serif;
+  font-size: 11px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+  border: none;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
 /* Scrollbar — Win98 style (scoped to jam screen panels only) */
 .jam-screen ::-webkit-scrollbar {
   width: 16px;
@@ -2015,6 +2020,10 @@ body {
 
   .header-info {
     display: none;
+  }
+
+  .status-bar-community {
+    display: block;
   }
 
   .jam-screen h1 {
