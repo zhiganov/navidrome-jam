@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import Busboy from 'busboy';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { Resend } from 'resend';
@@ -69,6 +69,7 @@ const MAX_WAITLIST_MESSAGE_LENGTH = 500;
 // Server
 const DEFAULT_PORT = 3001;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
+const ROOM_SNAPSHOT_INTERVAL_MS = 30 * 1000; // Snapshot room state every 30s
 const UPLOAD_CLEANUP_DELAY_MS = 10 * 1000;
 const UPLOAD_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const COMMUNITIES_CACHE_TTL_MS = 60 * 60 * 1000;
@@ -182,6 +183,9 @@ async function updateUploadLikes(trackId, delta) {
 // Persistent data directory (Railway volume or local ./data)
 const DATA_DIR = process.env.DATA_DIR || './data';
 
+// Room state snapshot (persisted to volume, survives server restarts)
+const ROOMS_PATH = path.join(DATA_DIR, 'rooms-snapshot.json');
+
 // Invite code tracking (persisted to volume)
 const CODES_PATH = path.join(DATA_DIR, 'invite-codes.json');
 
@@ -231,6 +235,63 @@ async function saveInviteCodes() {
 }
 
 loadInviteCodes();
+
+// Room state persistence — snapshot to volume, restore on startup
+async function saveRoomState() {
+  const rooms = [];
+  for (const room of roomManager.rooms.values()) {
+    // Only snapshot rooms with active users (skip empty rooms in grace period)
+    if (room.users.length === 0) continue;
+    rooms.push({
+      ...room,
+      pawHolders: Array.from(room.pawHolders),
+    });
+  }
+  if (rooms.length === 0) {
+    // No active rooms — remove stale snapshot
+    try { await unlink(ROOMS_PATH); } catch { /* file may not exist */ }
+    return;
+  }
+  await mkdir(DATA_DIR, { recursive: true });
+  await writeFile(ROOMS_PATH, JSON.stringify({ rooms, savedAt: Date.now() }, null, 2));
+}
+
+async function loadRoomState() {
+  try {
+    const data = JSON.parse(await readFile(ROOMS_PATH, 'utf8'));
+    const rooms = data.rooms || [];
+    const age = Date.now() - (data.savedAt || 0);
+    // Ignore snapshots older than 10 minutes — sessions are likely over
+    if (age > 10 * 60 * 1000) {
+      console.log(`Room snapshot is ${Math.round(age / 1000)}s old, ignoring`);
+      await unlink(ROOMS_PATH).catch(() => {});
+      return;
+    }
+    let restored = 0;
+    for (const roomData of rooms) {
+      if (roomManager.getRoom(roomData.id)) continue; // Room already exists
+      // Reconstruct room with proper Set for pawHolders
+      // Reset heartbeats so stale-room cleanup gives users time to reconnect
+      const now = Date.now();
+      const room = {
+        ...roomData,
+        pawHolders: new Set(roomData.pawHolders || []),
+        users: (roomData.users || []).map(u => ({ ...u, lastHeartbeat: now })),
+      };
+      roomManager.rooms.set(room.id, room);
+      restored++;
+    }
+    if (restored > 0) {
+      console.log(`Restored ${restored} rooms from snapshot (${Math.round(age / 1000)}s old)`);
+    }
+    // Clean up snapshot file after restore
+    await unlink(ROOMS_PATH).catch(() => {});
+  } catch {
+    // No snapshot file — normal for fresh start
+  }
+}
+
+loadRoomState();
 
 // Validation helpers
 function validateRoomId(roomId) {
@@ -2467,3 +2528,20 @@ if (sftpUploader.isConfigured()) {
     );
   }, UPLOAD_CLEANUP_INTERVAL_MS);
 }
+
+// Snapshot room state to volume every 30s
+setInterval(() => {
+  saveRoomState().catch(err => console.error('Room snapshot error:', err));
+}, ROOM_SNAPSHOT_INTERVAL_MS);
+
+// Graceful shutdown — save room state before exiting
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, saving room state...');
+  try {
+    await saveRoomState();
+    console.log('Room state saved, shutting down');
+  } catch (err) {
+    console.error('Failed to save room state on shutdown:', err);
+  }
+  process.exit(0);
+});
