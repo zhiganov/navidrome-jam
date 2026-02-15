@@ -69,13 +69,7 @@ npm run dev              # Start with hot-reload (node --watch)
 npm start                # Production mode
 ```
 
-**Environment**: Copy `.env.example` to `.env` and configure:
-- `PORT` - Server port (default: 3001)
-- `CLIENT_URL` - CORS origin for web client
-- `NAVIDROME_URL` - Navidrome instance URL (required for registration)
-- `NAVIDROME_ADMIN_USER` - Admin username for user registration proxy
-- `NAVIDROME_ADMIN_PASS` - Admin password for user registration proxy
-- `INVITE_CODES` - Comma-separated single-use invite codes (e.g., `CODE1,CODE2,CODE3`)
+**Environment**: Copy `.env.example` to `.env` and configure. See `.env.example` for all variables.
 
 ### Client (React Web App)
 
@@ -87,9 +81,7 @@ npm run build            # Production build to dist/
 npm run preview          # Preview production build
 ```
 
-**Environment**: Copy `.env.example` to `.env` and configure:
-- `VITE_NAVIDROME_URL` - Navidrome instance URL (e.g., http://localhost:4533)
-- `VITE_JAM_SERVER_URL` - Sync server URL (e.g., http://localhost:3001)
+**Environment**: Copy `.env.example` to `.env` — needs `VITE_NAVIDROME_URL` and `VITE_JAM_SERVER_URL`.
 
 ### Testing Sync Functionality
 
@@ -151,42 +143,9 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 
 **Race condition**: Sync events can arrive before the audio element mounts. `pendingSyncRef` stores these and applies them on `loadedmetadata`. Track changes detected in `handleSyncInApp` which triggers `loadTrack` in App.jsx.
 
-### WebSocket Events Reference
-
-| Event | Direction | Payload | Auth |
-|-------|-----------|---------|------|
-| `join-room` | Client → Server | `{ roomId, userId, username }` | Any |
-| `leave-room` | Client → Server | (none) | Any |
-| `play` | Client → Server | `{ roomId, trackId, position }` | Host / Co-host |
-| `pause` | Client → Server | `{ roomId, position }` | Host / Co-host |
-| `seek` | Client → Server | `{ roomId, position }` | Host / Co-host |
-| `update-queue` | Client → Server | `{ roomId, queue[] }` | Host / Co-host |
-| `promote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
-| `demote-cohost` | Client → Server | `{ roomId, userId }` | Host only |
-| `heartbeat` | Client → Server | `{ roomId, position }` | Any |
-| `like-track` | Client → Server | `{ roomId, trackId }` | Any room member |
-| `dislike-track` | Client → Server | `{ roomId, trackId }` | Any room member |
-| `remove-reaction` | Client → Server | `{ roomId, trackId }` | Any room member |
-| `select-cat` | Client → Server | `{ roomId, catId }` | Any room member |
-| `paw-hold` | Client → Server | `{ roomId }` | Any room member |
-| `paw-release` | Client → Server | `{ roomId }` | Any room member |
-| `update-community` | Client → Server | `{ roomId, community }` | Host only |
-| `room-state` | Server → Client | `{ room }` | — |
-| `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
-| `user-joined` | Server → Client | `{ user, room }` | — |
-| `user-left` | Server → Client | `{ userId, room, newHost }` | — |
-| `cohost-updated` | Server → Client | `{ room }` | — |
-| `queue-updated` | Server → Client | `{ queue[] }` | — |
-| `track-reactions` | Server → Client | `{ trackId, likes, dislikes, reactions }` | — |
-| `cat-selections` | Server → Client | `{ catSelections }` | — |
-| `paw-state` | Server → Client | `{ pawHolders[] }` | — |
-| `error` | Server → Client | `{ message }` | — |
-
 ## Deployment
 
-This project supports multiple deployment strategies:
-
-### Vercel + Railway (Current Production Setup)
+### Vercel + Railway (Current Production)
 - **Client**: Vercel (personal account, auto-deploys on push to main) — https://jam.zhgnv.com
   - Build: `cd client && npm install && npm run build` → outputs to `client/dist/`
   - SPA rewrites: all routes → `/index.html` (configured in `vercel.json`)
@@ -198,68 +157,15 @@ This project supports multiple deployment strategies:
   - Restart policy: ON_FAILURE with max 10 retries (configured in `railway.json`)
   - Railway project: `b4f46e75-3c65-4606-a8ee-2b7ded7b7109`
 - **Navidrome**: PikaPods — https://airborne-unicorn.pikapod.net
-- See: `VERCEL_QUICKSTART.md`
+- See: `VERCEL_QUICKSTART.md` for setup, `DEPLOYMENT.md` for VPS alternative
 
-### VPS (Traditional Deployment)
-- nginx reverse proxy config: `nginx.conf`
-- PM2 process manager: `ecosystem.config.cjs`
-- Automated installer: `install.sh`
-- Update script: `deploy.sh`
-- See: `DEPLOYMENT.md`
+Both client and server auto-deploy on push to `main`. Just `git push`.
 
-### Alternative Platforms
-- Render: `render.yaml` (free tier with cold starts)
-- Fly.io: `Procfile` (global low-latency)
+**Critical for WebSocket**: The sync server requires persistent connections. Vercel Functions don't support this, hence Railway for server hosting.
 
-**Critical for WebSocket**: The sync server requires persistent connections. Vercel Functions don't support this, hence Railway/Render/VPS for server hosting.
+**CORS**: Socket.io uses a function-based origin check that accepts `CLIENT_URL` origins plus any `*.vercel.app` domain (for preview deployments).
 
-### Deploy Commands
-
-Both client and server auto-deploy on push to `main`:
-- **Client** → Vercel (GitHub integration)
-- **Server** → Railway (GitHub integration, watches `server/**`)
-
-```bash
-# Just push — both deploy automatically
-git push
-```
-
-## Environment Configuration
-
-| Variable | Where | Required | Default | Description |
-|----------|-------|----------|---------|-------------|
-| `PORT` | Server | No | `3001` | Server listen port |
-| `CLIENT_URL` | Server | No | `*` | CORS origin (set to client URL in production) |
-| `NAVIDROME_URL` | Server | For registration | — | Navidrome instance URL |
-| `NAVIDROME_ADMIN_USER` | Server | For registration | — | Admin username for user creation |
-| `NAVIDROME_ADMIN_PASS` | Server | For registration | — | Admin password for user creation |
-| `INVITE_CODES` | Server | For registration | — | Comma-separated single-use codes |
-| `DATA_DIR` | Server | No | `./data` | Persistent volume path (Railway: `/data`) |
-| `RESEND_API_KEY` | Server | For invite emails | — | Resend email API key |
-| `RESEND_FROM_EMAIL` | Server | For invite emails | — | Verified sender address |
-| `TELEGRAM_BOT_TOKEN` | Server | For notifications | — | scenius-bot token for waitlist alerts |
-| `TELEGRAM_ADMIN_CHAT_ID` | Server | For notifications | — | Admin's Telegram chat ID |
-| `SFTP_HOST` | Server | For uploads | — | PikaPods SFTP host |
-| `SFTP_PORT` | Server | For uploads | `22` | PikaPods SFTP port |
-| `SFTP_USERNAME` | Server | For uploads | — | PikaPods SFTP username |
-| `SFTP_PASSWORD` | Server | For uploads | — | PikaPods SFTP password |
-| `SFTP_UPLOAD_PATH` | Server | For uploads | — | Remote path (e.g., `/music/jam-uploads`) |
-| `VITE_NAVIDROME_URL` | Client | Yes | — | Navidrome instance URL |
-| `VITE_JAM_SERVER_URL` | Client | Yes | — | Sync server URL |
-
-**Note**: If `NAVIDROME_ADMIN_USER`, `NAVIDROME_ADMIN_PASS`, or `NAVIDROME_URL` are not set, the `/api/register` endpoint returns 503 gracefully — login still works, only registration is disabled.
-
-### Development
-- Server: `http://localhost:3001`
-- Client: `http://localhost:5173`
-- Navidrome: User provides their own instance
-
-### Production (Current)
-- **Client** (Vercel): `VITE_NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, `VITE_JAM_SERVER_URL=https://navidrome-jam-production.up.railway.app`
-- **Server** (Railway): `CLIENT_URL=https://jam.zhgnv.com`, `NAVIDROME_URL=https://airborne-unicorn.pikapod.net`, plus admin credentials and invite codes
-- Navidrome hosted on PikaPods
-
-**Gotcha**: When adding env vars on Railway/Vercel, watch for leading spaces in variable names — both platforms silently accept them, causing cryptic build failures like `"empty key"` errors in Docker.
+**Environment**: See `.env.example` files in `server/` and `client/` for all variables. Key note: if `NAVIDROME_ADMIN_USER`/`NAVIDROME_ADMIN_PASS`/`NAVIDROME_URL` are not set, registration is disabled gracefully — login still works.
 
 ## Common Development Patterns
 
@@ -309,41 +215,15 @@ async getPlaylists() {
 
 All Subsonic responses are wrapped in `{ "subsonic-response": { status, ...data } }`.
 
-### Registration Flow (Server-Side)
+## Linting & Testing
 
-```
-Client → POST /api/register { username, password, inviteCode }
-  ↓ validate input + check invite code
-Server → POST navidrome/auth/login { username: admin, password: adminPass }
-  ↓ get JWT token
-Server → POST navidrome/api/user { userName, password, isAdmin: false }
-         (header: x-nd-authorization: Bearer <jwt>)
-  ↓ success → mark invite code as used
-Server → 201 { message: "Account created successfully" }
+```bash
+cd client && npx eslint src/       # Lint client code
+cd server && node --check src/index.js && node --check src/roomManager.js  # Syntax check server
+cd client && npm run build         # Verify production build
 ```
 
-### Client Storage Keys
-
-**sessionStorage** (cleared on tab close):
-
-| Key | Purpose |
-|-----|---------|
-| `navidrome_username` | Navidrome username for session restore |
-| `navidrome_token` | MD5(password + salt) for Subsonic auth |
-| `navidrome_salt` | Random salt used in token generation |
-
-**localStorage** (persistent preferences):
-
-| Key | Purpose |
-|-----|---------|
-| `jam_user_id` | Persistent user ID (`user-<random>`) for WebSocket identity |
-| `audio_volume` | Last-used volume level (0.0–1.0) |
-| `jam_repeat` | Repeat mode (`on` / `off`) |
-| `jam_community` | Last-used community name for room creation |
-
-## Testing
-
-No automated tests yet. Manual testing with the HTML test client (`server/test-client.html`) or full stack (two browser windows). See `SECURITY.md` for security measures.
+No automated tests yet — manual testing with `server/test-client.html` (sync only, no Navidrome) or full stack (two browser windows).
 
 ## User Uploads
 
@@ -369,12 +249,23 @@ Server-rendered Win98-styled HTML at `/admin?key=NAVIDROME_ADMIN_PASS`. Features
 
 Users without invite codes can join a waitlist (`POST /api/waitlist`). Admin receives Telegram notification via scenius-bot with an inline "Send Code" button — one-click to email an invite code and remove from waitlist. Uses one-time action tokens (GET endpoints, no webhook needed — avoids conflict with scenius-digest polling on the same bot token).
 
-Pattern documented in memory: `~/.claude/projects/.../memory/invite-waitlist-pattern.md`
-
 ## Persistence (Railway Volume)
 
 Three JSON files on `DATA_DIR` (Railway volume at `/data`):
 - `invite-codes.json` — valid codes, used codes (code→username), sent codes (code→{email,name}), deleted codes
 - `waitlist.json` — name, email, message, joinedAt timestamp
 - `rooms-snapshot.json` — periodic room state snapshot (every 30s + SIGTERM), auto-deleted after restore
+
+## Design Docs
+
+Feature design docs live in `docs/plans/`. Check here before planning new features — a design doc may already exist:
+- `2026-02-15-room-settings-design.md` — Kick user + password protection (ready to implement)
+- `2026-02-15-queue-dnd-design.md` — Queue drag-and-drop reordering (ready to implement)
+- `2026-02-15-room-history-design.md` — Room history / session logs (designed, low priority)
+- `2026-02-15-strategic-bets.md` — Federation vs Bandcamp strategy evaluation
+
+## Branches
+
+- `main` — production (auto-deploys)
+- `feature/jam-with-boo` — Valentine's edition at [boo.zhgnv.com](https://boo.zhgnv.com) with kawaii avatars and synchronized paw hold. Separate domain, OG images, favicon. Server `CLIENT_URL` supports comma-separated origins for multi-domain CORS.
 
