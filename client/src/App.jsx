@@ -63,6 +63,7 @@ function App() {
   // Reaction state
   const [trackReactions, setTrackReactions] = useState({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState(null);
+  const [trackStarred, setTrackStarred] = useState(false); // Navidrome persistent star
 
   // Upload state
   const [uploadProgress, setUploadProgress] = useState(null);
@@ -639,6 +640,7 @@ function App() {
         coverArt: song.coverArt ? navidrome.getCoverArtUrl(song.coverArt, 300) : null,
         streamUrl: navidrome.getStreamUrl(song.id)
       });
+      setTrackStarred(!!song.starred);
     } catch (error) {
       console.error('Error loading track:', error);
     } finally {
@@ -843,22 +845,26 @@ function App() {
   // Paw climax — derived: active as long as both users keep holding after 8s
   const pawClimax = holdProgress >= 1 && pawHolders.length >= 2;
 
+  const likeActive = userReaction === 'like' || (userReaction === null && trackStarred);
+
   const handleLike = useCallback(() => {
     if (!currentTrack) return;
 
-    if (userReaction === 'like') {
+    if (likeActive) {
       jamClient.removeReaction(currentTrack.id);
       navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
       setUserReaction(null);
+      setTrackStarred(false);
     } else {
       if (userReaction === 'dislike') {
-        // Switching from dislike to like — no unstar needed (wasn't starred)
+        // Switching from dislike to like
       }
       jamClient.likeTrack(currentTrack.id);
       navidrome.starTrack(currentTrack.id).catch(err => console.error('Star failed:', err));
       setUserReaction('like');
+      setTrackStarred(true);
     }
-  }, [currentTrack, userReaction, jamClient, navidrome]);
+  }, [currentTrack, userReaction, likeActive, jamClient, navidrome]);
 
   const handleDislike = useCallback(() => {
     if (!currentTrack) return;
@@ -867,13 +873,14 @@ function App() {
       jamClient.removeReaction(currentTrack.id);
       setUserReaction(null);
     } else {
-      if (userReaction === 'like') {
+      if (likeActive) {
         navidrome.unstarTrack(currentTrack.id).catch(err => console.error('Unstar failed:', err));
+        setTrackStarred(false);
       }
       jamClient.dislikeTrack(currentTrack.id);
       setUserReaction('dislike');
     }
-  }, [currentTrack, userReaction, jamClient, navidrome]);
+  }, [currentTrack, userReaction, likeActive, jamClient, navidrome]);
 
   // Login screen
   if (!isAuthenticated) {
@@ -1319,9 +1326,9 @@ function App() {
                   </>
                 )}
                 <button
-                  className={`transport-btn like-btn${userReaction === 'like' ? ' active' : ''}`}
+                  className={`transport-btn like-btn${likeActive ? ' active' : ''}`}
                   onClick={handleLike}
-                  title={userReaction === 'like' ? 'Remove like' : 'Like this track'}
+                  title={likeActive ? 'Remove like' : 'Like this track'}
                 >
                   <span className="transport-icon like-icon"></span>
                   {trackReactions.likes > 0 && <span className="reaction-count">{trackReactions.likes}</span>}
