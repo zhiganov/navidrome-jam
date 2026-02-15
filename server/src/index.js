@@ -115,11 +115,40 @@ async function updateUploadLikes(trackId, delta) {
   console.log(`Upload likes: ${metaKey} → ${newCount} (${delta > 0 ? '+' : ''}${delta})`);
 }
 
-// Invite code tracking (single-use, in-memory)
-const validInviteCodes = new Set(
-  (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean)
-);
+// Persistent data directory (Railway volume or local ./data)
+const DATA_DIR = process.env.DATA_DIR || './data';
+
+// Invite code tracking (persisted to volume)
+const CODES_PATH = path.join(DATA_DIR, 'invite-codes.json');
+
+const envCodes = (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean);
+const validInviteCodes = new Set(envCodes);
 const usedInviteCodes = new Map(); // code → username
+
+// Load persisted invite codes on startup (merges with env var codes)
+async function loadInviteCodes() {
+  try {
+    const data = JSON.parse(await readFile(CODES_PATH, 'utf8'));
+    for (const code of (data.valid || [])) validInviteCodes.add(code);
+    for (const [code, user] of Object.entries(data.used || {})) {
+      validInviteCodes.add(code);
+      usedInviteCodes.set(code, user);
+    }
+    console.log(`Loaded ${validInviteCodes.size} invite codes (${usedInviteCodes.size} used) from disk`);
+  } catch {
+    // No persisted file yet — that's fine, env codes are already loaded
+  }
+}
+
+async function saveInviteCodes() {
+  await mkdir(DATA_DIR, { recursive: true });
+  await writeFile(CODES_PATH, JSON.stringify({
+    valid: [...validInviteCodes],
+    used: Object.fromEntries(usedInviteCodes),
+  }, null, 2));
+}
+
+loadInviteCodes();
 
 // Validation helpers
 function validateRoomId(roomId) {
@@ -186,8 +215,7 @@ const registerLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Waitlist persistence (JSON file on Railway volume or local ./data)
-const DATA_DIR = process.env.DATA_DIR || './data';
+// Waitlist persistence
 const WAITLIST_PATH = path.join(DATA_DIR, 'waitlist.json');
 
 async function readWaitlist() {
@@ -383,6 +411,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
 
     // Mark invite code as used only after successful creation
     usedInviteCodes.set(trimmedCode, username.trim());
+    saveInviteCodes().catch(err => console.error('Failed to persist invite codes:', err));
 
     console.log(`User registered: ${username.trim()} (invite code used)`);
     res.status(201).json({ message: 'Account created successfully. You can now log in.' });
@@ -660,6 +689,7 @@ app.post('/api/admin/generate-codes', (req, res) => {
     newCodes.push(code);
   }
 
+  saveInviteCodes().catch(err => console.error('Failed to persist invite codes:', err));
   console.log(`Admin generated ${count} new invite codes: ${newCodes.join(', ')}`);
   res.json({ generated: newCodes, total: validInviteCodes.size });
 });
@@ -675,6 +705,7 @@ app.delete('/api/admin/codes/:code', (req, res) => {
 
   validInviteCodes.delete(code);
   usedInviteCodes.delete(code);
+  saveInviteCodes().catch(err => console.error('Failed to persist invite codes:', err));
   res.json({ deleted: code, total: validInviteCodes.size });
 });
 
