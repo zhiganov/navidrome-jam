@@ -157,64 +157,7 @@ async function saveInviteCodes() {
   }, null, 2));
 }
 
-loadInviteCodes().then(() => reconcileInviteCodes());
-
-/**
- * Reconcile invite codes with Navidrome user list.
- * Codes used before persistence was added show as "available" — this fixes that
- * by counting non-admin Navidrome users and marking untracked codes as used.
- */
-async function reconcileInviteCodes() {
-  const token = await getNavidromeToken();
-  if (!token) return; // admin creds not configured
-
-  try {
-    const url = process.env.NAVIDROME_URL;
-    const response = await fetch(`${url}/api/user?_end=1000&_start=0&_sort=userName&_order=ASC`, {
-      headers: { 'x-nd-authorization': `Bearer ${token}` }
-    });
-
-    if (!response.ok) {
-      console.error('Reconcile: failed to fetch Navidrome users:', response.status);
-      return;
-    }
-
-    const users = await response.json();
-    // All users except the original admin = registered via invite codes
-    // (promoted admins still used invite codes to register)
-    const adminUser = process.env.NAVIDROME_ADMIN_USER;
-    const registeredUsers = users.filter(u => u.userName !== adminUser).map(u => u.userName);
-    const trackedUsers = new Set(usedInviteCodes.values());
-    const untrackedUsers = registeredUsers.filter(u => !trackedUsers.has(u));
-
-    if (untrackedUsers.length === 0) {
-      console.log('Reconcile: all registered users are tracked — no action needed');
-      return;
-    }
-
-    // Find codes that appear available but shouldn't be
-    const availableCodes = [...validInviteCodes].filter(
-      c => !usedInviteCodes.has(c) && !sentInviteCodes.has(c)
-    );
-
-    // Match untracked users to available codes (arbitrary pairing — true mapping is lost)
-    const toMark = Math.min(untrackedUsers.length, availableCodes.length);
-    for (let i = 0; i < toMark; i++) {
-      usedInviteCodes.set(availableCodes[i], untrackedUsers[i]);
-    }
-
-    if (toMark > 0) {
-      await saveInviteCodes();
-      console.log(`Reconcile: marked ${toMark} codes as used (matched to: ${untrackedUsers.slice(0, toMark).join(', ')})`);
-    }
-
-    if (untrackedUsers.length > availableCodes.length) {
-      console.warn(`Reconcile: ${untrackedUsers.length - availableCodes.length} registered users have no matching code (more users than codes)`);
-    }
-  } catch (err) {
-    console.error('Reconcile: error:', err.message);
-  }
-}
+loadInviteCodes();
 
 // Validation helpers
 function validateRoomId(roomId) {
@@ -782,6 +725,23 @@ app.delete('/api/admin/codes/:code', (req, res) => {
   res.json({ deleted: code, total: validInviteCodes.size });
 });
 
+// Admin: purge all unused codes (keeps used and sent for audit trail)
+app.delete('/api/admin/codes', (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  const before = validInviteCodes.size;
+  const purged = [];
+  for (const code of [...validInviteCodes]) {
+    if (!usedInviteCodes.has(code) && !sentInviteCodes.has(code)) {
+      validInviteCodes.delete(code);
+      purged.push(code);
+    }
+  }
+
+  saveInviteCodes().catch(err => console.error('Failed to persist invite codes:', err));
+  res.json({ purged: purged.length, remaining: validInviteCodes.size });
+});
+
 // Waitlist: join
 app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
   const { name, email, message } = req.body;
@@ -1291,6 +1251,7 @@ function getAdminPageHTML(adminKey) {
       <input type="number" id="gen-count" value="5" min="1" max="20">
       <button class="btn btn-primary" id="btn-generate" onclick="generateCodes()">Generate Codes</button>
       <span style="flex:1"></span>
+      <button class="btn" style="background:#c00;color:#fff;border-color:#900" onclick="purgeUnusedCodes()">Purge Unused</button>
       <button class="btn" onclick="copyEnvVar()">Copy INVITE_CODES</button>
     </div>
 
@@ -1468,6 +1429,21 @@ async function deleteCode(code) {
     fetchCodes();
   } catch (e) {
     showToast('Error deleting code');
+  }
+}
+
+async function purgeUnusedCodes() {
+  if (!confirm('Delete ALL unused codes? Used and sent codes will be kept. This cannot be undone.')) return;
+  try {
+    const r = await fetch(API_BASE + '/api/admin/codes?key=' + encodeURIComponent(API_KEY), {
+      method: 'DELETE'
+    });
+    if (!r.ok) throw new Error('Failed');
+    const data = await r.json();
+    showToast('Purged ' + data.purged + ' unused codes');
+    fetchCodes();
+  } catch (e) {
+    showToast('Error purging codes');
   }
 }
 
