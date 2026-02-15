@@ -1162,10 +1162,21 @@ function getAdminPageHTML(adminKey) {
   }
 
   .btn-danger {
-    color: #cc0000;
+    color: #9c0006;
     font-size: 9px;
     padding: 1px 5px;
     border-width: 1px;
+  }
+
+  .btn-danger:hover {
+    background: #ffc7ce;
+  }
+
+  .toolbar .btn-danger {
+    font-size: 11px;
+    padding: 3px 12px;
+    border-width: 2px;
+    font-weight: bold;
   }
 
   .toolbar {
@@ -1272,7 +1283,7 @@ function getAdminPageHTML(adminKey) {
       <input type="number" id="gen-count" value="5" min="1" max="20">
       <button class="btn btn-primary" id="btn-generate" onclick="generateCodes()">Generate Codes</button>
       <span style="flex:1"></span>
-      <button class="btn" style="background:#c00;color:#fff;border-color:#900" onclick="purgeUnusedCodes()">Purge Unused</button>
+      <button class="btn btn-danger" onclick="purgeUnusedCodes()">Purge Unused</button>
       <button class="btn" onclick="copyEnvVar()">Copy INVITE_CODES</button>
     </div>
 
@@ -1664,7 +1675,7 @@ function renderWaitlist(data) {
       + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(entry.message || '') + '">' + esc(entry.message || '—') + '</td>'
       + '<td>' + dateStr + '</td>'
       + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button>'
-      + ' <button class="btn" style="background:#c00;color:#fff;border-color:#900;margin-left:4px" onclick="deleteWaitlistEntry(\\'' + esc(entry.email) + '\\')">&#10005;</button></td>'
+      + ' <button class="btn btn-danger" onclick="deleteWaitlistEntry(\\'' + esc(entry.email) + '\\')">&#10005;</button></td>'
       + '</tr>';
   });
   html += '</table>';
