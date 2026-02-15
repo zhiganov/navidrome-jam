@@ -771,14 +771,14 @@ app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
     await writeWaitlist(waitlist);
     console.log(`Waitlist: ${normalizedEmail} joined (position ${waitlist.length})`);
 
-    // Notify admin via email
-    if (resend && process.env.ADMIN_EMAIL) {
-      resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || 'Navidrome Jam <noreply@resend.dev>',
-        to: process.env.ADMIN_EMAIL,
-        subject: `Waitlist: ${name.trim()} wants to join Navidrome Jam`,
-        html: `<p><strong>${sanitizeString(name.trim(), 100)}</strong> (${normalizedEmail}) joined the waitlist.</p>${message ? `<p>Message: "${sanitizeString(message.trim(), 500)}"</p>` : ''}<p>Position: #${waitlist.length}</p><p><a href="${process.env.CLIENT_URL || 'https://jam.zhgnv.com'}/admin">Open Admin Panel</a></p>`,
-      }).catch(err => console.error('Failed to send waitlist notification:', err));
+    // Notify admin via Telegram
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
+      const text = `🎵 *Waitlist signup*\n\n*${name.trim()}* (${normalizedEmail})\nPosition: #${waitlist.length}${message ? `\n\n_"${message.trim()}"_` : ''}`;
+      fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: process.env.TELEGRAM_ADMIN_CHAT_ID, text, parse_mode: 'Markdown' }),
+      }).catch(err => console.error('Failed to send Telegram notification:', err));
     }
 
     res.status(201).json({ position: waitlist.length });
