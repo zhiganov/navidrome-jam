@@ -770,6 +770,17 @@ app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
 
     await writeWaitlist(waitlist);
     console.log(`Waitlist: ${normalizedEmail} joined (position ${waitlist.length})`);
+
+    // Notify admin via email
+    if (resend && process.env.ADMIN_EMAIL) {
+      resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || 'Navidrome Jam <noreply@resend.dev>',
+        to: process.env.ADMIN_EMAIL,
+        subject: `Waitlist: ${name.trim()} wants to join Navidrome Jam`,
+        html: `<p><strong>${sanitizeString(name.trim(), 100)}</strong> (${normalizedEmail}) joined the waitlist.</p>${message ? `<p>Message: "${sanitizeString(message.trim(), 500)}"</p>` : ''}<p>Position: #${waitlist.length}</p><p><a href="${process.env.CLIENT_URL || 'https://jam.zhgnv.com'}/admin">Open Admin Panel</a></p>`,
+      }).catch(err => console.error('Failed to send waitlist notification:', err));
+    }
+
     res.status(201).json({ position: waitlist.length });
   } catch (err) {
     console.error('Waitlist error:', err);
