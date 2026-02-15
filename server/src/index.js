@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import Busboy from 'busboy';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { Resend } from 'resend';
 import { RoomManager } from './roomManager.js';
 import { SftpUploader } from './sftpUploader.js';
 
@@ -124,6 +125,10 @@ const CODES_PATH = path.join(DATA_DIR, 'invite-codes.json');
 const envCodes = (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean);
 const validInviteCodes = new Set(envCodes);
 const usedInviteCodes = new Map(); // code → username
+const sentInviteCodes = new Map(); // code → { email, name, sentAt }
+
+// Resend email client (optional — only needed for sending invite codes)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Load persisted invite codes on startup (merges with env var codes)
 async function loadInviteCodes() {
@@ -134,7 +139,10 @@ async function loadInviteCodes() {
       validInviteCodes.add(code);
       usedInviteCodes.set(code, user);
     }
-    console.log(`Loaded ${validInviteCodes.size} invite codes (${usedInviteCodes.size} used) from disk`);
+    for (const [code, info] of Object.entries(data.sent || {})) {
+      sentInviteCodes.set(code, info);
+    }
+    console.log(`Loaded ${validInviteCodes.size} invite codes (${usedInviteCodes.size} used, ${sentInviteCodes.size} sent) from disk`);
   } catch {
     // No persisted file yet — that's fine, env codes are already loaded
   }
@@ -145,6 +153,7 @@ async function saveInviteCodes() {
   await writeFile(CODES_PATH, JSON.stringify({
     valid: [...validInviteCodes],
     used: Object.fromEntries(usedInviteCodes),
+    sent: Object.fromEntries(sentInviteCodes),
   }, null, 2));
 }
 
@@ -661,13 +670,20 @@ function checkAdminAuth(req, res) {
 app.get('/api/admin/codes', (req, res) => {
   if (!checkAdminAuth(req, res)) return;
 
-  const codes = [...validInviteCodes].map(code => ({
-    code,
-    status: usedInviteCodes.has(code) ? 'used' : 'available',
-    usedBy: usedInviteCodes.get(code) || null
-  }));
+  const codes = [...validInviteCodes].map(code => {
+    const used = usedInviteCodes.has(code);
+    const sent = sentInviteCodes.has(code);
+    return {
+      code,
+      status: used ? 'used' : sent ? 'sent' : 'available',
+      usedBy: usedInviteCodes.get(code) || null,
+      sentTo: sentInviteCodes.get(code) || null,
+    };
+  });
 
-  res.json({ codes, total: codes.length, available: codes.filter(c => c.status === 'available').length });
+  const available = codes.filter(c => c.status === 'available').length;
+  const sent = codes.filter(c => c.status === 'sent').length;
+  res.json({ codes, total: codes.length, available, sent });
 });
 
 // Admin: generate new invite codes
@@ -767,6 +783,106 @@ app.delete('/api/admin/waitlist/:email', async (req, res) => {
   await writeWaitlist(filtered);
   res.json({ removed: email, remaining: filtered.length });
 });
+
+// Admin: send invite code to a waitlisted person via email
+app.post('/api/admin/send-code', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  if (!resend) {
+    return res.status(503).json({ error: 'Email not configured (set RESEND_API_KEY)' });
+  }
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  if (!fromEmail) {
+    return res.status(503).json({ error: 'Sender not configured (set RESEND_FROM_EMAIL)' });
+  }
+
+  const { email, name } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  // Pick the first available code (not used, not sent)
+  let code = null;
+  for (const c of validInviteCodes) {
+    if (!usedInviteCodes.has(c) && !sentInviteCodes.has(c)) {
+      code = c;
+      break;
+    }
+  }
+
+  if (!code) {
+    return res.status(409).json({ error: 'No available codes. Generate more first.' });
+  }
+
+  // Send email via Resend
+  try {
+    await resend.emails.send({
+      from: fromEmail,
+      to: email,
+      subject: "You're invited to Navidrome Jam!",
+      html: getInviteEmailHTML(name || email.split('@')[0], code),
+    });
+
+    // Mark code as sent
+    sentInviteCodes.set(code, { email, name: name || null, sentAt: new Date().toISOString() });
+    saveInviteCodes().catch(err => console.error('Failed to persist sent codes:', err));
+
+    // Remove from waitlist
+    const waitlist = await readWaitlist();
+    const filtered = waitlist.filter(e => e.email.toLowerCase() !== email.toLowerCase());
+    await writeWaitlist(filtered);
+
+    console.log(`Admin sent code ${code} to ${email} (${name || 'no name'})`);
+    res.json({ code, email, name });
+  } catch (err) {
+    console.error('Failed to send invite email:', err);
+    res.status(500).json({ error: err.message || 'Failed to send email' });
+  }
+});
+
+function getInviteEmailHTML(name, code) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#000033;font-family:Tahoma,Verdana,sans-serif">
+<div style="padding:40px 20px">
+<div style="max-width:480px;margin:0 auto">
+  <div style="background:#c0c0c0;border:2px solid;border-color:#fff #000 #000 #fff;box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #808080">
+    <div style="background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:4px 8px;font-weight:bold;font-size:13px;font-family:Tahoma,Verdana,sans-serif">
+      &#9834; Navidrome Jam &mdash; You're Invited!
+    </div>
+    <div style="padding:20px">
+      <p style="font-size:13px;color:#000;margin:0 0 12px">Hey ${name}!</p>
+      <p style="font-size:12px;color:#000;margin:0 0 16px">
+        Good news &mdash; you're off the waitlist! Here's your personal invite code:
+      </p>
+
+      <div style="background:#000;border:2px solid;border-color:#808080 #fff #fff #808080;padding:20px;text-align:center;margin:0 0 16px">
+        <div style="font-family:'Courier New',Courier,monospace;font-size:32px;color:#00ff00;letter-spacing:6px">
+          ${code}
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:#000;margin:0 0 4px"><strong>How to join:</strong></p>
+      <ol style="font-size:12px;color:#000;margin:0 0 16px;padding-left:20px">
+        <li style="margin-bottom:4px">Go to <a href="https://jam.zhgnv.com" style="color:#0000ff">jam.zhgnv.com</a></li>
+        <li style="margin-bottom:4px">Click <strong>Sign Up</strong></li>
+        <li>Enter the code above</li>
+      </ol>
+
+      <div style="height:2px;background:linear-gradient(90deg,transparent,#00ffff,#ff00ff,#ffff00,transparent);margin:16px 0"></div>
+
+      <p style="font-size:10px;color:#808080;text-align:center;margin:0">
+        &#42; &#42; &#42; Best viewed in Netscape Navigator 4.0 at 800&times;600 &#42; &#42; &#42;
+      </p>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>`;
+}
 
 // Admin dashboard page
 app.get('/admin', (req, res) => {
@@ -967,6 +1083,18 @@ function getAdminPageHTML(adminKey) {
     border: 1px solid #856404;
   }
 
+  .badge-sent {
+    background: #cce5ff;
+    color: #004085;
+    border: 1px solid #004085;
+  }
+
+  .sent-to {
+    font-size: 9px;
+    color: #666;
+    display: block;
+  }
+
   .stat-box .num.yellow { color: #856404; }
 
   .btn {
@@ -1097,6 +1225,7 @@ function getAdminPageHTML(adminKey) {
     <div class="stats">
       <div class="stat-box"><div class="num blue" id="stat-total">-</div><div class="label">Total</div></div>
       <div class="stat-box"><div class="num green" id="stat-avail">-</div><div class="label">Available</div></div>
+      <div class="stat-box"><div class="num" style="color:#004085" id="stat-sent">-</div><div class="label">Sent</div></div>
       <div class="stat-box"><div class="num red" id="stat-used">-</div><div class="label">Used</div></div>
     </div>
 
@@ -1121,6 +1250,28 @@ function getAdminPageHTML(adminKey) {
     <div class="note">
       &#9888; Codes are stored in memory. Runtime-generated codes will be lost on server restart.
       Copy the INVITE_CODES env var above and update Railway to persist them.
+    </div>
+  </div>
+</div>
+
+<div class="window">
+  <div class="title-bar">
+    <div class="title-bar-icon">&#9993;</div>
+    Waitlist
+  </div>
+  <div class="window-body">
+    <div class="stats">
+      <div class="stat-box"><div class="num blue" id="wl-stat-total">-</div><div class="label">Waiting</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" onclick="fetchWaitlist()">Refresh</button>
+      <span style="flex:1"></span>
+      <span id="resend-status" style="font-size:10px;color:#666"></span>
+    </div>
+
+    <div id="waitlist-table">
+      <div class="loading">Loading waitlist...</div>
     </div>
   </div>
 </div>
@@ -1181,23 +1332,33 @@ async function fetchCodes() {
 function renderCodes(data) {
   document.getElementById('stat-total').textContent = data.total;
   document.getElementById('stat-avail').textContent = data.available;
-  document.getElementById('stat-used').textContent = data.total - data.available;
+  document.getElementById('stat-sent').textContent = data.sent || 0;
+  document.getElementById('stat-used').textContent = data.total - data.available - (data.sent || 0);
 
-  // Sort: available first, then used
+  // Sort: available first, then sent, then used
+  const order = { available: 0, sent: 1, used: 2 };
   const sorted = [...data.codes].sort((a, b) => {
-    if (a.status === b.status) return a.code.localeCompare(b.code);
-    return a.status === 'available' ? -1 : 1;
+    if (a.status !== b.status) return (order[a.status] || 9) - (order[b.status] || 9);
+    return a.code.localeCompare(b.code);
   });
 
-  let html = '<table><tr><th>Code</th><th>Status</th><th>Used By</th><th></th></tr>';
+  let html = '<table><tr><th>Code</th><th>Status</th><th>Details</th><th></th></tr>';
   for (const c of sorted) {
-    const badge = c.status === 'used'
-      ? '<span class="badge badge-used">USED</span>'
-      : '<span class="badge badge-available">AVAILABLE</span>';
+    let badge, details;
+    if (c.status === 'used') {
+      badge = '<span class="badge badge-used">USED</span>';
+      details = c.usedBy ? esc(c.usedBy) : '—';
+    } else if (c.status === 'sent') {
+      badge = '<span class="badge badge-sent">SENT</span>';
+      details = c.sentTo ? esc(c.sentTo.email) + (c.sentTo.name ? '<span class="sent-to">' + esc(c.sentTo.name) + '</span>' : '') : '—';
+    } else {
+      badge = '<span class="badge badge-available">AVAILABLE</span>';
+      details = '—';
+    }
     html += '<tr>'
       + '<td style="font-weight:bold">' + esc(c.code) + '</td>'
       + '<td>' + badge + '</td>'
-      + '<td>' + (c.usedBy ? esc(c.usedBy) : '—') + '</td>'
+      + '<td>' + details + '</td>'
       + '<td><button class="btn btn-danger" onclick="deleteCode(\\''+esc(c.code)+'\\')">del</button></td>'
       + '</tr>';
   }
@@ -1415,8 +1576,85 @@ async function deleteAllExpired() {
   fetchUploads();
 }
 
+// --- Waitlist ---
+
+async function fetchWaitlist() {
+  try {
+    const r = await fetch(API_BASE + '/api/admin/waitlist?key=' + encodeURIComponent(API_KEY));
+    if (!r.ok) throw new Error('Failed to fetch');
+    const data = await r.json();
+    renderWaitlist(data);
+  } catch (e) {
+    document.getElementById('waitlist-table').innerHTML = '<div class="loading" style="color:red">Error loading waitlist</div>';
+  }
+}
+
+function renderWaitlist(data) {
+  document.getElementById('wl-stat-total').textContent = data.total;
+
+  if (data.total === 0) {
+    document.getElementById('waitlist-table').innerHTML = '<div class="loading">No one on the waitlist</div>';
+    return;
+  }
+
+  // Sort by date (oldest first — they've been waiting longest)
+  const sorted = [...data.waitlist].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  let html = '<table><tr><th>#</th><th>Name</th><th>Email</th><th>Message</th><th>Date</th><th></th></tr>';
+  sorted.forEach((entry, i) => {
+    const dateStr = new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    html += '<tr>'
+      + '<td>' + (i + 1) + '</td>'
+      + '<td>' + esc(entry.name) + '</td>'
+      + '<td>' + esc(entry.email) + '</td>'
+      + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(entry.message || '') + '">' + esc(entry.message || '—') + '</td>'
+      + '<td>' + dateStr + '</td>'
+      + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button></td>'
+      + '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('waitlist-table').innerHTML = html;
+}
+
+async function sendCode(email, name, idx) {
+  const btn = document.getElementById('send-' + idx);
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const r = await fetch(API_BASE + '/api/admin/send-code?key=' + encodeURIComponent(API_KEY), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed');
+    showToast('Sent ' + data.code + ' to ' + email);
+    fetchWaitlist();
+    fetchCodes();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Send Code \\u2709';
+  }
+}
+
 fetchCodes();
 fetchUploads();
+fetchWaitlist();
+
+// Check if Resend email is configured (probe with empty body — 503 = not configured, 400 = ready)
+fetch(API_BASE + '/api/admin/send-code?key=' + encodeURIComponent(API_KEY), { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' })
+  .then(r => r.json().then(d => {
+    const el = document.getElementById('resend-status');
+    if (r.status === 503) {
+      el.innerHTML = '<span style="color:red">&#9888; ' + esc(d.error) + '</span>';
+    } else {
+      el.innerHTML = '<span style="color:green">&#10003; Email ready</span>';
+    }
+  }))
+  .catch(() => {});
 </script>
 </body>
 </html>`;
