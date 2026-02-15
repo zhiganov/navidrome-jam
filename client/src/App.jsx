@@ -4,6 +4,9 @@ import { useJam } from './contexts/JamContext';
 import SyncedAudioPlayer from './components/SyncedAudioPlayer';
 import './App.css';
 
+const ROOM_POLL_INTERVAL_MS = 10000;
+const RESTART_TRACK_THRESHOLD_S = 3; // seconds before "previous" restarts current track
+
 function App() {
   // Get client instances from context
   const navidrome = useNavidrome();
@@ -214,7 +217,7 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || currentRoom) return;
     fetchActiveRooms();
-    const interval = setInterval(fetchActiveRooms, 10000);
+    const interval = setInterval(fetchActiveRooms, ROOM_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [isAuthenticated, currentRoom, fetchActiveRooms]);
 
@@ -816,7 +819,7 @@ function App() {
     const audio = audioRef.current;
 
     // If more than 3 seconds in, restart current track
-    if (audio && audio.currentTime > 3) {
+    if (audio && audio.currentTime > RESTART_TRACK_THRESHOLD_S) {
       audio.currentTime = 0;
       jamClient.play(currentTrack.id, 0);
       return;

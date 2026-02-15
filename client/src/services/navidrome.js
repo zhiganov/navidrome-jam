@@ -1,5 +1,8 @@
 import CryptoJS from 'crypto-js';
 
+const SUBSONIC_API_VERSION = '1.16.1';
+const SUBSONIC_CLIENT_NAME = 'navidrome-jam';
+
 /**
  * Navidrome Subsonic API Client
  *
@@ -32,8 +35,8 @@ class NavidromeClient {
     url.searchParams.append('u', this.username);
     url.searchParams.append('t', this.token);
     url.searchParams.append('s', this.salt);
-    url.searchParams.append('v', '1.16.1');
-    url.searchParams.append('c', 'navidrome-jam');
+    url.searchParams.append('v', SUBSONIC_API_VERSION);
+    url.searchParams.append('c', SUBSONIC_CLIENT_NAME);
     url.searchParams.append('f', 'json');
 
     Object.entries(params).forEach(([key, value]) => {
@@ -56,8 +59,8 @@ class NavidromeClient {
     url.searchParams.append('u', username);
     url.searchParams.append('t', token);
     url.searchParams.append('s', salt);
-    url.searchParams.append('v', '1.16.1');
-    url.searchParams.append('c', 'navidrome-jam');
+    url.searchParams.append('v', SUBSONIC_API_VERSION);
+    url.searchParams.append('c', SUBSONIC_CLIENT_NAME);
     url.searchParams.append('f', 'json');
 
     const response = await fetch(url);
@@ -99,8 +102,8 @@ class NavidromeClient {
       url.searchParams.append('u', username);
       url.searchParams.append('t', token);
       url.searchParams.append('s', salt);
-      url.searchParams.append('v', '1.16.1');
-      url.searchParams.append('c', 'navidrome-jam');
+      url.searchParams.append('v', SUBSONIC_API_VERSION);
+      url.searchParams.append('c', SUBSONIC_CLIENT_NAME);
       url.searchParams.append('f', 'json');
 
       const response = await fetch(url);

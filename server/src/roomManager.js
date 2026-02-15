@@ -1,5 +1,11 @@
 import { randomBytes } from 'crypto';
 
+// Room configuration
+const ROOM_CODE_BYTES = 4; // 8 hex chars = 4.3 billion combinations
+const ROOM_CODE_MAX_RETRIES = 5;
+const STALE_USER_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const NUM_CAT_AVATARS = 9; // IDs 0-8
+
 export class RoomManager {
   constructor() {
     this.rooms = new Map();
@@ -9,7 +15,7 @@ export class RoomManager {
    * Generate a random room code (8 hex characters = 4.3 billion combinations)
    */
   generateRoomCode() {
-    return randomBytes(4).toString('hex').toUpperCase();
+    return randomBytes(ROOM_CODE_BYTES).toString('hex').toUpperCase();
   }
 
   /**
@@ -19,8 +25,7 @@ export class RoomManager {
     let id = roomId;
 
     if (!id) {
-      // Retry up to 5 times if generated code collides
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < ROOM_CODE_MAX_RETRIES; i++) {
         const candidate = this.generateRoomCode();
         if (!this.rooms.has(candidate)) {
           id = candidate;
@@ -253,7 +258,7 @@ export class RoomManager {
   selectCat(roomId, userId, catId) {
     const room = this.rooms.get(roomId);
     if (!room) throw new Error('Room not found');
-    if (catId < 0 || catId > 8) throw new Error('Invalid cat ID');
+    if (catId < 0 || catId >= NUM_CAT_AVATARS) throw new Error('Invalid cat ID');
     room.catSelections[userId] = catId;
     return room.catSelections;
   }
@@ -347,7 +352,7 @@ export class RoomManager {
    */
   cleanupStaleRooms() {
     const now = Date.now();
-    const timeout = 5 * 60 * 1000; // 5 minutes
+    const timeout = STALE_USER_TIMEOUT_MS;
 
     for (const [roomId, room] of this.rooms.entries()) {
       const staleUsers = room.users.filter(

@@ -14,6 +14,68 @@ import { SftpUploader } from './sftpUploader.js';
 
 dotenv.config();
 
+// ─── Configuration constants ───────────────────────────────────────────────
+
+// Navidrome / Subsonic API
+const SUBSONIC_API_VERSION = '1.16.1';
+const SUBSONIC_CLIENT_NAME = 'navidrome-jam';
+const ND_TOKEN_REFRESH_MS = 55 * 60 * 1000; // 55 minutes
+
+// Validation limits
+const MAX_ROOM_ID_LENGTH = 8;
+const MIN_USERNAME_LENGTH = 3;
+const MAX_USERNAME_LENGTH = 50;
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_PASSWORD_LENGTH = 128;
+const MAX_COMMUNITY_LENGTH = 50;
+const MAX_HOST_NAME_LENGTH = 50;
+
+// Rate limiting
+const ROOM_RATE_WINDOW_MS = 60 * 1000;
+const ROOM_RATE_MAX = 5;
+const REGISTER_RATE_WINDOW_MS = 60 * 1000;
+const REGISTER_RATE_MAX = 3;
+const WAITLIST_RATE_WINDOW_MS = 60 * 60 * 1000;
+const WAITLIST_RATE_MAX = 3;
+const UPLOAD_RATE_WINDOW_MS = 60 * 60 * 1000;
+const UPLOAD_RATE_MAX = 5;
+
+// File uploads
+const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200 MB
+const PERMANENT_UPLOAD_QUOTA = 50;
+const MAX_FILENAME_LENGTH = 200;
+const UPLOAD_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const UPLOAD_WARNING_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// WebSocket queue limits
+const MAX_QUEUE_SIZE = 100;
+const MAX_TRACK_ID_LENGTH = 100;
+const MAX_TRACK_TITLE_LENGTH = 200;
+const MAX_ARTIST_LENGTH = 100;
+const MAX_ALBUM_LENGTH = 200;
+
+// Invite codes
+const INVITE_CODE_PREFIX = 'JAM-';
+const INVITE_CODE_LENGTH = 4;
+const INVITE_CODE_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const MAX_INVITE_GENERATE = 20;
+const ACTION_TOKEN_BYTES = 24;
+const ACTION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Waitlist
+const MAX_WAITLIST_NAME_LENGTH = 100;
+const MAX_WAITLIST_MESSAGE_LENGTH = 500;
+
+// Server
+const DEFAULT_PORT = 3001;
+const CLEANUP_INTERVAL_MS = 60 * 1000;
+const UPLOAD_CLEANUP_DELAY_MS = 10 * 1000;
+const UPLOAD_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const COMMUNITIES_CACHE_TTL_MS = 60 * 60 * 1000;
+const NUM_CAT_AVATARS = 9; // IDs 0-8
+
+// ────────────────────────────────────────────────────────────────────────────
+
 const app = express();
 const httpServer = createServer(app);
 const clientUrl = process.env.CLIENT_URL || '*';
@@ -59,7 +121,7 @@ async function getNavidromeToken() {
 
     const data = await response.json();
     ndAdminToken = data.token;
-    ndAdminTokenExpiry = Date.now() + 55 * 60 * 1000; // refresh every 55 min
+    ndAdminTokenExpiry = Date.now() + ND_TOKEN_REFRESH_MS;
     return ndAdminToken;
   } catch {
     return null;
@@ -178,8 +240,8 @@ function validateRoomId(roomId) {
     return { valid: false, error: 'roomId must be a string' };
   }
 
-  if (roomId.length > 8) {
-    return { valid: false, error: 'roomId must be at most 8 characters' };
+  if (roomId.length > MAX_ROOM_ID_LENGTH) {
+    return { valid: false, error: `roomId must be at most ${MAX_ROOM_ID_LENGTH} characters` };
   }
 
   if (!/^[a-zA-Z0-9]+$/.test(roomId)) {
@@ -203,14 +265,14 @@ function sanitizeString(str, maxLength = 50) {
 }
 
 function validateRegistration({ username, password, inviteCode }) {
-  if (!username || typeof username !== 'string' || username.trim().length < 3 || username.length > 50) {
-    return { valid: false, error: 'Username must be 3-50 characters' };
+  if (!username || typeof username !== 'string' || username.trim().length < MIN_USERNAME_LENGTH || username.length > MAX_USERNAME_LENGTH) {
+    return { valid: false, error: `Username must be ${MIN_USERNAME_LENGTH}-${MAX_USERNAME_LENGTH} characters` };
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
     return { valid: false, error: 'Username must be alphanumeric (hyphens and underscores allowed)' };
   }
-  if (!password || typeof password !== 'string' || password.length < 6 || password.length > 128) {
-    return { valid: false, error: 'Password must be 6-128 characters' };
+  if (!password || typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+    return { valid: false, error: `Password must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters` };
   }
   if (!inviteCode || typeof inviteCode !== 'string') {
     return { valid: false, error: 'Invite code is required' };
@@ -220,16 +282,16 @@ function validateRegistration({ username, password, inviteCode }) {
 
 // Rate limiting for room creation (max 5 rooms per IP per minute)
 const createRoomLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5,
+  windowMs: ROOM_RATE_WINDOW_MS,
+  max: ROOM_RATE_MAX,
   message: { error: 'Too many room creation attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 3,
+  windowMs: REGISTER_RATE_WINDOW_MS,
+  max: REGISTER_RATE_MAX,
   message: { error: 'Too many registration attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -253,8 +315,8 @@ async function writeWaitlist(list) {
 }
 
 const waitlistLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
+  windowMs: WAITLIST_RATE_WINDOW_MS,
+  max: WAITLIST_RATE_MAX,
   message: { error: 'Too many waitlist attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -274,7 +336,7 @@ let communitiesCache = { data: null, fetchedAt: 0 };
 app.get('/api/communities', async (req, res) => {
   try {
     const now = Date.now();
-    if (communitiesCache.data && now - communitiesCache.fetchedAt < 60 * 60 * 1000) {
+    if (communitiesCache.data && now - communitiesCache.fetchedAt < COMMUNITIES_CACHE_TTL_MS) {
       return res.json(communitiesCache.data);
     }
     const response = await fetch('https://scenius-digest.vercel.app/api/groups');
@@ -313,8 +375,8 @@ app.post('/api/rooms', createRoomLimiter, (req, res) => {
     }
 
     // Sanitize hostName to prevent XSS
-    const sanitizedHostName = sanitizeString(hostName, 50) || 'Host';
-    const sanitizedCommunity = community ? sanitizeString(community, 50) : null;
+    const sanitizedHostName = sanitizeString(hostName, MAX_HOST_NAME_LENGTH) || 'Host';
+    const sanitizedCommunity = community ? sanitizeString(community, MAX_COMMUNITY_LENGTH) : null;
 
     // Create room
     const room = roomManager.createRoom(roomId || null, sanitizedHostName, sanitizedCommunity);
@@ -444,8 +506,6 @@ app.post('/api/register', registerLimiter, async (req, res) => {
 // --- Upload endpoints ---
 
 const ALLOWED_EXTENSIONS = ['.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.aac'];
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
-const PERMANENT_QUOTA = 50;
 
 // Rate limit: 5 uploads per user per hour (keyed by Subsonic username)
 const uploadRateLimitMap = new Map(); // username -> { count, resetAt }
@@ -455,11 +515,11 @@ function checkUploadRateLimit(username) {
   const entry = uploadRateLimitMap.get(username);
 
   if (!entry || now > entry.resetAt) {
-    uploadRateLimitMap.set(username, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    uploadRateLimitMap.set(username, { count: 1, resetAt: now + UPLOAD_RATE_WINDOW_MS });
     return true;
   }
 
-  if (entry.count >= 5) return false;
+  if (entry.count >= UPLOAD_RATE_MAX) return false;
   entry.count++;
   return true;
 }
@@ -475,7 +535,7 @@ async function verifySubsonicAuth(query) {
   const navidromeUrl = process.env.NAVIDROME_URL;
   if (!navidromeUrl) return null;
 
-  const params = new URLSearchParams({ u, v: '1.16.1', c: 'navidrome-jam', f: 'json' });
+  const params = new URLSearchParams({ u, v: SUBSONIC_API_VERSION, c: SUBSONIC_CLIENT_NAME, f: 'json' });
   if (t && s) {
     params.set('t', t);
     params.set('s', s);
@@ -513,7 +573,7 @@ app.post('/api/upload', async (req, res) => {
 
   // Check Content-Length before parsing
   const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-  if (contentLength > MAX_FILE_SIZE) {
+  if (contentLength > MAX_UPLOAD_SIZE) {
     return res.status(413).json({ error: 'File too large (max 200 MB)' });
   }
 
@@ -521,7 +581,7 @@ app.post('/api/upload', async (req, res) => {
     const result = await new Promise((resolve, reject) => {
       const busboy = Busboy({
         headers: req.headers,
-        limits: { fileSize: MAX_FILE_SIZE, files: 1 },
+        limits: { fileSize: MAX_UPLOAD_SIZE, files: 1 },
       });
 
       let fileProcessed = false;
@@ -613,7 +673,7 @@ app.get('/api/uploads/mine', async (req, res) => {
   try {
     const uploads = await sftpUploader.listUserUploads(username);
     const permanentCount = uploads.filter(u => u.permanent).length;
-    res.json({ uploads, permanentCount, permanentQuota: PERMANENT_QUOTA });
+    res.json({ uploads, permanentCount, permanentQuota: PERMANENT_UPLOAD_QUOTA });
   } catch (error) {
     console.error('Error listing uploads:', error);
     res.status(500).json({ error: 'Failed to list uploads' });
@@ -644,9 +704,9 @@ app.post('/api/uploads/:filename/permanent', async (req, res) => {
     }
 
     // If toggling ON and already at quota, reject
-    if (!targetUpload.permanent && currentCount >= PERMANENT_QUOTA) {
+    if (!targetUpload.permanent && currentCount >= PERMANENT_UPLOAD_QUOTA) {
       return res.status(400).json({
-        error: `Permanent quota reached (${PERMANENT_QUOTA}). Remove permanent flag from another file first.`,
+        error: `Permanent quota reached (${PERMANENT_UPLOAD_QUOTA}). Remove permanent flag from another file first.`,
       });
     }
 
@@ -701,14 +761,14 @@ app.get('/api/admin/codes', (req, res) => {
 app.post('/api/admin/generate-codes', (req, res) => {
   if (!checkAdminAuth(req, res)) return;
 
-  const count = Math.min(Math.max(parseInt(req.body.count) || 5, 1), 20);
+  const count = Math.min(Math.max(parseInt(req.body.count) || 5, 1), MAX_INVITE_GENERATE);
   const newCodes = [];
 
   for (let i = 0; i < count; i++) {
     let code;
     do {
-      code = 'JAM-' + Array.from({ length: 4 }, () =>
-        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 36)]
+      code = INVITE_CODE_PREFIX + Array.from({ length: INVITE_CODE_LENGTH }, () =>
+        INVITE_CODE_CHARS[Math.floor(Math.random() * INVITE_CODE_CHARS.length)]
       ).join('');
     } while (validInviteCodes.has(code));
 
@@ -760,8 +820,8 @@ app.delete('/api/admin/codes', (req, res) => {
 app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
   const { name, email, message } = req.body;
 
-  if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
-    return res.status(400).json({ error: 'Name is required (max 100 characters)' });
+  if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > MAX_WAITLIST_NAME_LENGTH) {
+    return res.status(400).json({ error: `Name is required (max ${MAX_WAITLIST_NAME_LENGTH} characters)` });
   }
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Valid email is required' });
@@ -776,9 +836,9 @@ app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
     }
 
     waitlist.push({
-      name: sanitizeString(name.trim(), 100),
+      name: sanitizeString(name.trim(), MAX_WAITLIST_NAME_LENGTH),
       email: normalizedEmail,
-      message: message ? sanitizeString(message.trim(), 500) : null,
+      message: message ? sanitizeString(message.trim(), MAX_WAITLIST_MESSAGE_LENGTH) : null,
       joinedAt: new Date().toISOString(),
     });
 
@@ -787,12 +847,12 @@ app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
 
     // Notify admin via Telegram with one-click Send Code button
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
-      const token = crypto.randomBytes(24).toString('hex');
+      const token = crypto.randomBytes(ACTION_TOKEN_BYTES).toString('hex');
       actionTokens.set(token, { email: normalizedEmail, name: name.trim(), createdAt: Date.now() });
 
       const serverUrl = process.env.RAILWAY_PUBLIC_DOMAIN
         ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : `http://localhost:${process.env.PORT || 3001}`;
+        : `http://localhost:${process.env.PORT || DEFAULT_PORT}`;
       const sendUrl = `${serverUrl}/api/admin/quick-send/${token}`;
 
       const text = `🎵 *Waitlist signup*\n\n*${name.trim()}* (${normalizedEmail})\nPosition: #${waitlist.length}${message ? `\n\n_"${message.trim()}"_` : ''}`;
@@ -904,7 +964,7 @@ app.get('/api/admin/quick-send/:token', async (req, res) => {
   }
 
   // Expire tokens older than 24h
-  if (Date.now() - action.createdAt > 24 * 60 * 60 * 1000) {
+  if (Date.now() - action.createdAt > ACTION_TOKEN_EXPIRY_MS) {
     actionTokens.delete(req.params.token);
     return res.status(410).send(quickSendPage('Link expired (24h limit)', false));
   }
@@ -1616,8 +1676,8 @@ async function fetchUploads() {
 
 function renderUploads(uploads) {
   const now = Date.now();
-  const sevenDays = 7 * 24 * 60 * 60 * 1000;
-  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  const sevenDays = UPLOAD_WARNING_AGE_MS;
+  const thirtyDays = UPLOAD_MAX_AGE_MS;
 
   const total = uploads.length;
   const permanent = uploads.filter(u => u.permanent).length;
@@ -1925,13 +1985,13 @@ io.on('connection', (socket) => {
       }
 
       // Validate userId (alphanumeric with hyphens, max 50 chars)
-      if (!userId || typeof userId !== 'string' || userId.length > 50 || !/^[a-zA-Z0-9-]+$/.test(userId)) {
+      if (!userId || typeof userId !== 'string' || userId.length > MAX_USERNAME_LENGTH || !/^[a-zA-Z0-9-]+$/.test(userId)) {
         socket.emit('error', { message: 'Invalid user ID' });
         return;
       }
 
       // Sanitize username
-      const sanitizedUsername = sanitizeString(username, 50) || 'Anonymous';
+      const sanitizedUsername = sanitizeString(username, MAX_USERNAME_LENGTH) || 'Anonymous';
 
       const room = roomManager.getRoom(roomId);
       if (!room) {
@@ -2073,17 +2133,17 @@ io.on('connection', (socket) => {
       }
 
       // Limit queue size to prevent abuse
-      if (queue.length > 100) {
+      if (queue.length > MAX_QUEUE_SIZE) {
         socket.emit('error', { message: 'Queue too large (max 100 items)' });
         return;
       }
 
       // Sanitize each queue item
       const sanitizedQueue = queue.map(item => ({
-        id: typeof item.id === 'string' ? item.id.substring(0, 100) : '',
-        title: sanitizeString(item.title, 200),
-        artist: sanitizeString(item.artist, 100),
-        album: sanitizeString(item.album, 200)
+        id: typeof item.id === 'string' ? item.id.substring(0, MAX_TRACK_ID_LENGTH) : '',
+        title: sanitizeString(item.title, MAX_TRACK_TITLE_LENGTH),
+        artist: sanitizeString(item.artist, MAX_ARTIST_LENGTH),
+        album: sanitizeString(item.album, MAX_ALBUM_LENGTH)
       })).filter(item => item.id); // Remove items without valid ID
 
       roomManager.updateQueue(roomId, sanitizedQueue);
@@ -2104,7 +2164,7 @@ io.on('connection', (socket) => {
         return;
       }
 
-      if (!userId || typeof userId !== 'string' || userId.length > 50) {
+      if (!userId || typeof userId !== 'string' || userId.length > MAX_USERNAME_LENGTH) {
         socket.emit('error', { message: 'Invalid user ID' });
         return;
       }
@@ -2153,7 +2213,7 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Unauthorized: Only host can change community' });
         return;
       }
-      const sanitized = community ? sanitizeString(community, 50) : null;
+      const sanitized = community ? sanitizeString(community, MAX_COMMUNITY_LENGTH) : null;
       room.community = sanitized;
       io.to(roomId).emit('room-state', { room: serializeRoom(room) });
       console.log(`Room ${roomId}: community changed to ${sanitized || '(none)'}`);
@@ -2170,7 +2230,7 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Not in this room' });
         return;
       }
-      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+      if (!trackId || typeof trackId !== 'string' || trackId.length > MAX_TRACK_ID_LENGTH) {
         socket.emit('error', { message: 'Invalid track ID' });
         return;
       }
@@ -2198,7 +2258,7 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Not in this room' });
         return;
       }
-      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+      if (!trackId || typeof trackId !== 'string' || trackId.length > MAX_TRACK_ID_LENGTH) {
         socket.emit('error', { message: 'Invalid track ID' });
         return;
       }
@@ -2226,7 +2286,7 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Not in this room' });
         return;
       }
-      if (!trackId || typeof trackId !== 'string' || trackId.length > 100) {
+      if (!trackId || typeof trackId !== 'string' || trackId.length > MAX_TRACK_ID_LENGTH) {
         socket.emit('error', { message: 'Invalid track ID' });
         return;
       }
@@ -2254,7 +2314,7 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Not in this room' });
         return;
       }
-      if (typeof catId !== 'number' || catId < 0 || catId > 8) {
+      if (typeof catId !== 'number' || catId < 0 || catId >= NUM_CAT_AVATARS) {
         socket.emit('error', { message: 'Invalid cat ID' });
         return;
       }
@@ -2371,7 +2431,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || DEFAULT_PORT;
 httpServer.listen(PORT, () => {
   console.log(`Navidrome Jam sync server running on port ${PORT}`);
 });
@@ -2383,9 +2443,9 @@ setInterval(() => {
   // Expire action tokens older than 24h
   const now = Date.now();
   for (const [token, action] of actionTokens) {
-    if (now - action.createdAt > 24 * 60 * 60 * 1000) actionTokens.delete(token);
+    if (now - action.createdAt > ACTION_TOKEN_EXPIRY_MS) actionTokens.delete(token);
   }
-}, 60000);
+}, CLEANUP_INTERVAL_MS);
 
 // Schedule upload cleanup (every 24 hours) — delete non-permanent files older than 30 days
 if (sftpUploader.isConfigured()) {
@@ -2394,12 +2454,12 @@ if (sftpUploader.isConfigured()) {
     sftpUploader.cleanupExpired().catch(err =>
       console.error('Upload cleanup error:', err)
     );
-  }, 10000);
+  }, UPLOAD_CLEANUP_DELAY_MS);
 
   // Then every 24 hours
   setInterval(() => {
     sftpUploader.cleanupExpired().catch(err =>
       console.error('Upload cleanup error:', err)
     );
-  }, 24 * 60 * 60 * 1000);
+  }, UPLOAD_CLEANUP_INTERVAL_MS);
 }
