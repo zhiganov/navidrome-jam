@@ -1784,31 +1784,30 @@ function App() {
                           <strong>{selectedAlbum.name}</strong>
                           <span>{selectedArtist?.name}</span>
                           {selectedAlbum.year && <span>{selectedAlbum.year}</span>}
-                          {canControl && selectedAlbum.songs.length > 0 && (
-                            <button
-                              className="win98-btn"
-                              style={{ fontSize: 10, padding: '2px 8px', marginTop: 2, alignSelf: 'flex-start' }}
-                              onClick={() => {
-                                const newItems = selectedAlbum.songs.map(song => ({
-                                  id: song.id,
-                                  title: song.title,
-                                  artist: song.artist,
-                                  album: song.album
-                                }));
-                                if (!currentTrack && newItems.length > 0) {
-                                  const [first, ...rest] = newItems;
-                                  jamClient.updateQueue([...queue, ...rest]);
-                                  jamClient.play(first.id, 0);
-                                  loadTrack(first.id);
-                                } else {
-                                  jamClient.updateQueue([...queue, ...newItems]);
-                                }
-                              }}
-                            >
-                              Queue All
-                            </button>
-                          )}
                         </div>
+                        {canControl && selectedAlbum.songs.length > 0 && (
+                          <button
+                            className="win98-btn browse-queue-all-btn"
+                            onClick={() => {
+                              const newItems = selectedAlbum.songs.map(song => ({
+                                id: song.id,
+                                title: song.title,
+                                artist: song.artist,
+                                album: song.album
+                              }));
+                              if (!currentTrack && newItems.length > 0) {
+                                const [first, ...rest] = newItems;
+                                jamClient.updateQueue([...queue, ...rest]);
+                                jamClient.play(first.id, 0);
+                                loadTrack(first.id);
+                              } else {
+                                jamClient.updateQueue([...queue, ...newItems]);
+                              }
+                            }}
+                          >
+                            Queue All
+                          </button>
+                        )}
                       </div>
 
                       {selectedAlbum.songs.length > 0 ? (
