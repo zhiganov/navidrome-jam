@@ -361,6 +361,17 @@ class JamClient {
   }
 
   /**
+   * Update room community (host only)
+   */
+  updateCommunity(community) {
+    if (!this.currentRoomId) return;
+    this.socket.emit('update-community', {
+      roomId: this.currentRoomId,
+      community: community || null
+    });
+  }
+
+  /**
    * Subscribe to events
    */
   on(event, callback) {
