@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import Busboy from 'busboy';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import { Resend } from 'resend';
 import { RoomManager } from './roomManager.js';
 import { SftpUploader } from './sftpUploader.js';
@@ -127,6 +128,9 @@ const validInviteCodes = new Set(envCodes);
 const usedInviteCodes = new Map(); // code → username
 const sentInviteCodes = new Map(); // code → { email, name, sentAt }
 const deletedCodes = new Set(); // codes explicitly deleted via admin — never re-add from env var
+
+// One-time action tokens for Telegram quick-send (token → { email, name, createdAt })
+const actionTokens = new Map();
 
 // Resend email client (optional — only needed for sending invite codes)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -781,13 +785,25 @@ app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
     await writeWaitlist(waitlist);
     console.log(`Waitlist: ${normalizedEmail} joined (position ${waitlist.length})`);
 
-    // Notify admin via Telegram
+    // Notify admin via Telegram with one-click Send Code button
     if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
+      const token = crypto.randomBytes(24).toString('hex');
+      actionTokens.set(token, { email: normalizedEmail, name: name.trim(), createdAt: Date.now() });
+
+      const serverUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : `http://localhost:${process.env.PORT || 3001}`;
+      const sendUrl = `${serverUrl}/api/admin/quick-send/${token}`;
+
       const text = `🎵 *Waitlist signup*\n\n*${name.trim()}* (${normalizedEmail})\nPosition: #${waitlist.length}${message ? `\n\n_"${message.trim()}"_` : ''}`;
+      const reply_markup = {
+        inline_keyboard: [[{ text: '📨 Send Invite Code', url: sendUrl }]]
+      };
+
       fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: process.env.TELEGRAM_ADMIN_CHAT_ID, text, parse_mode: 'Markdown' }),
+        body: JSON.stringify({ chat_id: process.env.TELEGRAM_ADMIN_CHAT_ID, text, parse_mode: 'Markdown', reply_markup }),
       }).catch(err => console.error('Failed to send Telegram notification:', err));
     }
 
@@ -878,6 +894,93 @@ app.post('/api/admin/send-code', async (req, res) => {
     res.status(500).json({ error: err.message || 'Failed to send email' });
   }
 });
+
+// Quick-send: one-time token URL from Telegram notification (GET for inline button)
+app.get('/api/admin/quick-send/:token', async (req, res) => {
+  const action = actionTokens.get(req.params.token);
+
+  if (!action) {
+    return res.status(410).send(quickSendPage('Link expired or already used', false));
+  }
+
+  // Expire tokens older than 24h
+  if (Date.now() - action.createdAt > 24 * 60 * 60 * 1000) {
+    actionTokens.delete(req.params.token);
+    return res.status(410).send(quickSendPage('Link expired (24h limit)', false));
+  }
+
+  if (!resend) {
+    return res.status(503).send(quickSendPage('Email not configured on server', false));
+  }
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  if (!fromEmail) {
+    return res.status(503).send(quickSendPage('Sender email not configured', false));
+  }
+
+  // Pick first available code
+  let code = null;
+  for (const c of validInviteCodes) {
+    if (!usedInviteCodes.has(c) && !sentInviteCodes.has(c)) {
+      code = c;
+      break;
+    }
+  }
+
+  if (!code) {
+    return res.status(409).send(quickSendPage('No available codes — generate more in admin panel', false));
+  }
+
+  try {
+    await resend.emails.send({
+      from: fromEmail,
+      to: action.email,
+      subject: "You're invited to Navidrome Jam!",
+      html: getInviteEmailHTML(action.name || action.email.split('@')[0], code),
+    });
+
+    sentInviteCodes.set(code, { email: action.email, name: action.name, sentAt: new Date().toISOString() });
+    saveInviteCodes().catch(err => console.error('Failed to persist sent codes:', err));
+
+    // Remove from waitlist
+    const waitlist = await readWaitlist();
+    await writeWaitlist(waitlist.filter(e => e.email.toLowerCase() !== action.email.toLowerCase()));
+
+    // Consume the token
+    actionTokens.delete(req.params.token);
+
+    console.log(`Quick-send: code ${code} sent to ${action.email} (${action.name})`);
+
+    // Notify admin via Telegram that the code was sent
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_ADMIN_CHAT_ID) {
+      fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: process.env.TELEGRAM_ADMIN_CHAT_ID,
+          text: `✅ Sent code \`${code}\` to *${action.name}* (${action.email})`,
+          parse_mode: 'Markdown',
+        }),
+      }).catch(() => {});
+    }
+
+    res.send(quickSendPage(`Sent code <strong>${code}</strong> to <strong>${action.name}</strong> (${action.email})`, true));
+  } catch (err) {
+    console.error('Quick-send failed:', err);
+    res.status(500).send(quickSendPage('Failed to send email: ' + err.message, false));
+  }
+});
+
+function quickSendPage(message, success) {
+  return `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width"><title>Navidrome Jam</title></head>
+<body style="font-family:Tahoma,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#008080">
+<div style="background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:20px 30px;max-width:400px;text-align:center">
+<div style="background:${success ? '#000080' : '#800000'};color:#fff;font-weight:bold;padding:3px 6px;margin:-20px -30px 15px;font-size:13px">
+${success ? '✅ Invite Sent' : '❌ Error'}</div>
+<p style="font-size:13px">${message}</p>
+<p style="font-size:11px;color:#666">You can close this tab.</p>
+</div></body></html>`;
+}
 
 function getInviteEmailHTML(name, code) {
   return `<!DOCTYPE html>
@@ -2277,6 +2380,11 @@ httpServer.listen(PORT, () => {
 // Removes rooms where all users have been inactive for 5+ minutes
 setInterval(() => {
   roomManager.cleanupStaleRooms();
+  // Expire action tokens older than 24h
+  const now = Date.now();
+  for (const [token, action] of actionTokens) {
+    if (now - action.createdAt > 24 * 60 * 60 * 1000) actionTokens.delete(token);
+  }
 }, 60000);
 
 // Schedule upload cleanup (every 24 hours) — delete non-permanent files older than 30 days
