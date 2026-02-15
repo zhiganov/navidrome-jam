@@ -50,6 +50,9 @@ The client uses Navidrome's **Subsonic API** for music playback (stable, documen
 - `getAlbum.view`, `getArtist.view`, `getSong.view` - Metadata
 - `stream.view` - Audio streaming URL (clients use this directly)
 - `scrobble.view` - Mark songs as played
+- `star.view` / `unstar.view` - Add/remove from Navidrome favorites (persistent likes)
+- `getStarred2.view` - Get all starred content (Favorites browse mode)
+- `getPlaylists.view` / `getPlaylist.view` - Playlist browsing and queuing
 
 **Server-side registration** (Native API): The server authenticates as admin via `POST /auth/login` (JWT), then creates users via `POST /api/user` with `x-nd-authorization: Bearer <token>` header. This enables invite-code-based self-service registration without exposing admin credentials to the client.
 
@@ -114,21 +117,24 @@ cd client && npm run dev
 
 ### Sync Server (`server/src/`)
 
-Two files: `index.js` (Express + Socket.io server, REST endpoints, WebSocket event handlers) and `roomManager.js` (in-memory room state management).
+Three files: `index.js` (Express + Socket.io server, REST endpoints, WebSocket event handlers, admin panel), `roomManager.js` (room state management with grace periods), and `sftpUploader.js` (SFTP upload pipeline to PikaPods for user uploads).
 
 **Key design decisions**:
-- All state is ephemeral in-memory — rooms disappear when empty, invite code usage resets on server restart
+- Room state snapshots to Railway volume every 30s and on `SIGTERM` — sessions survive server restarts/redeploys (snapshots >10min old are discarded)
+- Empty rooms get a 5-minute grace period before deletion (handles LTE handoffs, brief disconnects)
+- Invite codes, waitlist, and deleted codes persist to JSON files on Railway volume (`DATA_DIR`)
 - Authorization via `canControl(roomId, userId)` — host OR co-host can send playback/queue commands; only host can promote/demote
 - `trust proxy` enabled for Railway reverse proxy (rate limiting needs real IPs)
 - Join-in-progress: Server sends `sync` event after `room-state` so new joiners start at the right position
 - Cleanup: `cleanupStaleRooms()` runs every 60s, removes users with no heartbeat for 5min
+- Named constants at top of each server file — all magic numbers extracted to descriptive constants
 
 ### Web Client (`client/src/`)
 
 Single-page app with three screens in `App.jsx`: Login → Room Selection → Jam Session.
 
 **Service layer** (non-obvious patterns):
-- `services/navidrome.js` — Subsonic API client with MD5 token auth (CryptoJS). Session restored from localStorage with async ping validation. Auth params appended to every URL: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
+- `services/navidrome.js` — Subsonic API client with MD5 token auth (CryptoJS). Session restored from sessionStorage with async ping validation. Auth params appended to every URL: `?u=user&t=token&s=salt&v=1.16.1&c=navidrome-jam&f=json`
 - `services/jamClient.js` — Socket.io wrapper with custom event emitter (manual `listeners` map, not Node EventEmitter). Room creation and registration use REST; everything else uses WebSocket.
 - `contexts/NavidromeContext.jsx` and `JamContext.jsx` — React Context providers that create/destroy client instances on mount/unmount. Required to prevent duplicate listeners during Vite hot-reload.
 
@@ -161,6 +167,10 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `like-track` | Client → Server | `{ roomId, trackId }` | Any room member |
 | `dislike-track` | Client → Server | `{ roomId, trackId }` | Any room member |
 | `remove-reaction` | Client → Server | `{ roomId, trackId }` | Any room member |
+| `select-cat` | Client → Server | `{ roomId, catId }` | Any room member |
+| `paw-hold` | Client → Server | `{ roomId }` | Any room member |
+| `paw-release` | Client → Server | `{ roomId }` | Any room member |
+| `update-community` | Client → Server | `{ roomId, community }` | Host only |
 | `room-state` | Server → Client | `{ room }` | — |
 | `sync` | Server → Client | `{ trackId, position, playing, timestamp }` | — |
 | `user-joined` | Server → Client | `{ user, room }` | — |
@@ -168,6 +178,8 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 | `cohost-updated` | Server → Client | `{ room }` | — |
 | `queue-updated` | Server → Client | `{ queue[] }` | — |
 | `track-reactions` | Server → Client | `{ trackId, likes, dislikes, reactions }` | — |
+| `cat-selections` | Server → Client | `{ catSelections }` | — |
+| `paw-state` | Server → Client | `{ pawHolders[] }` | — |
 | `error` | Server → Client | `{ message }` | — |
 
 ## Deployment
@@ -222,6 +234,16 @@ git push
 | `NAVIDROME_ADMIN_USER` | Server | For registration | — | Admin username for user creation |
 | `NAVIDROME_ADMIN_PASS` | Server | For registration | — | Admin password for user creation |
 | `INVITE_CODES` | Server | For registration | — | Comma-separated single-use codes |
+| `DATA_DIR` | Server | No | `./data` | Persistent volume path (Railway: `/data`) |
+| `RESEND_API_KEY` | Server | For invite emails | — | Resend email API key |
+| `RESEND_FROM_EMAIL` | Server | For invite emails | — | Verified sender address |
+| `TELEGRAM_BOT_TOKEN` | Server | For notifications | — | scenius-bot token for waitlist alerts |
+| `TELEGRAM_ADMIN_CHAT_ID` | Server | For notifications | — | Admin's Telegram chat ID |
+| `SFTP_HOST` | Server | For uploads | — | PikaPods SFTP host |
+| `SFTP_PORT` | Server | For uploads | `22` | PikaPods SFTP port |
+| `SFTP_USERNAME` | Server | For uploads | — | PikaPods SFTP username |
+| `SFTP_PASSWORD` | Server | For uploads | — | PikaPods SFTP password |
+| `SFTP_UPLOAD_PATH` | Server | For uploads | — | Remote path (e.g., `/music/jam-uploads`) |
 | `VITE_NAVIDROME_URL` | Client | Yes | — | Navidrome instance URL |
 | `VITE_JAM_SERVER_URL` | Client | Yes | — | Sync server URL |
 
@@ -323,15 +345,36 @@ Server → 201 { message: "Account created successfully" }
 
 No automated tests yet. Manual testing with the HTML test client (`server/test-client.html`) or full stack (two browser windows). See `SECURITY.md` for security measures.
 
-## Planned: User Uploads
+## User Uploads
 
-Design doc: `docs/plans/2026-02-11-user-uploads-design.md`
+Design doc: `docs/plans/2026-02-11-user-uploads-design.md`. Implementation in `server/src/sftpUploader.js`.
 
-Registered users will be able to upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP, where Navidrome indexes them. Key design decisions:
-- **Stream-through**: Upload pipes directly from HTTP to SFTP (no temp files on Railway)
-- **Cleanup**: Non-permanent files auto-deleted after 30 days
+Registered users upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP (no temp files on Railway), where Navidrome auto-indexes them.
+- **Stream-through**: Upload pipes directly from HTTP to SFTP via `sftpUploader.js`
+- **Cleanup**: Non-permanent files auto-deleted after 30 days; liked files are protected
 - **Permanent flag**: Users can mark up to 50 uploads as permanent; admin can override
 - **File limits**: 200MB max, allowed formats: mp3, flac, ogg, opus, m4a, wav, aac
 - **Storage path**: `/music/jam-uploads/<username>/` on PikaPods
 - **Metadata**: `.uploads-meta.json` on PikaPods tracks upload dates and permanent flags
+
+## Admin Panel
+
+Server-rendered Win98-styled HTML at `/admin?key=NAVIDROME_ADMIN_PASS`. Features:
+- Invite code management (view status, generate, delete, purge unused)
+- Waitlist management (view entries, send invite codes, delete)
+- Upload stats and file management
+- Server stats (rooms, users, uptime)
+
+## Waitlist + Telegram Notifications
+
+Users without invite codes can join a waitlist (`POST /api/waitlist`). Admin receives Telegram notification via scenius-bot with an inline "Send Code" button — one-click to email an invite code and remove from waitlist. Uses one-time action tokens (GET endpoints, no webhook needed — avoids conflict with scenius-digest polling on the same bot token).
+
+Pattern documented in memory: `~/.claude/projects/.../memory/invite-waitlist-pattern.md`
+
+## Persistence (Railway Volume)
+
+Three JSON files on `DATA_DIR` (Railway volume at `/data`):
+- `invite-codes.json` — valid codes, used codes (code→username), sent codes (code→{email,name}), deleted codes
+- `waitlist.json` — name, email, message, joinedAt timestamp
+- `rooms-snapshot.json` — periodic room state snapshot (every 30s + SIGTERM), auto-deleted after restore
 
