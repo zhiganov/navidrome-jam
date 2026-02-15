@@ -80,6 +80,8 @@ function App() {
   const [artists, setArtists] = useState(null);
   const [albumList, setAlbumList] = useState(null);
   const [favorites, setFavorites] = useState(null);
+  const [playlists, setPlaylists] = useState(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
@@ -442,15 +444,18 @@ function App() {
 
   const handleBrowseModeChange = (mode) => {
     setBrowseMode(mode);
-    setBrowseView(mode === 'artists' ? 'artists' : mode === 'favorites' ? 'favorites' : 'albumList');
+    setBrowseView(mode === 'artists' ? 'artists' : mode === 'favorites' ? 'favorites' : mode === 'playlists' ? 'playlists' : 'albumList');
     setSelectedArtist(null);
     setSelectedAlbum(null);
+    setSelectedPlaylist(null);
     setAlbumList(null);
 
     if (mode === 'artists') {
       loadArtists();
     } else if (mode === 'favorites') {
       loadFavorites();
+    } else if (mode === 'playlists') {
+      loadPlaylists();
     } else {
       const typeMap = { albums: 'alphabeticalByName', recent: 'newest', played: 'recent' };
       loadAlbumList(typeMap[mode]);
@@ -468,6 +473,36 @@ function App() {
     } catch (error) {
       console.error('Error loading favorites:', error);
       setFavorites([]);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const loadPlaylists = async () => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getPlaylists();
+      const list = result.playlists?.playlist;
+      setPlaylists(list ? (Array.isArray(list) ? list : [list]) : []);
+    } catch (err) {
+      console.error('Error loading playlists:', err);
+      setPlaylists([]);
+    } finally {
+      setIsLoadingBrowse(false);
+    }
+  };
+
+  const handleBrowsePlaylist = async (playlist) => {
+    setIsLoadingBrowse(true);
+    try {
+      const result = await navidrome.getPlaylist(playlist.id);
+      const songs = result.playlist?.entry
+        ? (Array.isArray(result.playlist.entry) ? result.playlist.entry : [result.playlist.entry])
+        : [];
+      setSelectedPlaylist({ ...playlist, songs });
+      setBrowseView('playlistSongs');
+    } catch (err) {
+      console.error('Error loading playlist:', err);
     } finally {
       setIsLoadingBrowse(false);
     }
@@ -521,7 +556,10 @@ function App() {
   };
 
   const handleBrowseBack = () => {
-    if (browseView === 'songs') {
+    if (browseView === 'playlistSongs') {
+      setSelectedPlaylist(null);
+      setBrowseView('playlists');
+    } else if (browseView === 'songs') {
       setSelectedAlbum(null);
       if (browseMode === 'artists') {
         setBrowseView('albums');
@@ -1635,6 +1673,7 @@ function App() {
                       onChange={(e) => handleBrowseModeChange(e.target.value)}
                     >
                       <option value="favorites">&#9733; Favorites</option>
+                      <option value="playlists">Playlists</option>
                       <option value="artists">Artists</option>
                       <option value="albums">Albums A-Z</option>
                       <option value="recent">Recently Added</option>
@@ -1643,11 +1682,17 @@ function App() {
                   </div>
                   <div className="browse-breadcrumb">
                     <span
-                      className={(browseView === 'artists' || browseView === 'albumList' || browseView === 'favorites') ? 'current' : 'clickable'}
+                      className={(browseView === 'artists' || browseView === 'albumList' || browseView === 'favorites' || browseView === 'playlists') ? 'current' : 'clickable'}
                       onClick={() => handleBrowseModeChange(browseMode)}
                     >
-                      {browseMode === 'favorites' ? '★ Favorites' : 'Library'}
+                      {browseMode === 'favorites' ? '★ Favorites' : browseMode === 'playlists' ? 'Playlists' : 'Library'}
                     </span>
+                    {selectedPlaylist && (
+                      <>
+                        <span className="separator">&gt;</span>
+                        <span className="current">{selectedPlaylist.name}</span>
+                      </>
+                    )}
                     {selectedArtist && (
                       <>
                         <span className="separator">&gt;</span>
@@ -1841,6 +1886,87 @@ function App() {
                         <div className="browse-empty">No tracks found</div>
                       )}
 
+                    </div>
+                  )}
+
+                  {/* Playlists list */}
+                  {!isLoadingBrowse && browseView === 'playlists' && (
+                    <div className="browse-list">
+                      {playlists && playlists.length > 0 ? (
+                        <ul>
+                          {playlists.map((playlist) => (
+                            <li
+                              key={playlist.id}
+                              className="browse-item"
+                              onClick={() => handleBrowsePlaylist(playlist)}
+                            >
+                              <span className="browse-icon folder-icon"></span>
+                              <div className="browse-item-info">
+                                <strong>{playlist.name}</strong>
+                                <span>{playlist.songCount} track{playlist.songCount !== 1 ? 's' : ''}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">No playlists found</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Playlist songs */}
+                  {!isLoadingBrowse && browseView === 'playlistSongs' && selectedPlaylist && (
+                    <div className="browse-list">
+                      <button className="win98-btn browse-back-btn" onClick={handleBrowseBack}>
+                        &lt; Back
+                      </button>
+                      <div className="favorites-header">
+                        <span className="favorites-count">{selectedPlaylist.name} &middot; {selectedPlaylist.songs.length} track{selectedPlaylist.songs.length !== 1 ? 's' : ''}</span>
+                        {canControl && selectedPlaylist.songs.length > 0 && (
+                          <button
+                            className="win98-btn"
+                            style={{ fontSize: 10, padding: '2px 8px' }}
+                            onClick={() => {
+                              const items = selectedPlaylist.songs.map(s => ({ id: s.id, title: s.title, artist: s.artist, album: s.album }));
+                              if (!currentTrack && items.length > 0) {
+                                const [first, ...rest] = items;
+                                jamClient.updateQueue([...queue, ...rest]);
+                                jamClient.play(first.id, 0);
+                                loadTrack(first.id);
+                              } else {
+                                jamClient.updateQueue([...queue, ...items]);
+                              }
+                            }}
+                          >
+                            Queue All
+                          </button>
+                        )}
+                      </div>
+                      {selectedPlaylist.songs.length > 0 ? (
+                        <ul>
+                          {selectedPlaylist.songs.map((song, index) => (
+                            <li key={song.id} className="song-item">
+                              <div className="song-info">
+                                <strong>
+                                  <span className="track-num">{index + 1}.</span>
+                                  {song.title}
+                                </strong>
+                                <span>{song.artist} &middot; {song.album}{song.duration ? ` \u00B7 ${formatDuration(song.duration)}` : ''}</span>
+                              </div>
+                              <div className="song-actions">
+                                {canControl && (
+                                  <>
+                                    <button onClick={() => handlePlayTrack(song, selectedPlaylist.songs)}>Play</button>
+                                    <button onClick={() => handleAddToQueue(song)}>Queue+</button>
+                                  </>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="browse-empty">Playlist is empty</div>
+                      )}
                     </div>
                   )}
 
