@@ -1665,7 +1665,7 @@ function renderWaitlist(data) {
   // Sort by date (oldest first — they've been waiting longest)
   const sorted = [...data.waitlist].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-  let html = '<table><tr><th>#</th><th>Name</th><th>Email</th><th>Message</th><th>Date</th><th></th></tr>';
+  let html = '<table><tr><th>#</th><th>Name</th><th>Email</th><th>Message</th><th>Date</th><th></th><th></th></tr>';
   sorted.forEach((entry, i) => {
     const dateStr = new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     html += '<tr>'
@@ -1674,8 +1674,8 @@ function renderWaitlist(data) {
       + '<td>' + esc(entry.email) + '</td>'
       + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(entry.message || '') + '">' + esc(entry.message || '—') + '</td>'
       + '<td>' + dateStr + '</td>'
-      + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button>'
-      + ' <button class="btn btn-danger" onclick="deleteWaitlistEntry(\\'' + esc(entry.email) + '\\')">&#10005;</button></td>'
+      + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button></td>'
+      + '<td><button class="btn btn-danger" onclick="deleteWaitlistEntry(\\'' + esc(entry.email) + '\\')">&#10005;</button></td>'
       + '</tr>';
   });
   html += '</table>';
