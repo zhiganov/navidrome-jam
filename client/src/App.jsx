@@ -918,6 +918,8 @@ function App() {
                       onChange={(e) => setUsername(e.target.value)}
                       required
                       disabled={isLoggingIn}
+                      autoCapitalize="off"
+                      autoCorrect="off"
                     />
                   </div>
                   <div className="form-row">
@@ -976,6 +978,8 @@ function App() {
                           onChange={(e) => setWaitlistEmail(e.target.value)}
                           required
                           disabled={isJoiningWaitlist}
+                          inputMode="email"
+                          autoCapitalize="off"
                         />
                       </div>
                       <div className="form-row">
@@ -1018,6 +1022,8 @@ function App() {
                             disabled={isRegistering}
                             minLength={3}
                             maxLength={50}
+                            autoCapitalize="off"
+                            autoCorrect="off"
                           />
                         </div>
                         <div className="form-row">
@@ -1043,6 +1049,7 @@ function App() {
                             onChange={(e) => setInviteCode(e.target.value)}
                             required
                             disabled={isRegistering}
+                            autoCapitalize="off"
                           />
                         </div>
                         <div className="form-actions">
@@ -1121,6 +1128,7 @@ function App() {
                     onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
                     maxLength={6}
                     disabled={isJoiningRoom || isCreatingRoom}
+                    autoCapitalize="characters"
                   />
                   <button
                     className="win98-btn"
@@ -1387,7 +1395,7 @@ function App() {
                 Search
               </button>
               <button
-                className={`auth-tab desktop-tab ${musicTab === 'upload' ? 'active' : ''}`}
+                className={`auth-tab ${musicTab === 'upload' ? 'active' : ''}`}
                 onClick={() => setMusicTab('upload')}
               >
                 Upload
@@ -1608,6 +1616,8 @@ function App() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       disabled={isSearching}
+                      autoCapitalize="off"
+                      autoCorrect="off"
                     />
                     <button type="submit" className="win98-btn" disabled={isSearching}>
                       {isSearching ? 'Searching...' : 'Search'}

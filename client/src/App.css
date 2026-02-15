@@ -2031,6 +2031,40 @@ body {
   padding: 4px;
 }
 
+/* Touch behavior for mobile */
+.music-tab-content,
+.search-results,
+.browse-list,
+.my-uploads-list {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.seek-bar,
+.volume-control input[type="range"] {
+  touch-action: none;
+}
+
+/* Touch active feedback (touch devices only) */
+@media (hover: none) {
+  .song-item:active {
+    background: var(--title-blue);
+    color: #ffffff;
+  }
+  .song-item:active .song-info strong,
+  .song-item:active .song-info span {
+    color: #ffffff;
+  }
+  .browse-item:active {
+    background: var(--title-blue);
+    color: #ffffff;
+  }
+  .browse-item:active .browse-item-info strong,
+  .browse-item:active .browse-item-info span {
+    color: #ffffff;
+  }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-content {
@@ -2099,5 +2133,134 @@ body {
   .login-container,
   .room-container {
     max-width: 100%;
+  }
+
+  /* Cover art: cap size on mobile (prevents full-screen square) */
+  .cover-art {
+    max-width: 200px;
+    margin: 0 auto;
+    display: block;
+  }
+
+  /* Transport buttons: 44px+ touch targets */
+  .transport-btn {
+    width: 44px;
+    height: 40px;
+  }
+  .transport-play-btn {
+    width: 50px;
+  }
+
+  /* Queue control buttons: larger for touch */
+  .queue-ctrl-btn {
+    width: 32px;
+    height: 28px;
+    font-size: 10px;
+  }
+  .queue-remove-btn {
+    font-size: 11px;
+  }
+
+  /* Song action buttons: larger for touch */
+  .song-actions button {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  /* Seek bar thumb: larger for touch */
+  .seek-bar::-webkit-slider-thumb {
+    width: 20px;
+    height: 28px;
+  }
+  .seek-bar::-moz-range-thumb {
+    width: 20px;
+    height: 28px;
+  }
+
+  /* Volume thumb: larger for touch */
+  .volume-control input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 28px;
+  }
+  .volume-control input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 28px;
+    border-radius: 0;
+  }
+
+  /* Scrollbar: thinner on mobile (saves space) */
+  .jam-screen ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .jam-screen ::-webkit-scrollbar-button {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Music tab content: responsive height instead of fixed 400px */
+  .music-tab-content {
+    max-height: 50vh;
+  }
+
+  /* Search results: responsive height instead of fixed 300px */
+  .search-results {
+    max-height: 40vh;
+  }
+
+  /* Status bar: iOS safe area padding */
+  .status-bar {
+    padding-bottom: max(2px, env(safe-area-inset-bottom));
+  }
+
+  /* Music tabs: equal widths, no wrap */
+  .music-tabs {
+    flex-wrap: nowrap;
+  }
+  .music-tabs .auth-tab {
+    flex: 1;
+    text-align: center;
+    padding: 3px 4px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  /* Leave room button: compact */
+  .leave-room-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+    min-width: auto;
+  }
+}
+
+/* Phone-specific overrides */
+@media (max-width: 480px) {
+  .jam-screen header {
+    padding: 3px 4px;
+  }
+
+  .jam-screen h1 {
+    font-size: 14px;
+  }
+
+  .cover-art {
+    max-width: 160px;
+  }
+
+  .track-info h2 {
+    font-size: 16px;
+  }
+
+  .track-info p {
+    font-size: 14px;
+  }
+
+  .status-bar {
+    font-size: 10px;
+  }
+
+  .login-screen,
+  .room-screen {
+    padding: 12px;
   }
 }
