@@ -225,7 +225,6 @@ cd client && npm run dev
 - **Liked upload protection**: Uploaded files with at least one like are exempt from 30-day auto-cleanup. Admin dashboard shows like counts and "LIKED" badges.
 - **Favorites browse mode**: New "Favorites" option in the library browser dropdown — shows all your starred tracks from Navidrome.
 - **Recently Played**: Replaced "Random" with "Recently Played" in the browse dropdown (random shuffle button still available on album views).
-- **Dislike removal**: Removed the dislike button — Navidrome's Subsonic API has no equivalent to `unstar` for dislikes, so it couldn't persist. Like-only is cleaner.
 - **SVG transport icons**: Replaced CSS pixel art with SVG mask-image icons (Bootstrap Icons for like, Lucide-style for repeat). Monochrome by default, colored when active.
 
 ### 2026-02-14 — Jam With Boo (Valentine's Edition)
