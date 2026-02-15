@@ -126,6 +126,7 @@ const envCodes = (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).
 const validInviteCodes = new Set(envCodes);
 const usedInviteCodes = new Map(); // code → username
 const sentInviteCodes = new Map(); // code → { email, name, sentAt }
+const deletedCodes = new Set(); // codes explicitly deleted via admin — never re-add from env var
 
 // Resend email client (optional — only needed for sending invite codes)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -142,7 +143,12 @@ async function loadInviteCodes() {
     for (const [code, info] of Object.entries(data.sent || {})) {
       sentInviteCodes.set(code, info);
     }
-    console.log(`Loaded ${validInviteCodes.size} invite codes (${usedInviteCodes.size} used, ${sentInviteCodes.size} sent) from disk`);
+    // Remove codes that were explicitly deleted (env var may re-add them)
+    for (const code of (data.deleted || [])) {
+      deletedCodes.add(code);
+      validInviteCodes.delete(code);
+    }
+    console.log(`Loaded ${validInviteCodes.size} invite codes (${usedInviteCodes.size} used, ${sentInviteCodes.size} sent, ${deletedCodes.size} deleted) from disk`);
   } catch {
     // No persisted file yet — that's fine, env codes are already loaded
   }
@@ -154,6 +160,7 @@ async function saveInviteCodes() {
     valid: [...validInviteCodes],
     used: Object.fromEntries(usedInviteCodes),
     sent: Object.fromEntries(sentInviteCodes),
+    deleted: [...deletedCodes],
   }, null, 2));
 }
 
@@ -721,6 +728,8 @@ app.delete('/api/admin/codes/:code', (req, res) => {
 
   validInviteCodes.delete(code);
   usedInviteCodes.delete(code);
+  sentInviteCodes.delete(code);
+  deletedCodes.add(code);
   saveInviteCodes().catch(err => console.error('Failed to persist invite codes:', err));
   res.json({ deleted: code, total: validInviteCodes.size });
 });
@@ -734,6 +743,7 @@ app.delete('/api/admin/codes', (req, res) => {
   for (const code of [...validInviteCodes]) {
     if (!usedInviteCodes.has(code) && !sentInviteCodes.has(code)) {
       validInviteCodes.delete(code);
+      deletedCodes.add(code);
       purged.push(code);
     }
   }
@@ -1653,7 +1663,8 @@ function renderWaitlist(data) {
       + '<td>' + esc(entry.email) + '</td>'
       + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(entry.message || '') + '">' + esc(entry.message || '—') + '</td>'
       + '<td>' + dateStr + '</td>'
-      + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button></td>'
+      + '<td><button class="btn btn-primary" id="send-' + i + '" onclick="sendCode(\\'' + esc(entry.email) + '\\',\\'' + esc(entry.name) + '\\',' + i + ')">Send Code &#9993;</button>'
+      + ' <button class="btn" style="background:#c00;color:#fff;border-color:#900;margin-left:4px" onclick="deleteWaitlistEntry(\\'' + esc(entry.email) + '\\')">&#10005;</button></td>'
       + '</tr>';
   });
   html += '</table>';
@@ -1681,6 +1692,20 @@ async function sendCode(email, name, idx) {
     showToast('Error: ' + e.message);
     btn.disabled = false;
     btn.textContent = 'Send Code \\u2709';
+  }
+}
+
+async function deleteWaitlistEntry(email) {
+  if (!confirm('Remove ' + email + ' from the waitlist?')) return;
+  try {
+    const r = await fetch(API_BASE + '/api/admin/waitlist/' + encodeURIComponent(email) + '?key=' + encodeURIComponent(API_KEY), {
+      method: 'DELETE'
+    });
+    if (!r.ok) throw new Error('Failed');
+    showToast('Removed ' + email);
+    fetchWaitlist();
+  } catch (e) {
+    showToast('Error removing entry');
   }
 }
 
