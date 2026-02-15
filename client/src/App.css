@@ -1203,17 +1203,6 @@ body {
   background: #a0c0a0;
 }
 
-.reaction-count {
-  font-family: 'VT323', monospace;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--text-dark);
-}
-
-.like-btn.active .reaction-count {
-  color: #006000;
-}
-
 /* Thumbs-up icon — Bootstrap Icons hand-thumbs-up-fill, via CSS mask */
 .like-icon {
   width: 16px;
