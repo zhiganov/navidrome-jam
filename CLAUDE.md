@@ -187,12 +187,12 @@ Server-authoritative model in `SyncedAudioPlayer.jsx`:
 
 ## Branch Strategy
 
-| Branch | Domain | Purpose |
-|--------|--------|---------|
-| `main` | `jam.zhgnv.com` | Original Navidrome Jam |
-| `feature/jam-with-boo` | `boo.zhgnv.com` | Valentine's Day edition ("Jam With Boo") — react-kawaii avatars, paw hold climax, Valentine theme |
+**`feature/jam-with-boo` is FROZEN** (as of Feb 15, 2026). All active development happens on `main` only. This branch is a Valentine's Day snapshot preserved at `boo.zhgnv.com` — do not add new features here.
 
-**Do NOT merge `feature/jam-with-boo` into `main`** — they are separate products with different OG metadata, favicons, and features. Vercel deploys each branch to its own domain via branch domain configuration.
+| Branch | Domain | Status |
+|--------|--------|--------|
+| `main` | `jam.zhgnv.com` | Active development |
+| `feature/jam-with-boo` | `boo.zhgnv.com` | Frozen Valentine's Day archive |
 
 ## Deployment
 
@@ -230,17 +230,16 @@ This project supports multiple deployment strategies:
 
 ### Deploy Commands
 
-Both client and server auto-deploy on push:
-- **Client** → Vercel (GitHub integration, deploys all branches with matching domain config)
-- **Server** → Railway (GitHub integration, watches `server/**`, deploys from `main`)
+Both client and server auto-deploy on push to `main`:
+- **Client** → Vercel (GitHub integration)
+- **Server** → Railway (GitHub integration, watches `server/**`)
 
 ```bash
-# Push main — deploys both client (jam.zhgnv.com) and server
+# Just push — both deploy automatically
 git push
-
-# Push feature branch — deploys client only (boo.zhgnv.com)
-git push origin feature/jam-with-boo
 ```
+
+**Note**: `feature/jam-with-boo` is frozen. Do not push new changes to it.
 
 ## Environment Configuration
 
