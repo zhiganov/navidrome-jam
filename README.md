@@ -36,7 +36,7 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 ### Components
 
 1. **Navidrome** - Your existing music server (self-hosted or managed). Clients stream audio directly from it via the Subsonic API — the sync server never touches audio data.
-2. **Jam Sync Server** - Lightweight WebSocket server that broadcasts playback commands (play/pause/seek/timestamp). All state is ephemeral and in-memory.
+2. **Jam Sync Server** - Lightweight WebSocket server that broadcasts playback commands (play/pause/seek/timestamp). Room state snapshots to a persistent volume every 30s and on shutdown, so sessions survive server restarts.
 3. **Web Client** - React SPA that handles Navidrome auth, audio playback, and room UI. Connects to both Navidrome (for music) and the sync server (for coordination).
 
 ## Features
@@ -50,9 +50,12 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - **Likes** — Like tracks to save them to your Navidrome favorites (persists across rooms/sessions)
 - Liked uploads are protected from auto-cleanup
 - Supports FLAC and all formats Navidrome handles
-- Invite-code-based self-service registration
+- **Playlist browsing** — Load Navidrome playlists into the queue
+- Invite-code-based self-service registration with waitlist for overflow
+- Room resilience — 5-minute grace period on disconnect + state snapshots to persistent volume
 - Mobile-friendly layout (Queue/People tabs on ≤1024px screens)
-- Admin dashboard for invite codes, uploads, and server stats
+- Admin dashboard for invite codes, waitlist, uploads, and server stats
+- **Telegram notifications** — Admin notified on waitlist signups with one-click Send Code button
 - Windows 98 / GeoCities retro UI theme
 - **[Jam With Boo](https://boo.zhgnv.com)** — Valentine's edition with kawaii avatars and synchronized paw hold
 
@@ -209,14 +212,21 @@ cd client && npm run dev
 
 ## Roadmap
 
-- **Playlist support** — Load Navidrome playlists into the queue
 - **Room settings** — Private/public rooms, password protection, permission levels
-- **Persistent rooms** — Database storage for rooms that survive server restarts
 - **Automated tests** — Jest for sync server, Vitest + React Testing Library for client
 - **TypeScript migration** — Full codebase migration (server + client)
 - **My Community integration** — Embed shared listening tab in [My Community](https://github.com/zhiganov/my-community) extension
 
 ## Changelog
+
+### 2026-02-15 — Playlists, Waitlist, Room Resilience
+
+- **Playlist browsing**: Browse and queue Navidrome playlists from the library browser.
+- **Waitlist**: Users without an invite code can join a waitlist with name, email, and optional message. Admin receives Telegram notification with one-click "Send Code" button — sends invite email and removes from waitlist in one tap.
+- **Invite code persistence**: Invite codes, usage history, and deleted codes persist to Railway volume. Deleted codes no longer reappear after server restarts.
+- **Room grace period**: Rooms stay alive for 5 minutes after the last user disconnects (e.g., LTE handoff while driving). Queue, playback position, and room code are preserved for seamless rejoin.
+- **Room state snapshots**: Active rooms snapshot to the persistent volume every 30s and on SIGTERM. Sessions survive server restarts and redeploys (snapshots older than 10 minutes are discarded).
+- **Community selector**: Moved from room creation dialog to room header bar for easier access.
 
 ### 2026-02-15 — User Uploads, Persistent Likes, Favorites
 
