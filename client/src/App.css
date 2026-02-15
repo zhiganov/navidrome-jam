@@ -1586,6 +1586,15 @@ body {
   padding: 6px;
   background: #e8e8e8;
   border-bottom: 1px solid var(--win-dark);
+  align-items: flex-start;
+}
+
+.browse-queue-all-btn {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .browse-album-art {
