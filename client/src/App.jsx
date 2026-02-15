@@ -1337,12 +1337,16 @@ function App() {
                   <span className="transport-icon like-icon"></span>
                   {trackReactions.likes > 0 && <span className="reaction-count">{trackReactions.likes}</span>}
                 </button>
-                <div className="transport-separator"></div>
-                <PawButton
-                  jamClient={jamClient}
-                  pawHolders={pawHolders}
-                  onHoldProgress={handleHoldProgress}
-                />
+                {currentRoom?.users?.length > 1 && (
+                  <>
+                    <div className="transport-separator"></div>
+                    <PawButton
+                      jamClient={jamClient}
+                      pawHolders={pawHolders}
+                      onHoldProgress={handleHoldProgress}
+                    />
+                  </>
+                )}
               </div>
             )}
 

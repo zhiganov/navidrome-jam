@@ -2463,6 +2463,20 @@ body {
 
 .badge-cohost {
   background: var(--valentine-rose) !important;
+  color: #fff !important;
+}
+
+/* Valentine: replace acid green with warm pink */
+.counter-digit {
+  color: var(--valentine-pink) !important;
+}
+
+.playback-info {
+  color: var(--valentine-pink) !important;
+}
+
+.volume-control label {
+  color: var(--valentine-pink) !important;
 }
 
 /* Valentine footer glow */
