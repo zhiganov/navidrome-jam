@@ -29,6 +29,90 @@ app.use(express.json());
 const roomManager = new RoomManager();
 const sftpUploader = new SftpUploader();
 
+// --- Navidrome admin token cache (for track path lookups) ---
+let ndAdminToken = null;
+let ndAdminTokenExpiry = 0;
+
+async function getNavidromeToken() {
+  if (ndAdminToken && Date.now() < ndAdminTokenExpiry) {
+    return ndAdminToken;
+  }
+
+  const url = process.env.NAVIDROME_URL;
+  const user = process.env.NAVIDROME_ADMIN_USER;
+  const pass = process.env.NAVIDROME_ADMIN_PASS;
+
+  if (!url || !user || !pass) return null;
+
+  try {
+    const response = await fetch(`${url}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    ndAdminToken = data.token;
+    ndAdminTokenExpiry = Date.now() + 55 * 60 * 1000; // refresh every 55 min
+    return ndAdminToken;
+  } catch {
+    return null;
+  }
+}
+
+// trackId → upload metaKey cache (null = not an upload)
+const trackUploadKeyCache = new Map();
+
+async function getTrackUploadKey(trackId) {
+  if (trackUploadKeyCache.has(trackId)) {
+    return trackUploadKeyCache.get(trackId);
+  }
+
+  const token = await getNavidromeToken();
+  if (!token) return null;
+
+  try {
+    const url = process.env.NAVIDROME_URL;
+    const response = await fetch(`${url}/api/song/${encodeURIComponent(trackId)}`, {
+      headers: { 'x-nd-authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) return null;
+
+    const song = await response.json();
+    const path = song.path || '';
+
+    const marker = 'jam-uploads/';
+    const idx = path.indexOf(marker);
+
+    let result = null;
+    if (idx !== -1) {
+      result = path.substring(idx + marker.length); // "username/filename.mp3"
+    }
+
+    trackUploadKeyCache.set(trackId, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fire-and-forget: update upload like count when a track is liked/unliked.
+ * Only affects tracks stored in jam-uploads/.
+ */
+async function updateUploadLikes(trackId, delta) {
+  if (!sftpUploader.isConfigured()) return;
+
+  const metaKey = await getTrackUploadKey(trackId);
+  if (!metaKey) return;
+
+  const newCount = await sftpUploader.updateLikes(metaKey, delta);
+  console.log(`Upload likes: ${metaKey} → ${newCount} (${delta > 0 ? '+' : ''}${delta})`);
+}
+
 // Invite code tracking (single-use, in-memory)
 const validInviteCodes = new Set(
   (process.env.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean)
@@ -932,6 +1016,7 @@ function getAdminPageHTML(adminKey) {
     <div class="stats">
       <div class="stat-box"><div class="num blue" id="upl-stat-total">-</div><div class="label">Total</div></div>
       <div class="stat-box"><div class="num green" id="upl-stat-permanent">-</div><div class="label">Permanent</div></div>
+      <div class="stat-box"><div class="num red" id="upl-stat-liked">-</div><div class="label">Liked</div></div>
       <div class="stat-box"><div class="num yellow" id="upl-stat-expiring">-</div><div class="label">Expiring &lt;7d</div></div>
     </div>
 
@@ -946,7 +1031,7 @@ function getAdminPageHTML(adminKey) {
     </div>
 
     <div class="note">
-      &#128197; Non-permanent files are auto-deleted after 30 days. Permanent quota: 50 per user.
+      &#128197; Non-permanent files are auto-deleted after 30 days unless liked. Permanent quota: 50 per user.
     </div>
   </div>
 </div>
@@ -1089,14 +1174,17 @@ function renderUploads(uploads) {
 
   const total = uploads.length;
   const permanent = uploads.filter(u => u.permanent).length;
+  const liked = uploads.filter(u => (u.likes || 0) > 0).length;
   const expiring = uploads.filter(u => {
     if (u.permanent) return false;
+    if ((u.likes || 0) > 0) return false;
     const age = now - new Date(u.uploadedAt).getTime();
     return age > (thirtyDays - sevenDays);
   }).length;
 
   document.getElementById('upl-stat-total').textContent = total;
   document.getElementById('upl-stat-permanent').textContent = permanent;
+  document.getElementById('upl-stat-liked').textContent = liked;
   document.getElementById('upl-stat-expiring').textContent = expiring;
 
   if (total === 0) {
@@ -1104,13 +1192,19 @@ function renderUploads(uploads) {
     return;
   }
 
-  // Sort: expiring soon first, then by date (newest first)
+  // Sort: expiring soon first, then liked, then permanent; within each group by date (newest first)
+  function sortPriority(u) {
+    if (u.permanent) return 2;
+    if ((u.likes || 0) > 0) return 1;
+    return 0;
+  }
   const sorted = [...uploads].sort((a, b) => {
-    if (a.permanent !== b.permanent) return a.permanent ? 1 : -1;
+    const pa = sortPriority(a), pb = sortPriority(b);
+    if (pa !== pb) return pa - pb;
     return new Date(b.uploadedAt) - new Date(a.uploadedAt);
   });
 
-  let html = '<table><tr><th>File</th><th>User</th><th>Date</th><th>Status</th><th></th></tr>';
+  let html = '<table><tr><th>File</th><th>User</th><th>Date</th><th>Likes</th><th>Status</th><th></th></tr>';
   for (const u of sorted) {
     const age = now - new Date(u.uploadedAt).getTime();
     const daysLeft = Math.max(0, Math.ceil((thirtyDays - age) / (24 * 60 * 60 * 1000)));
@@ -1119,6 +1213,8 @@ function renderUploads(uploads) {
     let badge;
     if (u.permanent) {
       badge = '<span class="badge badge-permanent">PERMANENT</span>';
+    } else if ((u.likes || 0) > 0) {
+      badge = '<span class="badge badge-permanent">LIKED</span>';
     } else if (daysLeft <= 7) {
       badge = '<span class="badge badge-expiring">' + daysLeft + 'd left</span>';
     } else {
@@ -1129,10 +1225,14 @@ function renderUploads(uploads) {
       ? '<button class="btn btn-danger" style="font-size:9px" onclick="toggleUploadPermanent(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\', false)">unpin</button>'
       : '<button class="btn" style="font-size:9px;padding:1px 5px" onclick="toggleUploadPermanent(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\', true)">pin</button>';
 
+    const likes = u.likes || 0;
+    const likesCell = likes > 0 ? '<span style="color:#cc0000;font-weight:bold">' + likes + '</span>' : '—';
+
     html += '<tr>'
       + '<td title="' + esc(u.filename) + '">' + esc(u.filename.length > 25 ? u.filename.substring(0, 22) + '...' : u.filename) + '</td>'
       + '<td>' + esc(u.username) + '</td>'
       + '<td>' + dateStr + '</td>'
+      + '<td style="text-align:center">' + likesCell + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="white-space:nowrap">' + permBtn + ' <button class="btn btn-danger" onclick="deleteUpload(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\')">del</button></td>'
       + '</tr>';
@@ -1173,7 +1273,7 @@ async function deleteUpload(username, filename) {
 async function deleteAllExpired() {
   const now = Date.now();
   const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-  const expired = uploadsData.filter(u => !u.permanent && (now - new Date(u.uploadedAt).getTime()) > thirtyDays);
+  const expired = uploadsData.filter(u => !u.permanent && !(u.likes > 0) && (now - new Date(u.uploadedAt).getTime()) > thirtyDays);
 
   if (expired.length === 0) {
     showToast('No expired uploads to delete');
@@ -1518,9 +1618,16 @@ io.on('connection', (socket) => {
         return;
       }
 
-      roomManager.setReaction(roomId, trackId, socket.data.userId, 'like');
+      const { previous } = roomManager.setReaction(roomId, trackId, socket.data.userId, 'like');
       const counts = roomManager.getReactionCounts(roomId, trackId);
       io.to(roomId).emit('track-reactions', { trackId, ...counts });
+
+      // Track likes on uploaded files (fire-and-forget)
+      if (previous !== 'like') {
+        updateUploadLikes(trackId, 1).catch(err =>
+          console.error('Error tracking upload like:', err)
+        );
+      }
     } catch (error) {
       console.error('Error liking track:', error);
       socket.emit('error', { message: error.message });
@@ -1539,9 +1646,16 @@ io.on('connection', (socket) => {
         return;
       }
 
-      roomManager.setReaction(roomId, trackId, socket.data.userId, 'dislike');
+      const { previous } = roomManager.setReaction(roomId, trackId, socket.data.userId, 'dislike');
       const counts = roomManager.getReactionCounts(roomId, trackId);
       io.to(roomId).emit('track-reactions', { trackId, ...counts });
+
+      // If switching from like to dislike, decrement upload likes
+      if (previous === 'like') {
+        updateUploadLikes(trackId, -1).catch(err =>
+          console.error('Error tracking upload unlike:', err)
+        );
+      }
     } catch (error) {
       console.error('Error disliking track:', error);
       socket.emit('error', { message: error.message });
@@ -1560,9 +1674,16 @@ io.on('connection', (socket) => {
         return;
       }
 
-      roomManager.removeReaction(roomId, trackId, socket.data.userId);
+      const { previous } = roomManager.removeReaction(roomId, trackId, socket.data.userId);
       const counts = roomManager.getReactionCounts(roomId, trackId);
       io.to(roomId).emit('track-reactions', { trackId, ...counts });
+
+      // If removing a like, decrement upload likes
+      if (previous === 'like') {
+        updateUploadLikes(trackId, -1).catch(err =>
+          console.error('Error tracking upload unlike:', err)
+        );
+      }
     } catch (error) {
       console.error('Error removing reaction:', error);
       socket.emit('error', { message: error.message });
