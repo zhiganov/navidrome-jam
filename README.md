@@ -44,13 +44,17 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
 - Synchronized play/pause/seek across all participants (<500ms drift)
 - Shared queue with reordering, auto-play, repeat mode, and album auto-queue
 - Host controls with co-host delegation
-- Library browser — Artists, Albums A-Z, Recently Added, Random
+- Library browser — Artists, Albums A-Z, Recently Added, Recently Played, Favorites
 - Music search integrated with Navidrome library
+- **User uploads** — Upload music through the web client (streams via SFTP to Navidrome, auto-indexed)
+- **Likes** — Like tracks to save them to your Navidrome favorites (persists across rooms/sessions)
+- Liked uploads are protected from auto-cleanup
 - Supports FLAC and all formats Navidrome handles
 - Invite-code-based self-service registration
 - Mobile-friendly layout (Queue/People tabs on ≤1024px screens)
-- Admin dashboard for invite code management
+- Admin dashboard for invite codes, uploads, and server stats
 - Windows 98 / GeoCities retro UI theme
+- **[Jam With Boo](https://boo.zhgnv.com)** — Valentine's edition with kawaii avatars and synchronized paw hold
 
 ## Tech Stack
 
@@ -155,13 +159,18 @@ navidrome-jam/
 ├── server/           # WebSocket sync server (Node.js + Socket.io)
 │   ├── src/
 │   │   ├── index.js         # Main server with validation & rate limiting
-│   │   └── roomManager.js   # Room state management & cleanup
+│   │   ├── roomManager.js   # Room state management & cleanup
+│   │   └── sftpUploader.js  # SFTP upload pipeline to PikaPods
 │   └── test-client.html     # HTML test client
 ├── client/           # React web client
 │   ├── src/
 │   │   ├── components/      # React components
 │   │   │   ├── SyncedAudioPlayer.jsx  # Audio player with volume control
-│   │   │   └── ErrorBoundary.jsx      # Error handling wrapper
+│   │   │   ├── ErrorBoundary.jsx      # Error handling wrapper
+│   │   │   ├── catData.js             # Avatar definitions + paw SVG (Boo)
+│   │   │   ├── CatPicker.jsx          # Avatar selection overlay (Boo)
+│   │   │   ├── CatDanceFloor.jsx      # Animated avatar strip (Boo)
+│   │   │   └── PawButton.jsx          # Hold-to-activate paw button (Boo)
 │   │   ├── contexts/        # React contexts
 │   │   │   ├── NavidromeContext.jsx   # Navidrome client provider
 │   │   │   └── JamContext.jsx         # Jam client provider
@@ -200,8 +209,6 @@ cd client && npm run dev
 
 ## Roadmap
 
-- **User uploads** — Upload music through the web client. Files stream through the Jam server to PikaPods via SFTP, Navidrome auto-indexes. 30-day cleanup with permanent flag (50/user). [Design doc](./docs/plans/2026-02-11-user-uploads-design.md)
-- **Mobile UX** — Better touch interactions and responsive layout
 - **Playlist support** — Load Navidrome playlists into the queue
 - **Room settings** — Private/public rooms, password protection, permission levels
 - **Persistent rooms** — Database storage for rooms that survive server restarts
@@ -210,6 +217,25 @@ cd client && npm run dev
 - **My Community integration** — Embed shared listening tab in [My Community](https://github.com/zhiganov/my-community) extension
 
 ## Changelog
+
+### 2026-02-15 — User Uploads, Persistent Likes, Favorites
+
+- **User uploads**: Upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP — no temp files on the server. Navidrome auto-indexes new uploads. 30-day auto-cleanup with permanent flag (50/user). Admin dashboard shows upload stats, file list, and cleanup controls.
+- **Persistent likes**: Like button syncs to Navidrome favorites via `star.view`/`unstar.view` Subsonic API. Likes persist across rooms and sessions — if you liked a track before, the button stays active when you encounter it again.
+- **Liked upload protection**: Uploaded files with at least one like are exempt from 30-day auto-cleanup. Admin dashboard shows like counts and "LIKED" badges.
+- **Favorites browse mode**: New "Favorites" option in the library browser dropdown — shows all your starred tracks from Navidrome.
+- **Recently Played**: Replaced "Random" with "Recently Played" in the browse dropdown (random shuffle button still available on album views).
+- **Dislike removal**: Removed the dislike button — Navidrome's Subsonic API has no equivalent to `unstar` for dislikes, so it couldn't persist. Like-only is cleaner.
+- **SVG transport icons**: Replaced CSS pixel art with SVG mask-image icons (Bootstrap Icons for like, Lucide-style for repeat). Monochrome by default, colored when active.
+
+### 2026-02-14 — Jam With Boo (Valentine's Edition)
+
+- **Jam With Boo**: Valentine's Day edition at [boo.zhgnv.com](https://boo.zhgnv.com). Separate branch (`feature/jam-with-boo`) with its own domain, OG images, and favicon.
+- **Kawaii avatars**: 9 characters powered by [react-kawaii](https://github.com/elizabetdev/react-kawaii) (Cat, Ghost, Planet, IceCream, Mug, Backpack, SpeechBubble, Chocolate, Browser). Avatar picker on join, visible in user list and dance strip.
+- **Paw hold climax**: Hold the paw button for 8 seconds — when 2+ users hold simultaneously, avatars converge into a heart burst with screen flash. Climax persists as long as everyone keeps holding.
+- **Dance strip**: Animated avatar row above the now-playing bar. Avatars bounce when music plays, converge during paw hold, and burst apart on climax.
+- **Valentine theme**: Pink/rose accent colors layered over the Win98 base. Custom OG image and favicon for social sharing.
+- **Multi-origin CORS**: Server `CLIENT_URL` now supports comma-separated origins (e.g., `https://jam.zhgnv.com,https://boo.zhgnv.com`).
 
 ### 2026-02-11 — Browse Modes, Mobile Layout, Compilation Handling
 
