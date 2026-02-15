@@ -35,6 +35,12 @@ function App() {
   const [inviteCode, setInviteCode] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState('');
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [waitlistName, setWaitlistName] = useState('');
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistMessage, setWaitlistMessage] = useState('');
+  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
+  const [waitlistSuccess, setWaitlistSuccess] = useState('');
 
   const [currentRoom, setCurrentRoom] = useState(null);
   const [roomInput, setRoomInput] = useState('');
@@ -318,6 +324,24 @@ function App() {
       setLoginError(error.message);
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleJoinWaitlist = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsJoiningWaitlist(true);
+
+    try {
+      const result = await jamClient.joinWaitlist(waitlistName, waitlistEmail, waitlistMessage || undefined);
+      setWaitlistSuccess(`You're #${result.position} on the waitlist! We'll reach out when a spot opens up.`);
+      setWaitlistName('');
+      setWaitlistEmail('');
+      setWaitlistMessage('');
+    } catch (error) {
+      setLoginError(error.message);
+    } finally {
+      setIsJoiningWaitlist(false);
     }
   };
 
@@ -990,52 +1014,130 @@ function App() {
                   </div>
                 </form>
               ) : (
-                <form onSubmit={handleRegister}>
-                  <div className="form-row">
-                    <label>User:</label>
-                    <input
-                      type="text"
-                      className="win98-input"
-                      placeholder="Choose a username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      disabled={isRegistering}
-                      minLength={3}
-                      maxLength={50}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Pass:</label>
-                    <input
-                      type="password"
-                      className="win98-input"
-                      placeholder="Choose a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      disabled={isRegistering}
-                      minLength={6}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Invite:</label>
-                    <input
-                      type="text"
-                      className="win98-input"
-                      placeholder="Invite code"
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value)}
-                      required
-                      disabled={isRegistering}
-                    />
-                  </div>
-                  <div className="form-actions">
-                    <button type="submit" className="win98-btn" disabled={isRegistering}>
-                      {isRegistering ? 'Creating...' : 'Register'}
-                    </button>
-                  </div>
-                </form>
+                <>
+                  {waitlistSuccess ? (
+                    <div className="waitlist-confirmed">
+                      <div className="success">{waitlistSuccess}</div>
+                      <button
+                        className="win98-btn"
+                        style={{ marginTop: '8px' }}
+                        onClick={() => { setWaitlistSuccess(''); setShowWaitlist(false); }}
+                      >
+                        Back to Sign Up
+                      </button>
+                    </div>
+                  ) : showWaitlist ? (
+                    <form onSubmit={handleJoinWaitlist}>
+                      <div className="waitlist-header">Join the Waitlist</div>
+                      <div className="form-row">
+                        <label>Name:</label>
+                        <input
+                          type="text"
+                          className="win98-input"
+                          placeholder="Your name"
+                          value={waitlistName}
+                          onChange={(e) => setWaitlistName(e.target.value)}
+                          required
+                          disabled={isJoiningWaitlist}
+                        />
+                      </div>
+                      <div className="form-row">
+                        <label>Email:</label>
+                        <input
+                          type="email"
+                          className="win98-input"
+                          placeholder="your@email.com"
+                          value={waitlistEmail}
+                          onChange={(e) => setWaitlistEmail(e.target.value)}
+                          required
+                          disabled={isJoiningWaitlist}
+                        />
+                      </div>
+                      <div className="form-row">
+                        <label>Why?</label>
+                        <input
+                          type="text"
+                          className="win98-input"
+                          placeholder="Why do you want to join? (optional)"
+                          value={waitlistMessage}
+                          onChange={(e) => setWaitlistMessage(e.target.value)}
+                          disabled={isJoiningWaitlist}
+                        />
+                      </div>
+                      <div className="form-actions">
+                        <button type="submit" className="win98-btn" disabled={isJoiningWaitlist}>
+                          {isJoiningWaitlist ? 'Joining...' : 'Join Waitlist'}
+                        </button>
+                        <button
+                          type="button"
+                          className="win98-btn"
+                          onClick={() => setShowWaitlist(false)}
+                          disabled={isJoiningWaitlist}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <form onSubmit={handleRegister}>
+                        <div className="form-row">
+                          <label>User:</label>
+                          <input
+                            type="text"
+                            className="win98-input"
+                            placeholder="Choose a username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                            disabled={isRegistering}
+                            minLength={3}
+                            maxLength={50}
+                          />
+                        </div>
+                        <div className="form-row">
+                          <label>Pass:</label>
+                          <input
+                            type="password"
+                            className="win98-input"
+                            placeholder="Choose a password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={isRegistering}
+                            minLength={6}
+                          />
+                        </div>
+                        <div className="form-row">
+                          <label>Invite:</label>
+                          <input
+                            type="text"
+                            className="win98-input"
+                            placeholder="Invite code"
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            required
+                            disabled={isRegistering}
+                          />
+                        </div>
+                        <div className="form-actions">
+                          <button type="submit" className="win98-btn" disabled={isRegistering}>
+                            {isRegistering ? 'Creating...' : 'Register'}
+                          </button>
+                        </div>
+                      </form>
+                      <div className="waitlist-link">
+                        No invite code?{' '}
+                        <button
+                          className="link-btn"
+                          onClick={() => { setShowWaitlist(true); setLoginError(''); }}
+                        >
+                          Join the waitlist
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </div>
 

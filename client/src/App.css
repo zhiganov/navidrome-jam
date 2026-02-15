@@ -407,6 +407,40 @@ body {
   font-size: 11px;
 }
 
+.waitlist-link {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--win-dark);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--link-blue);
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
+.link-btn:hover {
+  color: var(--link-visited);
+}
+
+.waitlist-header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+}
+
+.waitlist-confirmed {
+  text-align: center;
+}
+
 .server-info {
   margin-top: 12px;
   text-align: center;
