@@ -157,7 +157,64 @@ async function saveInviteCodes() {
   }, null, 2));
 }
 
-loadInviteCodes();
+loadInviteCodes().then(() => reconcileInviteCodes());
+
+/**
+ * Reconcile invite codes with Navidrome user list.
+ * Codes used before persistence was added show as "available" — this fixes that
+ * by counting non-admin Navidrome users and marking untracked codes as used.
+ */
+async function reconcileInviteCodes() {
+  const token = await getNavidromeToken();
+  if (!token) return; // admin creds not configured
+
+  try {
+    const url = process.env.NAVIDROME_URL;
+    const response = await fetch(`${url}/api/user?_end=1000&_start=0&_sort=userName&_order=ASC`, {
+      headers: { 'x-nd-authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      console.error('Reconcile: failed to fetch Navidrome users:', response.status);
+      return;
+    }
+
+    const users = await response.json();
+    // All users except the original admin = registered via invite codes
+    // (promoted admins still used invite codes to register)
+    const adminUser = process.env.NAVIDROME_ADMIN_USER;
+    const registeredUsers = users.filter(u => u.userName !== adminUser).map(u => u.userName);
+    const trackedUsers = new Set(usedInviteCodes.values());
+    const untrackedUsers = registeredUsers.filter(u => !trackedUsers.has(u));
+
+    if (untrackedUsers.length === 0) {
+      console.log('Reconcile: all registered users are tracked — no action needed');
+      return;
+    }
+
+    // Find codes that appear available but shouldn't be
+    const availableCodes = [...validInviteCodes].filter(
+      c => !usedInviteCodes.has(c) && !sentInviteCodes.has(c)
+    );
+
+    // Match untracked users to available codes (arbitrary pairing — true mapping is lost)
+    const toMark = Math.min(untrackedUsers.length, availableCodes.length);
+    for (let i = 0; i < toMark; i++) {
+      usedInviteCodes.set(availableCodes[i], untrackedUsers[i]);
+    }
+
+    if (toMark > 0) {
+      await saveInviteCodes();
+      console.log(`Reconcile: marked ${toMark} codes as used (matched to: ${untrackedUsers.slice(0, toMark).join(', ')})`);
+    }
+
+    if (untrackedUsers.length > availableCodes.length) {
+      console.warn(`Reconcile: ${untrackedUsers.length - availableCodes.length} registered users have no matching code (more users than codes)`);
+    }
+  } catch (err) {
+    console.error('Reconcile: error:', err.message);
+  }
+}
 
 // Validation helpers
 function validateRoomId(roomId) {
