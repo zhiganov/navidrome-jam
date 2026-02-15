@@ -429,6 +429,25 @@ class JamClient {
   }
 
   /**
+   * Join the waitlist (no auth required)
+   */
+  async joinWaitlist(name, email, message) {
+    const response = await fetch(`${this.serverUrl}/api/waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, message })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to join waitlist');
+    }
+
+    return data;
+  }
+
+  /**
    * Check if connected
    */
   isConnected() {

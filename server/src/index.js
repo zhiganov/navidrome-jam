@@ -5,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import Busboy from 'busboy';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 import { RoomManager } from './roomManager.js';
 import { SftpUploader } from './sftpUploader.js';
 
@@ -180,6 +182,32 @@ const registerLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 3,
   message: { error: 'Too many registration attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Waitlist persistence (JSON file on Railway volume or local ./data)
+const DATA_DIR = process.env.DATA_DIR || './data';
+const WAITLIST_PATH = path.join(DATA_DIR, 'waitlist.json');
+
+async function readWaitlist() {
+  try {
+    const data = await readFile(WAITLIST_PATH, 'utf8');
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+async function writeWaitlist(list) {
+  await mkdir(DATA_DIR, { recursive: true });
+  await writeFile(WAITLIST_PATH, JSON.stringify(list, null, 2));
+}
+
+const waitlistLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: { error: 'Too many waitlist attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -648,6 +676,65 @@ app.delete('/api/admin/codes/:code', (req, res) => {
   validInviteCodes.delete(code);
   usedInviteCodes.delete(code);
   res.json({ deleted: code, total: validInviteCodes.size });
+});
+
+// Waitlist: join
+app.post('/api/waitlist', waitlistLimiter, async (req, res) => {
+  const { name, email, message } = req.body;
+
+  if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
+    return res.status(400).json({ error: 'Name is required (max 100 characters)' });
+  }
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Valid email is required' });
+  }
+
+  try {
+    const waitlist = await readWaitlist();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (waitlist.some(e => e.email === normalizedEmail)) {
+      return res.status(409).json({ error: 'This email is already on the waitlist' });
+    }
+
+    waitlist.push({
+      name: sanitizeString(name.trim(), 100),
+      email: normalizedEmail,
+      message: message ? sanitizeString(message.trim(), 500) : null,
+      joinedAt: new Date().toISOString(),
+    });
+
+    await writeWaitlist(waitlist);
+    console.log(`Waitlist: ${normalizedEmail} joined (position ${waitlist.length})`);
+    res.status(201).json({ position: waitlist.length });
+  } catch (err) {
+    console.error('Waitlist error:', err);
+    res.status(500).json({ error: 'Failed to join waitlist' });
+  }
+});
+
+// Admin: view waitlist
+app.get('/api/admin/waitlist', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  const waitlist = await readWaitlist();
+  res.json({ waitlist, total: waitlist.length });
+});
+
+// Admin: remove from waitlist
+app.delete('/api/admin/waitlist/:email', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+
+  const email = req.params.email.toLowerCase();
+  const waitlist = await readWaitlist();
+  const filtered = waitlist.filter(e => e.email !== email);
+
+  if (filtered.length === waitlist.length) {
+    return res.status(404).json({ error: 'Email not found on waitlist' });
+  }
+
+  await writeWaitlist(filtered);
+  res.json({ removed: email, remaining: filtered.length });
 });
 
 // Admin dashboard page
