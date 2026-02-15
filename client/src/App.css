@@ -593,6 +593,17 @@ body {
   padding: 2px 8px;
 }
 
+.header-community-select {
+  font-family: 'Tahoma', sans-serif;
+  font-size: 11px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+  border: 1px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
 .leave-room-btn {
   /* inherits win98-btn styles when class applied */
 }
@@ -2011,16 +2022,4 @@ body {
   .room-container {
     max-width: 100%;
   }
-}
-
-/* Community select dropdown */
-.community-select-group {
-  margin: 6px 0;
-}
-
-.community-label {
-  display: block;
-  font-size: 11px;
-  margin-bottom: 3px;
-  font-family: 'Tahoma', sans-serif;
 }

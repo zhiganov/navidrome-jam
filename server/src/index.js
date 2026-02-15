@@ -1606,6 +1606,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Update room community (host only)
+  socket.on('update-community', ({ roomId, community }) => {
+    try {
+      const room = roomManager.getRoom(roomId);
+      if (!room || room.hostId !== socket.data.userId) {
+        socket.emit('error', { message: 'Unauthorized: Only host can change community' });
+        return;
+      }
+      const sanitized = community ? sanitizeString(community, 50) : null;
+      room.community = sanitized;
+      io.to(roomId).emit('room-state', { room: serializeRoom(room) });
+      console.log(`Room ${roomId}: community changed to ${sanitized || '(none)'}`);
+    } catch (error) {
+      console.error('Error updating community:', error);
+      socket.emit('error', { message: error.message });
+    }
+  });
+
   // Like a track (any room member)
   socket.on('like-track', ({ roomId, trackId }) => {
     try {

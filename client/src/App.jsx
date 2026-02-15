@@ -28,9 +28,6 @@ function App() {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [activeRooms, setActiveRooms] = useState([]);
   const [communities, setCommunities] = useState([]);
-  const [selectedCommunity, setSelectedCommunity] = useState(
-    () => localStorage.getItem('jam_community') || ''
-  );
 
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -46,7 +43,7 @@ function App() {
   const [playHistory, setPlayHistory] = useState([]);
 
   // Reaction state
-  const [trackReactions, setTrackReactions] = useState({ likes: 0, dislikes: 0 });
+  const [_trackReactions, setTrackReactions] = useState({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState(null);
   const [trackStarred, setTrackStarred] = useState(false); // Navidrome persistent star
 
@@ -200,7 +197,7 @@ function App() {
     try {
       const rooms = await jamClient.listRooms();
       setActiveRooms(rooms);
-    } catch (e) {
+    } catch {
       // silent — room list is best-effort
     }
   }, [jamClient]);
@@ -215,7 +212,7 @@ function App() {
 
   // Fetch available communities for room tagging
   useEffect(() => {
-    if (isAuthenticated && !currentRoom) {
+    if (isAuthenticated) {
       fetch(`${import.meta.env.VITE_JAM_SERVER_URL}/api/communities`)
         .then(r => r.ok ? r.json() : { communities: [] })
         .then(data => {
@@ -223,7 +220,7 @@ function App() {
         })
         .catch(() => {});
     }
-  }, [isAuthenticated, currentRoom]);
+  }, [isAuthenticated]);
 
   const connectToJamServer = async () => {
     try {
@@ -285,7 +282,7 @@ function App() {
     setRoomError('');
 
     try {
-      const community = selectedCommunity || null;
+      const community = localStorage.getItem('jam_community') || null;
       const room = await jamClient.createRoom(null, username, community);
       setRoomInput(room.id);
       jamClient.joinRoom(room.id, username);
@@ -993,25 +990,6 @@ function App() {
                     {isJoiningRoom ? 'Joining...' : 'Join'}
                   </button>
                 </div>
-                {communities.length > 0 && (
-                  <div className="community-select-group">
-                    <label className="community-label">Community (optional)</label>
-                    <select
-                      className="win98-input"
-                      value={selectedCommunity}
-                      onChange={(e) => {
-                        setSelectedCommunity(e.target.value);
-                        localStorage.setItem('jam_community', e.target.value);
-                      }}
-                      disabled={isCreatingRoom || isJoiningRoom}
-                    >
-                      <option value="">None</option>
-                      {communities.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
                 <button
                   className="win98-btn"
                   onClick={handleCreateRoom}
@@ -1093,6 +1071,23 @@ function App() {
           <span>Room: {currentRoom.id}</span>
           <span>{isHost ? 'HOST' : canControl ? 'CO-HOST' : 'LISTENER'}</span>
           <span>{username}</span>
+          {communities.length > 0 && isHost ? (
+            <select
+              className="header-community-select"
+              value={currentRoom.community || ''}
+              onChange={(e) => {
+                localStorage.setItem('jam_community', e.target.value);
+                jamClient.updateCommunity(e.target.value);
+              }}
+            >
+              <option value="">No community</option>
+              {communities.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          ) : currentRoom.community && communities.length > 0 ? (
+            <span>{communities.find(c => c.id === currentRoom.community)?.name || currentRoom.community}</span>
+          ) : null}
         </div>
         <button onClick={handleLeaveRoom} className="win98-btn leave-room-btn">
           Leave Room
