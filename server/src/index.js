@@ -1766,11 +1766,11 @@ function renderWaitlist(data) {
   }
 
   // Sort by date (oldest first — they've been waiting longest)
-  const sorted = [...data.waitlist].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const sorted = [...data.waitlist].sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
 
   let html = '<table><tr><th>#</th><th>Name</th><th>Email</th><th>Message</th><th>Date</th><th></th><th></th></tr>';
   sorted.forEach((entry, i) => {
-    const dateStr = new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dateStr = new Date(entry.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     html += '<tr>'
       + '<td>' + (i + 1) + '</td>'
       + '<td>' + esc(entry.name) + '</td>'
