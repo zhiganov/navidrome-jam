@@ -557,7 +557,14 @@ body {
 .jam-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  height: 100vh; /* fallback for older browsers */
+}
+
+@supports (height: 100dvh) {
+  .jam-screen {
+    height: 100dvh;
+  }
 }
 
 /* Header as Win98 toolbar */
@@ -2003,6 +2010,10 @@ body {
 
   .status-bar-community {
     display: block;
+  }
+
+  .player-panel .panel-body {
+    padding-bottom: 60px;
   }
 
   .jam-screen h1 {
