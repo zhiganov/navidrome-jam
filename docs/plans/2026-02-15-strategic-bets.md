@@ -41,7 +41,8 @@ Two potential directions for NJ beyond the current single-instance model. Evalua
 - Bandcamp's API is extremely limited (basically nonexistent for catalog access)
 - Bandcamp was acquired by Songtradr (2023), future direction uncertain
 - Labels need their own Navidrome instance with the album loaded — that's friction
-- The partnership pitch to Bandcamp requires demonstrating NJ drives meaningful sales, which requires scale
+- The partnership pitch to Bandcamp requires demonstrating NJ drives meaningful sales, which requires scale NJ doesn't have yet
+- Bandcamp already launched their own listening party feature — labels that care about promotion may already use that
 
 **Key opportunity:** The strongest version would make Navidrome setup trivially easy for labels — a one-click "launch a listening room for this album" that provisions a temporary Navidrome + NJ instance, auto-loads the tracks, and self-destructs after the label's chosen window. That's closer to a managed platform than what NJ is today.
 
