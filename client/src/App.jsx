@@ -49,6 +49,17 @@ function App() {
   const [trackReactions, setTrackReactions] = useState({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState(null);
 
+  // Upload state
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, error
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccessFile, setUploadSuccessFile] = useState('');
+  const [myUploads, setMyUploads] = useState([]);
+  const [uploadPermanentCount, setUploadPermanentCount] = useState(0);
+  const [uploadPermanentQuota, setUploadPermanentQuota] = useState(50);
+  const [isLoadingUploads, setIsLoadingUploads] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
   const [browseMode, setBrowseMode] = useState('artists'); // artists, albums, recent, random
@@ -454,6 +465,107 @@ function App() {
       setBrowseView('artists');
     }
   };
+
+  // Upload constants
+  const ALLOWED_EXTENSIONS = ['.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.aac'];
+  const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+
+  const getSubsonicAuth = () => ({
+    username: navidrome.username,
+    token: navidrome.token,
+    salt: navidrome.salt,
+  });
+
+  const fetchMyUploads = async () => {
+    setIsLoadingUploads(true);
+    try {
+      const data = await jamClient.getMyUploads(getSubsonicAuth());
+      setMyUploads(data.uploads || []);
+      setUploadPermanentCount(data.permanentCount || 0);
+      setUploadPermanentQuota(data.permanentQuota || 50);
+    } catch (err) {
+      console.error('Failed to fetch uploads:', err);
+    } finally {
+      setIsLoadingUploads(false);
+    }
+  };
+
+  const validateFile = (file) => {
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return `Unsupported format. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max: 200MB`;
+    }
+    return null;
+  };
+
+  const handleUploadFile = async (file) => {
+    const error = validateFile(file);
+    if (error) {
+      setUploadStatus('error');
+      setUploadError(error);
+      return;
+    }
+
+    setUploadStatus('uploading');
+    setUploadProgress(0);
+    setUploadError('');
+    setUploadSuccessFile('');
+
+    try {
+      const result = await jamClient.uploadTrack(file, getSubsonicAuth(), (progress) => {
+        setUploadProgress(progress);
+      });
+      setUploadStatus('success');
+      setUploadSuccessFile(result.filename || file.name);
+      setUploadProgress(100);
+      fetchMyUploads();
+    } catch (err) {
+      setUploadStatus('error');
+      setUploadError(err.message);
+      setUploadProgress(null);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleUploadFile(file);
+    e.target.value = ''; // Reset so same file can be re-selected
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleUploadFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleTogglePermanent = async (filename) => {
+    try {
+      await jamClient.togglePermanent(filename, getSubsonicAuth());
+      fetchMyUploads();
+    } catch (err) {
+      console.error('Failed to toggle permanent:', err);
+    }
+  };
+
+  // Load uploads when switching to upload tab
+  useEffect(() => {
+    if (musicTab === 'upload' && currentRoom) {
+      fetchMyUploads();
+    }
+  }, [musicTab, currentRoom]);
 
   // Load artists when switching to browse tab
   useEffect(() => {
@@ -1137,6 +1249,12 @@ function App() {
                 Search
               </button>
               <button
+                className={`auth-tab desktop-tab ${musicTab === 'upload' ? 'active' : ''}`}
+                onClick={() => setMusicTab('upload')}
+              >
+                Upload
+              </button>
+              <button
                 className={`auth-tab mobile-tab ${musicTab === 'queue' ? 'active' : ''}`}
                 onClick={() => setMusicTab('queue')}
               >
@@ -1244,6 +1362,103 @@ function App() {
                       );
                     })}
                   </ul>
+                </div>
+              ) : musicTab === 'upload' ? (
+                <div className="upload-panel">
+                  <div className="upload-zone-section">
+                    <div
+                      className={`upload-dropzone${isDragOver ? ' dragover' : ''}`}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                    >
+                      <div className="upload-dropzone-text">
+                        Drag &amp; drop an audio file here
+                      </div>
+                      <div className="upload-or">- or -</div>
+                      <label className="win98-btn upload-browse-btn">
+                        Browse Files...
+                        <input
+                          type="file"
+                          accept=".mp3,.flac,.ogg,.opus,.m4a,.wav,.aac"
+                          onChange={handleFileSelect}
+                          style={{ display: 'none' }}
+                          disabled={uploadStatus === 'uploading'}
+                        />
+                      </label>
+                      <div className="upload-formats">
+                        Formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC (max 200MB)
+                      </div>
+                    </div>
+
+                    {uploadStatus === 'uploading' && (
+                      <div className="upload-progress-section">
+                        <div className="upload-progress-label">
+                          Uploading... {uploadProgress}%
+                        </div>
+                        <div className="upload-progress-track">
+                          <div
+                            className="upload-progress-fill"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {uploadStatus === 'success' && (
+                      <div className="upload-success">
+                        Uploaded: {uploadSuccessFile}<br />
+                        <small>Navidrome will index this file within ~1 minute. Then it will appear in search.</small>
+                      </div>
+                    )}
+
+                    {uploadStatus === 'error' && (
+                      <div className="error">{uploadError}</div>
+                    )}
+                  </div>
+
+                  <hr className="retro-divider" />
+
+                  <div className="my-uploads-section">
+                    <div className="my-uploads-header">
+                      <strong>My Uploads</strong>
+                      <span className="upload-quota">
+                        Permanent: {uploadPermanentCount}/{uploadPermanentQuota}
+                      </span>
+                      <button
+                        className="win98-btn upload-refresh-btn"
+                        onClick={fetchMyUploads}
+                        disabled={isLoadingUploads}
+                      >
+                        Refresh
+                      </button>
+                    </div>
+
+                    {isLoadingUploads ? (
+                      <div className="browse-loading">Loading uploads...</div>
+                    ) : myUploads.length === 0 ? (
+                      <div className="browse-empty">No uploads yet</div>
+                    ) : (
+                      <ul className="my-uploads-list">
+                        {myUploads.map((upload) => (
+                          <li key={upload.filename} className="upload-item">
+                            <div className="upload-item-info">
+                              <strong>{upload.filename}</strong>
+                              <span>{new Date(upload.uploadedAt).toLocaleDateString()}</span>
+                            </div>
+                            <label className="upload-permanent-toggle" title={upload.permanent ? 'Marked permanent' : 'Will expire after 30 days'}>
+                              <input
+                                type="checkbox"
+                                checked={upload.permanent}
+                                onChange={() => handleTogglePermanent(upload.filename)}
+                              />
+                              Keep
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               ) : musicTab === 'search' ? (
                 <div className="search-panel">

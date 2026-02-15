@@ -1670,6 +1670,191 @@ body {
   width: 100%;
 }
 
+/* ==================
+   UPLOAD PANEL
+   ================== */
+.upload-panel {
+  padding: 8px;
+}
+
+.upload-zone-section {
+  margin-bottom: 4px;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--win-dark);
+  background: var(--input-bg);
+  padding: 16px 12px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.upload-dropzone.dragover {
+  border-color: var(--valentine-hot);
+  background: var(--valentine-blush);
+}
+
+.upload-dropzone-text {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--win-dark);
+  margin-bottom: 6px;
+}
+
+.upload-or {
+  font-size: 10px;
+  color: var(--win-dark);
+  margin-bottom: 6px;
+}
+
+.upload-browse-btn {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.upload-formats {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--win-dark);
+}
+
+/* Upload progress bar — Win98 download dialog style */
+.upload-progress-section {
+  margin-top: 8px;
+  padding: 6px;
+  background: var(--win-bg);
+  border: 1px solid var(--win-dark);
+}
+
+.upload-progress-label {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.upload-progress-track {
+  height: 16px;
+  background: var(--input-bg);
+  border: 2px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: var(--title-blue);
+  transition: width 0.2s ease-out;
+}
+
+.upload-success {
+  color: #006600;
+  background: #ccffcc;
+  border: 1px solid #006600;
+  padding: 6px 8px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.upload-success small {
+  color: var(--win-dark);
+  font-size: 10px;
+}
+
+/* My Uploads section */
+.my-uploads-section {
+  padding-top: 4px;
+}
+
+.my-uploads-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--text-dark);
+}
+
+.upload-quota {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: var(--win-dark);
+  flex: 1;
+}
+
+.upload-refresh-btn {
+  min-width: 55px !important;
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+}
+
+.my-uploads-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: var(--input-bg);
+  border: 2px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.upload-item {
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 11px;
+  color: var(--text-dark);
+}
+
+.upload-item:last-child {
+  border-bottom: none;
+}
+
+.upload-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.upload-item-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.upload-item-info span {
+  color: var(--win-dark);
+  font-size: 10px;
+}
+
+.upload-permanent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--text-dark);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.upload-permanent-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Valentine override: progress fill uses pink */
+.upload-progress-fill {
+  background: linear-gradient(90deg, var(--valentine-deep), var(--valentine-hot)) !important;
+}
+
 /* Status bar */
 .status-bar {
   background: var(--win-bg);
@@ -1763,6 +1948,11 @@ body {
   display: none;
 }
 
+/* Desktop-only tabs — hidden on mobile */
+.desktop-tab {
+  display: inline-block;
+}
+
 /* Mobile queue/people panels inside tab content */
 .mobile-queue-panel,
 .mobile-users-panel {
@@ -1782,6 +1972,10 @@ body {
 
   .mobile-tab {
     display: inline-block;
+  }
+
+  .desktop-tab {
+    display: none;
   }
 }
 

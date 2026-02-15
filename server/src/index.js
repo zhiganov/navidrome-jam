@@ -4,7 +4,9 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import Busboy from 'busboy';
 import { RoomManager } from './roomManager.js';
+import { SftpUploader } from './sftpUploader.js';
 
 dotenv.config();
 
@@ -25,6 +27,7 @@ app.use(cors());
 app.use(express.json());
 
 const roomManager = new RoomManager();
+const sftpUploader = new SftpUploader();
 
 // Invite code tracking (single-use, in-memory)
 const validInviteCodes = new Set(
@@ -277,6 +280,226 @@ app.post('/api/register', registerLimiter, async (req, res) => {
   }
 });
 
+// --- Upload endpoints ---
+
+const ALLOWED_EXTENSIONS = ['.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.aac'];
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
+const PERMANENT_QUOTA = 50;
+
+// Rate limit: 5 uploads per user per hour (keyed by Subsonic username)
+const uploadRateLimitMap = new Map(); // username -> { count, resetAt }
+
+function checkUploadRateLimit(username) {
+  const now = Date.now();
+  const entry = uploadRateLimitMap.get(username);
+
+  if (!entry || now > entry.resetAt) {
+    uploadRateLimitMap.set(username, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return true;
+  }
+
+  if (entry.count >= 5) return false;
+  entry.count++;
+  return true;
+}
+
+/**
+ * Verify Subsonic credentials by pinging Navidrome.
+ * Returns the username on success, null on failure.
+ */
+async function verifySubsonicAuth(query) {
+  const { u, t, s, p } = query;
+  if (!u || (!t && !p)) return null;
+
+  const navidromeUrl = process.env.NAVIDROME_URL;
+  if (!navidromeUrl) return null;
+
+  const params = new URLSearchParams({ u, v: '1.16.1', c: 'navidrome-jam', f: 'json' });
+  if (t && s) {
+    params.set('t', t);
+    params.set('s', s);
+  } else if (p) {
+    params.set('p', p);
+  }
+
+  try {
+    const resp = await fetch(`${navidromeUrl}/rest/ping.view?${params}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data['subsonic-response']?.status === 'ok') return u;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// POST /api/upload — multipart file upload
+app.post('/api/upload', async (req, res) => {
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  // Verify Subsonic auth from query params
+  const username = await verifySubsonicAuth(req.query);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid Navidrome credentials' });
+  }
+
+  // Check per-user rate limit
+  if (!checkUploadRateLimit(username)) {
+    return res.status(429).json({ error: 'Upload limit reached (5 per hour). Try again later.' });
+  }
+
+  // Check Content-Length before parsing
+  const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+  if (contentLength > MAX_FILE_SIZE) {
+    return res.status(413).json({ error: 'File too large (max 200 MB)' });
+  }
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const busboy = Busboy({
+        headers: req.headers,
+        limits: { fileSize: MAX_FILE_SIZE, files: 1 },
+      });
+
+      let fileProcessed = false;
+
+      busboy.on('file', async (fieldname, fileStream, info) => {
+        if (fileProcessed) {
+          fileStream.resume(); // drain extra files
+          return;
+        }
+        fileProcessed = true;
+
+        const { filename: rawFilename } = info;
+        // Sanitize filename: keep only safe chars
+        const filename = rawFilename
+          .replace(/[^a-zA-Z0-9._\-() ]/g, '')
+          .trim()
+          .substring(0, 200);
+
+        if (!filename) {
+          reject(new Error('Invalid filename'));
+          fileStream.resume();
+          return;
+        }
+
+        // Check extension
+        const ext = '.' + filename.split('.').pop().toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+          reject(new Error(`File type not allowed. Accepted: ${ALLOWED_EXTENSIONS.join(', ')}`));
+          fileStream.resume();
+          return;
+        }
+
+        // Track if file was truncated (exceeded size limit)
+        let truncated = false;
+        fileStream.on('limit', () => {
+          truncated = true;
+        });
+
+        try {
+          const uploadResult = await sftpUploader.upload(fileStream, username, filename);
+          if (truncated) {
+            // Delete the truncated file
+            await sftpUploader.deleteUpload(username, uploadResult.filename);
+            reject(new Error('File too large (max 200 MB)'));
+          } else {
+            resolve(uploadResult);
+          }
+        } catch (err) {
+          reject(err);
+        }
+      });
+
+      busboy.on('error', reject);
+
+      busboy.on('close', () => {
+        if (!fileProcessed) {
+          reject(new Error('No file provided'));
+        }
+      });
+
+      req.pipe(busboy);
+    });
+
+    res.status(201).json({
+      message: 'Upload successful. Track will appear in search after Navidrome indexes it (~1 min).',
+      filename: result.filename,
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    const status = error.message.includes('too large') ? 413
+      : error.message.includes('not allowed') ? 400
+      : error.message.includes('Invalid') || error.message.includes('No file') ? 400
+      : 500;
+    res.status(status).json({ error: error.message });
+  }
+});
+
+// GET /api/uploads/mine — list current user's uploads
+app.get('/api/uploads/mine', async (req, res) => {
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  const username = await verifySubsonicAuth(req.query);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid Navidrome credentials' });
+  }
+
+  try {
+    const uploads = await sftpUploader.listUserUploads(username);
+    const permanentCount = uploads.filter(u => u.permanent).length;
+    res.json({ uploads, permanentCount, permanentQuota: PERMANENT_QUOTA });
+  } catch (error) {
+    console.error('Error listing uploads:', error);
+    res.status(500).json({ error: 'Failed to list uploads' });
+  }
+});
+
+// POST /api/uploads/:filename/permanent — toggle permanent flag
+app.post('/api/uploads/:filename/permanent', async (req, res) => {
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  const username = await verifySubsonicAuth(req.query);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid Navidrome credentials' });
+  }
+
+  const { filename } = req.params;
+
+  try {
+    // Check quota before toggling to permanent
+    const currentCount = await sftpUploader.countPermanent(username);
+    const uploads = await sftpUploader.listUserUploads(username);
+    const targetUpload = uploads.find(u => u.filename === filename);
+
+    if (!targetUpload) {
+      return res.status(404).json({ error: 'Upload not found' });
+    }
+
+    // If toggling ON and already at quota, reject
+    if (!targetUpload.permanent && currentCount >= PERMANENT_QUOTA) {
+      return res.status(400).json({
+        error: `Permanent quota reached (${PERMANENT_QUOTA}). Remove permanent flag from another file first.`,
+      });
+    }
+
+    const permanent = await sftpUploader.togglePermanent(username, filename);
+    res.json({ filename, permanent });
+  } catch (error) {
+    console.error('Error toggling permanent:', error);
+    if (error.message === 'Upload not found') {
+      return res.status(404).json({ error: 'Upload not found' });
+    }
+    res.status(500).json({ error: 'Failed to update permanent flag' });
+  }
+});
+
 // Admin auth helper
 function checkAdminAuth(req, res) {
   const adminPass = process.env.NAVIDROME_ADMIN_PASS;
@@ -410,7 +633,10 @@ function getAdminPageHTML(adminKey) {
     background-size: 200px 200px;
     color: #000;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    justify-content: flex-start;
     padding: 30px 10px;
   }
 
@@ -526,6 +752,20 @@ function getAdminPageHTML(adminKey) {
     color: #9c0006;
     border: 1px solid #9c0006;
   }
+
+  .badge-permanent {
+    background: #c6efce;
+    color: #006100;
+    border: 1px solid #006100;
+  }
+
+  .badge-expiring {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #856404;
+  }
+
+  .stat-box .num.yellow { color: #856404; }
 
   .btn {
     font-family: 'Tahoma', sans-serif;
@@ -683,6 +923,34 @@ function getAdminPageHTML(adminKey) {
   </div>
 </div>
 
+<div class="window">
+  <div class="title-bar">
+    <div class="title-bar-icon">&#128190;</div>
+    Uploaded Tracks
+  </div>
+  <div class="window-body">
+    <div class="stats">
+      <div class="stat-box"><div class="num blue" id="upl-stat-total">-</div><div class="label">Total</div></div>
+      <div class="stat-box"><div class="num green" id="upl-stat-permanent">-</div><div class="label">Permanent</div></div>
+      <div class="stat-box"><div class="num yellow" id="upl-stat-expiring">-</div><div class="label">Expiring &lt;7d</div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" onclick="fetchUploads()">Refresh</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-danger" style="font-size:11px;padding:3px 8px" onclick="deleteAllExpired()">Delete All Expired</button>
+    </div>
+
+    <div id="uploads-table">
+      <div class="loading">Loading uploads...</div>
+    </div>
+
+    <div class="note">
+      &#128197; Non-permanent files are auto-deleted after 30 days. Permanent quota: 50 per user.
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -798,11 +1066,201 @@ async function copyEnvVar() {
   }
 }
 
+// --- Uploads ---
+
+let uploadsData = [];
+
+async function fetchUploads() {
+  try {
+    const r = await fetch(API_BASE + '/api/admin/uploads?key=' + encodeURIComponent(API_KEY));
+    if (!r.ok) throw new Error('Failed to fetch');
+    const data = await r.json();
+    uploadsData = data.uploads || [];
+    renderUploads(uploadsData);
+  } catch (e) {
+    document.getElementById('uploads-table').innerHTML = '<div class="loading" style="color:red">Error loading uploads</div>';
+  }
+}
+
+function renderUploads(uploads) {
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+
+  const total = uploads.length;
+  const permanent = uploads.filter(u => u.permanent).length;
+  const expiring = uploads.filter(u => {
+    if (u.permanent) return false;
+    const age = now - new Date(u.uploadedAt).getTime();
+    return age > (thirtyDays - sevenDays);
+  }).length;
+
+  document.getElementById('upl-stat-total').textContent = total;
+  document.getElementById('upl-stat-permanent').textContent = permanent;
+  document.getElementById('upl-stat-expiring').textContent = expiring;
+
+  if (total === 0) {
+    document.getElementById('uploads-table').innerHTML = '<div class="loading">No uploaded tracks yet</div>';
+    return;
+  }
+
+  // Sort: expiring soon first, then by date (newest first)
+  const sorted = [...uploads].sort((a, b) => {
+    if (a.permanent !== b.permanent) return a.permanent ? 1 : -1;
+    return new Date(b.uploadedAt) - new Date(a.uploadedAt);
+  });
+
+  let html = '<table><tr><th>File</th><th>User</th><th>Date</th><th>Status</th><th></th></tr>';
+  for (const u of sorted) {
+    const age = now - new Date(u.uploadedAt).getTime();
+    const daysLeft = Math.max(0, Math.ceil((thirtyDays - age) / (24 * 60 * 60 * 1000)));
+    const dateStr = new Date(u.uploadedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    let badge;
+    if (u.permanent) {
+      badge = '<span class="badge badge-permanent">PERMANENT</span>';
+    } else if (daysLeft <= 7) {
+      badge = '<span class="badge badge-expiring">' + daysLeft + 'd left</span>';
+    } else {
+      badge = '<span class="badge badge-available">' + daysLeft + 'd left</span>';
+    }
+
+    const permBtn = u.permanent
+      ? '<button class="btn btn-danger" style="font-size:9px" onclick="toggleUploadPermanent(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\', false)">unpin</button>'
+      : '<button class="btn" style="font-size:9px;padding:1px 5px" onclick="toggleUploadPermanent(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\', true)">pin</button>';
+
+    html += '<tr>'
+      + '<td title="' + esc(u.filename) + '">' + esc(u.filename.length > 25 ? u.filename.substring(0, 22) + '...' : u.filename) + '</td>'
+      + '<td>' + esc(u.username) + '</td>'
+      + '<td>' + dateStr + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td style="white-space:nowrap">' + permBtn + ' <button class="btn btn-danger" onclick="deleteUpload(\\'' + esc(u.username) + '\\',\\'' + esc(u.filename) + '\\')">del</button></td>'
+      + '</tr>';
+  }
+  html += '</table>';
+  document.getElementById('uploads-table').innerHTML = html;
+}
+
+async function toggleUploadPermanent(username, filename, permanent) {
+  try {
+    const r = await fetch(
+      API_BASE + '/api/admin/uploads/' + encodeURIComponent(username) + '/' + encodeURIComponent(filename) + '/permanent?key=' + encodeURIComponent(API_KEY),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permanent }) }
+    );
+    if (!r.ok) throw new Error('Failed');
+    showToast(permanent ? 'Pinned ' + filename : 'Unpinned ' + filename);
+    fetchUploads();
+  } catch (e) {
+    showToast('Error updating permanent flag');
+  }
+}
+
+async function deleteUpload(username, filename) {
+  if (!confirm('Delete ' + username + '/' + filename + '?')) return;
+  try {
+    const r = await fetch(
+      API_BASE + '/api/admin/uploads/' + encodeURIComponent(username) + '/' + encodeURIComponent(filename) + '?key=' + encodeURIComponent(API_KEY),
+      { method: 'DELETE' }
+    );
+    if (!r.ok) throw new Error('Failed');
+    showToast('Deleted ' + filename);
+    fetchUploads();
+  } catch (e) {
+    showToast('Error deleting upload');
+  }
+}
+
+async function deleteAllExpired() {
+  const now = Date.now();
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  const expired = uploadsData.filter(u => !u.permanent && (now - new Date(u.uploadedAt).getTime()) > thirtyDays);
+
+  if (expired.length === 0) {
+    showToast('No expired uploads to delete');
+    return;
+  }
+
+  if (!confirm('Delete ' + expired.length + ' expired upload(s)?')) return;
+
+  let deleted = 0;
+  for (const u of expired) {
+    try {
+      const r = await fetch(
+        API_BASE + '/api/admin/uploads/' + encodeURIComponent(u.username) + '/' + encodeURIComponent(u.filename) + '?key=' + encodeURIComponent(API_KEY),
+        { method: 'DELETE' }
+      );
+      if (r.ok) deleted++;
+    } catch {}
+  }
+
+  showToast('Deleted ' + deleted + ' expired upload(s)');
+  fetchUploads();
+}
+
 fetchCodes();
+fetchUploads();
 </script>
 </body>
 </html>`;
 }
+
+// --- Admin upload endpoints ---
+
+// GET /api/admin/uploads — list all uploads
+app.get('/api/admin/uploads', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  try {
+    const uploads = await sftpUploader.listAllUploads();
+    res.json({ uploads });
+  } catch (error) {
+    console.error('Error listing all uploads:', error);
+    res.status(500).json({ error: 'Failed to list uploads' });
+  }
+});
+
+// DELETE /api/admin/uploads/:username/:filename — delete any file
+app.delete('/api/admin/uploads/:username/:filename', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  const { username, filename } = req.params;
+
+  try {
+    await sftpUploader.deleteUpload(username, filename);
+    res.json({ deleted: `${username}/${filename}` });
+  } catch (error) {
+    console.error('Error deleting upload:', error);
+    res.status(500).json({ error: 'Failed to delete upload' });
+  }
+});
+
+// POST /api/admin/uploads/:username/:filename/permanent — override permanent flag
+app.post('/api/admin/uploads/:username/:filename/permanent', async (req, res) => {
+  if (!checkAdminAuth(req, res)) return;
+  if (!sftpUploader.isConfigured()) {
+    return res.status(503).json({ error: 'Uploads are not configured' });
+  }
+
+  const { username, filename } = req.params;
+  const { permanent } = req.body;
+
+  try {
+    const result = await sftpUploader.setPermanent(username, filename, !!permanent);
+    res.json({ username, filename, permanent: result });
+  } catch (error) {
+    console.error('Error setting permanent flag:', error);
+    if (error.message === 'Upload not found') {
+      return res.status(404).json({ error: 'Upload not found' });
+    }
+    res.status(500).json({ error: 'Failed to update permanent flag' });
+  }
+});
 
 // Serialize room for JSON transport (converts Sets to arrays)
 function serializeRoom(room) {
@@ -1245,3 +1703,20 @@ httpServer.listen(PORT, () => {
 setInterval(() => {
   roomManager.cleanupStaleRooms();
 }, 60000);
+
+// Schedule upload cleanup (every 24 hours) — delete non-permanent files older than 30 days
+if (sftpUploader.isConfigured()) {
+  // Run once on startup (after a short delay to let server stabilize)
+  setTimeout(() => {
+    sftpUploader.cleanupExpired().catch(err =>
+      console.error('Upload cleanup error:', err)
+    );
+  }, 10000);
+
+  // Then every 24 hours
+  setInterval(() => {
+    sftpUploader.cleanupExpired().catch(err =>
+      console.error('Upload cleanup error:', err)
+    );
+  }, 24 * 60 * 60 * 1000);
+}
