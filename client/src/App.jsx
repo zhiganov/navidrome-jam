@@ -404,7 +404,7 @@ function App() {
     } else if (mode === 'favorites') {
       loadFavorites();
     } else {
-      const typeMap = { albums: 'alphabeticalByName', recent: 'newest', random: 'random' };
+      const typeMap = { albums: 'alphabeticalByName', recent: 'newest', played: 'recent' };
       loadAlbumList(typeMap[mode]);
     }
   };
@@ -1549,17 +1549,8 @@ function App() {
                       <option value="artists">Artists</option>
                       <option value="albums">Albums A-Z</option>
                       <option value="recent">Recently Added</option>
-                      <option value="random">Random</option>
+                      <option value="played">Recently Played</option>
                     </select>
-                    {browseMode === 'random' && (
-                      <button
-                        className="win98-btn browse-shuffle-btn"
-                        onClick={() => loadAlbumList('random')}
-                        title="Shuffle again"
-                      >
-                        Shuffle
-                      </button>
-                    )}
                   </div>
                   <div className="browse-breadcrumb">
                     <span
