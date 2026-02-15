@@ -1691,6 +1691,41 @@ body {
   width: 100%;
 }
 
+/* Favorites */
+.favorites-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: var(--win-bg);
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 10px;
+  color: var(--win-dark);
+}
+
+.favorites-count {
+  font-style: italic;
+}
+
+.favorites-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 24px 12px;
+}
+
+.favorites-empty-star {
+  font-size: 28px;
+  color: var(--win-dark);
+  line-height: 1;
+}
+
+.favorites-hint {
+  font-size: 10px;
+  color: var(--win-dark);
+}
+
 /* ==================
    UPLOAD PANEL
    ================== */

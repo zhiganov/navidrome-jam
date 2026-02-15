@@ -266,6 +266,13 @@ class NavidromeClient {
   }
 
   /**
+   * Get all starred (favourited) content
+   */
+  async getStarred() {
+    return this.fetch('getStarred2.view');
+  }
+
+  /**
    * Star a track (add to Favourites)
    */
   async starTrack(id) {
