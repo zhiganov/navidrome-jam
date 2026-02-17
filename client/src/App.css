@@ -1802,6 +1802,91 @@ body {
   font-size: 10px;
 }
 
+/* Upload queue — multi-file progress */
+.upload-queue-section {
+  margin-top: 8px;
+}
+
+.upload-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.upload-clear-btn {
+  min-width: 55px !important;
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+}
+
+.upload-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--input-bg);
+  border: 2px solid;
+  border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.upload-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  border-bottom: 1px solid #e0e0e0;
+  color: var(--text-dark);
+}
+
+.upload-queue-item:last-child {
+  border-bottom: none;
+}
+
+.upload-queue-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-queue-progress {
+  flex: 0 0 80px;
+  height: 10px;
+}
+
+.upload-queue-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--win-dark);
+}
+
+.upload-queue-done .upload-queue-name {
+  color: #006600;
+}
+
+.upload-queue-done .upload-queue-status {
+  color: #006600;
+}
+
+.upload-queue-error .upload-queue-name {
+  color: var(--text-dark);
+}
+
+.upload-queue-error .upload-queue-status {
+  color: #cc0000;
+}
+
+.upload-queue-pending .upload-queue-name {
+  color: var(--win-dark);
+}
+
 /* My Uploads section */
 .my-uploads-section {
   padding-top: 4px;

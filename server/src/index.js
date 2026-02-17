@@ -38,7 +38,7 @@ const REGISTER_RATE_MAX = 3;
 const WAITLIST_RATE_WINDOW_MS = 60 * 60 * 1000;
 const WAITLIST_RATE_MAX = 3;
 const UPLOAD_RATE_WINDOW_MS = 60 * 60 * 1000;
-const UPLOAD_RATE_MAX = 5;
+const UPLOAD_RATE_MAX = 50;
 
 // File uploads
 const MAX_UPLOAD_SIZE = 200 * 1024 * 1024; // 200 MB
@@ -637,7 +637,7 @@ app.post('/api/upload', async (req, res) => {
 
   // Check per-user rate limit
   if (!checkUploadRateLimit(username)) {
-    return res.status(429).json({ error: 'Upload limit reached (5 per hour). Try again later.' });
+    return res.status(429).json({ error: 'Upload limit reached (50 per hour). Try again later.' });
   }
 
   // Check Content-Length before parsing

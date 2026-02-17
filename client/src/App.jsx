@@ -56,16 +56,16 @@ function App() {
   const [userReaction, setUserReaction] = useState(null);
   const [trackStarred, setTrackStarred] = useState(false); // Navidrome persistent star
 
-  // Upload state
-  const [uploadProgress, setUploadProgress] = useState(null);
-  const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, error
-  const [uploadError, setUploadError] = useState('');
-  const [uploadSuccessFile, setUploadSuccessFile] = useState('');
+  // Upload state — queue-based for multi-file uploads
+  // Each item: { id, file, status: 'pending'|'uploading'|'done'|'error', progress: 0-100, error?: string, result?: string }
+  const [uploadQueue, setUploadQueue] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [myUploads, setMyUploads] = useState([]);
   const [uploadPermanentCount, setUploadPermanentCount] = useState(0);
   const [uploadPermanentQuota, setUploadPermanentQuota] = useState(50);
   const [isLoadingUploads, setIsLoadingUploads] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const uploadQueueRef = useRef([]);
 
   // Browse state
   const [musicTab, setMusicTab] = useState('browse');
@@ -583,45 +583,70 @@ function App() {
     return null;
   };
 
-  const handleUploadFile = async (file) => {
-    const error = validateFile(file);
-    if (error) {
-      setUploadStatus('error');
-      setUploadError(error);
-      return;
+  const enqueueFiles = (files) => {
+    const newItems = [];
+    for (const file of files) {
+      const error = validateFile(file);
+      if (error) {
+        newItems.push({ id: `${Date.now()}-${Math.random()}`, file, status: 'error', progress: 0, error });
+      } else {
+        newItems.push({ id: `${Date.now()}-${Math.random()}`, file, status: 'pending', progress: 0 });
+      }
     }
+    setUploadQueue(prev => [...prev, ...newItems]);
+  };
 
-    setUploadStatus('uploading');
-    setUploadProgress(0);
-    setUploadError('');
-    setUploadSuccessFile('');
+  // Process upload queue sequentially
+  useEffect(() => {
+    uploadQueueRef.current = uploadQueue;
+  }, [uploadQueue]);
 
-    try {
-      const result = await jamClient.uploadTrack(file, getSubsonicAuth(), (progress) => {
-        setUploadProgress(progress);
-      });
-      setUploadStatus('success');
-      setUploadSuccessFile(result.filename || file.name);
-      setUploadProgress(100);
-      fetchMyUploads();
-    } catch (err) {
-      setUploadStatus('error');
-      setUploadError(err.message);
-      setUploadProgress(null);
-    }
+  useEffect(() => {
+    if (isUploading) return;
+    const next = uploadQueue.find(item => item.status === 'pending');
+    if (!next) return;
+
+    setIsUploading(true);
+    // Mark as uploading
+    setUploadQueue(prev => prev.map(item =>
+      item.id === next.id ? { ...item, status: 'uploading' } : item
+    ));
+
+    jamClient.uploadTrack(next.file, getSubsonicAuth(), (progress) => {
+      setUploadQueue(prev => prev.map(item =>
+        item.id === next.id ? { ...item, progress } : item
+      ));
+    }).then((result) => {
+      setUploadQueue(prev => prev.map(item =>
+        item.id === next.id ? { ...item, status: 'done', progress: 100, result: result.filename || next.file.name } : item
+      ));
+      // Refresh uploads list only after the last file finishes
+      const remaining = uploadQueueRef.current.filter(item => item.status === 'pending' && item.id !== next.id);
+      if (remaining.length === 0) fetchMyUploads();
+      setIsUploading(false);
+    }).catch((err) => {
+      setUploadQueue(prev => prev.map(item =>
+        item.id === next.id ? { ...item, status: 'error', error: err.message } : item
+      ));
+      setIsUploading(false);
+    });
+  }, [uploadQueue, isUploading]);
+
+  const clearFinishedUploads = () => {
+    setUploadQueue(prev => prev.filter(item => item.status === 'pending' || item.status === 'uploading'));
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) handleUploadFile(file);
-    e.target.value = ''; // Reset so same file can be re-selected
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) enqueueFiles(files);
+    e.target.value = ''; // Reset so same files can be re-selected
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleUploadFile(file);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) enqueueFiles(files);
   };
 
   const handleDragOver = (e) => {
@@ -1514,7 +1539,7 @@ function App() {
                       onDragLeave={handleDragLeave}
                     >
                       <div className="upload-dropzone-text">
-                        Drag &amp; drop an audio file here
+                        Drag &amp; drop audio files here
                       </div>
                       <div className="upload-or">- or -</div>
                       <label className="win98-btn upload-browse-btn">
@@ -1524,37 +1549,50 @@ function App() {
                           accept=".mp3,.flac,.ogg,.opus,.m4a,.wav,.aac"
                           onChange={handleFileSelect}
                           style={{ display: 'none' }}
-                          disabled={uploadStatus === 'uploading'}
+                          multiple
                         />
                       </label>
                       <div className="upload-formats">
-                        Formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC (max 200MB)
+                        Formats: MP3, FLAC, OGG, OPUS, M4A, WAV, AAC (max 200MB each)
                       </div>
                     </div>
 
-                    {uploadStatus === 'uploading' && (
-                      <div className="upload-progress-section">
-                        <div className="upload-progress-label">
-                          Uploading... {uploadProgress}%
+                    {uploadQueue.length > 0 && (
+                      <div className="upload-queue-section">
+                        <div className="upload-queue-header">
+                          <strong>
+                            {(() => {
+                              const done = uploadQueue.filter(i => i.status === 'done').length;
+                              const total = uploadQueue.length;
+                              const hasActive = uploadQueue.some(i => i.status === 'uploading' || i.status === 'pending');
+                              return hasActive ? `Uploading ${done}/${total}...` : `${done}/${total} uploaded`;
+                            })()}
+                          </strong>
+                          {!uploadQueue.some(i => i.status === 'pending' || i.status === 'uploading') && (
+                            <button className="win98-btn upload-clear-btn" onClick={clearFinishedUploads}>Clear</button>
+                          )}
                         </div>
-                        <div className="upload-progress-track">
-                          <div
-                            className="upload-progress-fill"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
+                        <ul className="upload-queue-list">
+                          {uploadQueue.map(item => (
+                            <li key={item.id} className={`upload-queue-item upload-queue-${item.status}`}>
+                              <span className="upload-queue-name" title={item.file.name}>{item.file.name}</span>
+                              {item.status === 'uploading' && (
+                                <div className="upload-progress-track upload-queue-progress">
+                                  <div className="upload-progress-fill" style={{ width: `${item.progress}%` }} />
+                                </div>
+                              )}
+                              {item.status === 'done' && <span className="upload-queue-status">Done</span>}
+                              {item.status === 'pending' && <span className="upload-queue-status">Queued</span>}
+                              {item.status === 'error' && <span className="upload-queue-status upload-queue-error">{item.error}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                        {uploadQueue.every(i => i.status === 'done') && (
+                          <div className="upload-success">
+                            <small>Navidrome will index new files within ~1 minute. Then they will appear in search.</small>
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {uploadStatus === 'success' && (
-                      <div className="upload-success">
-                        Uploaded: {uploadSuccessFile}<br />
-                        <small>Navidrome will index this file within ~1 minute. Then it will appear in search.</small>
-                      </div>
-                    )}
-
-                    {uploadStatus === 'error' && (
-                      <div className="error">{uploadError}</div>
                     )}
                   </div>
 
