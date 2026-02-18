@@ -130,7 +130,7 @@ Single-page app with three screens in `App.jsx`: Login → Room Selection → Ja
 - `services/jamClient.js` — Socket.io wrapper with custom event emitter (manual `listeners` map, not Node EventEmitter). Room creation and registration use REST; everything else uses WebSocket.
 - `contexts/NavidromeContext.jsx` and `JamContext.jsx` — React Context providers that create/destroy client instances on mount/unmount. Required to prevent duplicate listeners during Vite hot-reload.
 
-**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport icons (prev/play/pause/next) use CSS borders for triangles and bars. Repeat, like, and dislike icons use SVG via CSS `mask-image` data URIs — monochrome by default (`background-color: var(--text-dark)`), colored when active. Like/dislike paths are from Bootstrap Icons (`hand-thumbs-up-fill`); repeat is Lucide-style arrows.
+**Visual theme**: Windows 98 / GeoCities aesthetic. Theme colors are CSS variables (`--win-bg`, `--win-light`, `--win-dark`, `--titlebar-*`, etc.). Transport icons (prev/play/pause/next) use CSS borders for triangles and bars. Repeat and like icons use SVG via CSS `mask-image` data URIs — monochrome by default (`background-color: var(--text-dark)`), same `#00aa00` green when active. Active buttons only change icon color, not button background (just Win98 inverted border). Like icon is from Bootstrap Icons (`hand-thumbs-up-fill`); repeat is Lucide-style arrows.
 
 ### Synchronization Protocol
 
@@ -219,7 +219,7 @@ All Subsonic responses are wrapped in `{ "subsonic-response": { status, ...data 
 
 ```bash
 cd client && npx eslint src/       # Lint client code
-cd server && node --check src/index.js && node --check src/roomManager.js  # Syntax check server
+cd server && node --check src/index.js && node --check src/roomManager.js && node --check src/sftpUploader.js  # Syntax check server
 cd client && npm run build         # Verify production build
 ```
 
@@ -230,10 +230,12 @@ No automated tests yet — manual testing with `server/test-client.html` (sync o
 Design doc: `docs/plans/2026-02-11-user-uploads-design.md`. Implementation in `server/src/sftpUploader.js`.
 
 Registered users upload audio files through the web client. Files stream through the Jam server to PikaPods via SFTP (no temp files on Railway), where Navidrome auto-indexes them.
+- **Multi-file**: Client supports selecting/dropping multiple files at once; uploads run sequentially via a queue with per-file progress tracking
 - **Stream-through**: Upload pipes directly from HTTP to SFTP via `sftpUploader.js`
+- **Rate limit**: 50 uploads per user per hour (server-side)
 - **Cleanup**: Non-permanent files auto-deleted after 30 days; liked files are protected
 - **Permanent flag**: Users can mark up to 50 uploads as permanent; admin can override
-- **File limits**: 200MB max, allowed formats: mp3, flac, ogg, opus, m4a, wav, aac
+- **File limits**: 200MB max per file, allowed formats: mp3, flac, ogg, opus, m4a, wav, aac
 - **Storage path**: `/music/jam-uploads/<username>/` on PikaPods
 - **Metadata**: `.uploads-meta.json` on PikaPods tracks upload dates and permanent flags
 
