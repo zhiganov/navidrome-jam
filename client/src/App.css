@@ -1212,7 +1212,6 @@ body {
 
 .repeat-active {
   border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
-  background: #a0a0a0;
 }
 
 /* Repeat icon — two non-crossing loop arrows via CSS mask (monochrome default) */
@@ -1252,7 +1251,6 @@ body {
 
 .like-btn.active {
   border-color: var(--win-darkest) var(--win-light) var(--win-light) var(--win-darkest);
-  background: #a0c0a0;
 }
 
 /* Thumbs-up icon — Bootstrap Icons hand-thumbs-up-fill, via CSS mask */
@@ -1269,7 +1267,7 @@ body {
 }
 
 .like-btn.active .like-icon {
-  background-color: #006000;
+  background-color: #00aa00;
 }
 
 /* Search Panel */
