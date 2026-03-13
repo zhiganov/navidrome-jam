@@ -20,10 +20,10 @@ Spotify Jam lets you listen to music together, but it requires Spotify Premium a
                 ▲              ▲
      sync cmds  │              │  sync cmds
                 │              │
-          ┌─────┴─────┐  ┌────┴──────┐
-          │  Client 1 │  │  Client 2 │
-          │  (Web UI) │  │  (Web UI) │
-          └─────┬─────┘  └────┬──────┘
+          ┌─────┴─────┐   ┌────┴──────┐
+          │  Client 1 │   │  Client 2 │
+          │  (Web UI) │   │  (Web UI) │
+          └─────┬─────┘   └────┬──────┘
                 │              │
      audio HTTP │              │ audio HTTP
                 ▼              ▼
